@@ -3,6 +3,7 @@ import { formatNumber } from "../utils/format";
 
 const RedeemPLSTR = ({ contract, account, web3 }) => {
   const [amount, setAmount] = useState("");
+  const [displayAmount, setDisplayAmount] = useState("");
   const [plstrBalance, setPlstrBalance] = useState("0");
   const [estimatedVPLS, setEstimatedVPLS] = useState("0");
   const [loading, setLoading] = useState(false);
@@ -48,6 +49,22 @@ const RedeemPLSTR = ({ contract, account, web3 }) => {
     if (contract && account && web3) fetchEstimate();
   }, [contract, account, amount, web3]);
 
+  const handleAmountChange = (e) => {
+    const rawValue = e.target.value.replace(/,/g, ""); // Remove commas
+    if (rawValue === "" || isNaN(rawValue)) {
+      setAmount("");
+      setDisplayAmount("");
+    } else {
+      setAmount(rawValue);
+      setDisplayAmount(
+        new Intl.NumberFormat("en-US", {
+          maximumFractionDigits: 18,
+          minimumFractionDigits: 0,
+        }).format(rawValue)
+      );
+    }
+  };
+
   const handleRedeem = async () => {
     setLoading(true);
     setError("");
@@ -56,6 +73,7 @@ const RedeemPLSTR = ({ contract, account, web3 }) => {
       await contract.methods.redeemShares(amountWei).send({ from: account });
       alert("PLSTR redeemed successfully!");
       setAmount("");
+      setDisplayAmount("");
       fetchBalance();
       console.log("PLSTR redeemed:", { amountWei });
     } catch (err) {
@@ -76,13 +94,11 @@ const RedeemPLSTR = ({ contract, account, web3 }) => {
         Estimated vPLS Receivable: {formatNumber(estimatedVPLS)} vPLS
       </p>
       <input
-        type="number"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
+        type="text"
+        value={displayAmount}
+        onChange={handleAmountChange}
         placeholder="Enter PLSTR amount"
         className="w-full p-2 border rounded-lg mb-4"
-        min="0"
-        step="0.000000000000000001"
       />
       <button
         onClick={handleRedeem}
