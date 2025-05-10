@@ -50,18 +50,20 @@ const RedeemPLSTR = ({ contract, account, web3 }) => {
   }, [contract, account, amount, web3]);
 
   const handleAmountChange = (e) => {
-    const rawValue = e.target.value.replace(/,/g, ""); // Remove commas
-    if (rawValue === "" || isNaN(rawValue)) {
-      setAmount("");
-      setDisplayAmount("");
-    } else {
+    const rawValue = e.target.value.replace(/,/g, "");
+    // Allow only digits, decimal point, and optional negative sign
+    if (rawValue === "" || /^-?\d*\.?\d*$/.test(rawValue)) {
       setAmount(rawValue);
-      setDisplayAmount(
-        new Intl.NumberFormat("en-US", {
-          maximumFractionDigits: 18,
-          minimumFractionDigits: 0,
-        }).format(rawValue)
-      );
+      if (rawValue === "" || isNaN(rawValue)) {
+        setDisplayAmount("");
+      } else {
+        setDisplayAmount(
+          new Intl.NumberFormat("en-US", {
+            maximumFractionDigits: 18,
+            minimumFractionDigits: 0,
+          }).format(rawValue)
+        );
+      }
     }
   };
 
