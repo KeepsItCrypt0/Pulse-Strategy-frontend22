@@ -32,13 +32,17 @@ const ContractInfo = ({ contract, web3 }) => {
       });
       setBackingRatio(formatNumber(ratioDecimal, true));
 
+      // Get the latest block number and calculate fromBlock (max 9,999 blocks)
+      const latestBlock = await web3.eth.getBlockNumber();
+      const fromBlock = Math.max(0, latestBlock - 9999);
+
       // Fetch SharesMinted and StakedPLSDeposited events
       const mintEvents = await contract.getPastEvents("SharesMinted", {
-        fromBlock: 0,
+        fromBlock,
         toBlock: "latest",
       });
       const depositEvents = await contract.getPastEvents("StakedPLSDeposited", {
-        fromBlock: 0,
+        fromBlock,
         toBlock: "latest",
       });
 
@@ -68,6 +72,8 @@ const ContractInfo = ({ contract, web3 }) => {
         ratioDecimal,
         lastMint,
         lastDeposit,
+        fromBlock,
+        latestBlock,
       });
     } catch (error) {
       console.error("Failed to fetch contract info:", error);
