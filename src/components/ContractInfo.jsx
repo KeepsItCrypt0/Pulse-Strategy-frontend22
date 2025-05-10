@@ -4,8 +4,8 @@ import { formatNumber, formatDate } from "../utils/format";
 const ContractInfo = ({ contract, web3 }) => {
   const [info, setInfo] = useState({ balance: "0", issuancePeriod: "0", totalIssued: "0" });
   const [backingRatio, setBackingRatio] = useState("1 to 1");
-  const [lastMint, setLastMint] = useState({ date: null, amount: "0" });
-  const [lastDeposit, setLastDeposit] = useState({ date: null, amount: "0" });
+  const [lastMint, setLastMint] = useState({ date: null, amount: null });
+  const [lastDeposit, setLastDeposit] = useState({ date: null, amount: null });
   const [countdown, setCountdown] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -57,6 +57,8 @@ const ContractInfo = ({ contract, web3 }) => {
           date: latestMint.returnValues.timestamp,
           amount: web3.utils.fromWei(latestMint.returnValues.amount || "0", "ether"),
         });
+      } else {
+        setLastMint({ date: null, amount: null });
       }
 
       // Get the most recent StakedPLSDeposited event
@@ -66,6 +68,8 @@ const ContractInfo = ({ contract, web3 }) => {
           date: latestDeposit.returnValues.timestamp,
           amount: web3.utils.fromWei(latestDeposit.returnValues.amount || "0", "ether"),
         });
+      } else {
+        setLastDeposit({ date: null, amount: null });
       }
 
       console.log("Contract info fetched:", {
@@ -139,18 +143,20 @@ const ContractInfo = ({ contract, web3 }) => {
             <strong>VPLS Backing Ratio:</strong> {backingRatio}
           </p>
           <p>
-            <strong>Last Mint Date:</strong>{" "}
-            {lastMint.date ? formatDate(lastMint.date) : "Never"}
+            <strong>StrategyController recent Mint Date:</strong>{" "}
+            {lastMint.date ? formatDate(lastMint.date) : "N/A"}
           </p>
           <p>
-            <strong>Last Mint Amount:</strong> {formatNumber(lastMint.amount)} PLSTR
+            <strong>StrategyController recent Mint Amount:</strong>{" "}
+            {lastMint.amount ? `${formatNumber(lastMint.amount)} PLSTR` : "N/A"}
           </p>
           <p>
-            <strong>Last Deposit Date:</strong>{" "}
-            {lastDeposit.date ? formatDate(lastDeposit.date) : "Never"}
+            <strong>StrategyController recent Deposit Date:</strong>{" "}
+            {lastDeposit.date ? formatDate(lastDeposit.date) : "N/A"}
           </p>
           <p>
-            <strong>Last Deposit Amount:</strong> {formatNumber(lastDeposit.amount)} vPLS
+            <strong>StrategyController recent Deposit Amount:</strong>{" "}
+            {lastDeposit.amount ? `${formatNumber(lastDeposit.amount)} vPLS` : "N/A"}
           </p>
         </>
       )}
