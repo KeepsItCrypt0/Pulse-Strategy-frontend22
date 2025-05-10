@@ -4,6 +4,7 @@ import { formatNumber } from "../utils/format";
 
 const IssuePLSTR = ({ web3, contract, account }) => {
   const [amount, setAmount] = useState("");
+  const [displayAmount, setDisplayAmount] = useState("");
   const [vPLSBalance, setVPLSBalance] = useState("0");
   const [estimatedPLSTR, setEstimatedPLSTR] = useState("0");
   const [estimatedFee, setEstimatedFee] = useState("0");
@@ -56,6 +57,22 @@ const IssuePLSTR = ({ web3, contract, account }) => {
     if (contract && web3) fetchEstimate();
   }, [contract, web3, amount]);
 
+  const handleAmountChange = (e) => {
+    const rawValue = e.target.value.replace(/,/g, "");
+    if (rawValue === "" || isNaN(rawValue)) {
+      setAmount("");
+      setDisplayAmount("");
+    } else {
+      setAmount(rawValue);
+      setDisplayAmount(
+        new Intl.NumberFormat("en-US", {
+          maximumFractionDigits: 18,
+          minimumFractionDigits: 0,
+        }).format(rawValue)
+      );
+    }
+  };
+
   const handleIssue = async () => {
     setLoading(true);
     setError("");
@@ -72,6 +89,7 @@ const IssuePLSTR = ({ web3, contract, account }) => {
       await contract.methods.issueShares(amountWei).send({ from: account });
       alert("PLSTR issued successfully!");
       setAmount("");
+      setDisplayAmount("");
       fetchBalance();
       console.log("PLSTR issued:", { amountWei });
     } catch (err) {
@@ -93,13 +111,11 @@ const IssuePLSTR = ({ web3, contract, account }) => {
           Estimated PLSTR Receivable: <span className="text-purple-600">{formatNumber(estimatedPLSTR)} PLSTR</span>
         </p>
         <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          type="text"
+          value={displayAmount}
+          onChange={handleAmountChange}
           placeholder="Enter vPLS amount"
           className="w-full p-2 border rounded-lg"
-          min="0"
-          step="0.000000000000000001"
         />
         <p className="text-sm text-gray-600 mt-1">
           minimum <span className="text-purple-600 font-medium">1005 vPLS</span>
