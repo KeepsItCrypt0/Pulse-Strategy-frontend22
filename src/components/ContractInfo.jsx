@@ -32,32 +32,30 @@ const ContractInfo = ({ contract, web3 }) => {
       });
       setBackingRatio(formatNumber(ratioDecimal, true));
 
-      // Fetch Mint and Deposit events
-      const mintEvents = await contract.getPastEvents("Mint", {
+      // Fetch SharesMinted and StakedPLSDeposited events
+      const mintEvents = await contract.getPastEvents("SharesMinted", {
         fromBlock: 0,
         toBlock: "latest",
       });
-      const depositEvents = await contract.getPastEvents("Deposit", {
+      const depositEvents = await contract.getPastEvents("StakedPLSDeposited", {
         fromBlock: 0,
         toBlock: "latest",
       });
 
-      // Get the most recent Mint event
+      // Get the most recent SharesMinted event
       if (mintEvents.length > 0) {
         const latestMint = mintEvents[mintEvents.length - 1];
-        const block = await web3.eth.getBlock(latestMint.blockNumber);
         setLastMint({
-          date: block.timestamp,
+          date: latestMint.returnValues.timestamp,
           amount: web3.utils.fromWei(latestMint.returnValues.amount || "0", "ether"),
         });
       }
 
-      // Get the most recent Deposit event
+      // Get the most recent StakedPLSDeposited event
       if (depositEvents.length > 0) {
         const latestDeposit = depositEvents[depositEvents.length - 1];
-        const block = await web3.eth.getBlock(latestDeposit.blockNumber);
         setLastDeposit({
-          date: block.timestamp,
+          date: latestDeposit.returnValues.timestamp,
           amount: web3.utils.fromWei(latestDeposit.returnValues.amount || "0", "ether"),
         });
       }
