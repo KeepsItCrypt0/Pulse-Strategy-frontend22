@@ -34,7 +34,11 @@ const ContractInfo = ({ contract, web3 }) => {
 
       // Get the latest block number and calculate fromBlock (max 9,999 blocks)
       const latestBlock = await web3.eth.getBlockNumber();
-      const fromBlock = Math.max(0, latestBlock - 9999);
+      // Convert latestBlock to BigInt if it isn't already, and calculate fromBlock
+      const latestBlockBigInt = BigInt(latestBlock);
+      const fromBlockBigInt = latestBlockBigInt - BigInt(9999);
+      // Ensure fromBlock is at least 0 and convert back to number for Web3.js
+      const fromBlock = Number(fromBlockBigInt < 0n ? 0n : fromBlockBigInt);
 
       // Fetch SharesMinted and StakedPLSDeposited events
       const mintEvents = await contract.getPastEvents("SharesMinted", {
