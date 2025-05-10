@@ -97,17 +97,18 @@ const AdminPanel = ({ web3, contract, account }) => {
 
   const handleNumericInputChange = (e, setRaw, setDisplay) => {
     const rawValue = e.target.value.replace(/,/g, "");
-    if (rawValue === "" || isNaN(rawValue)) {
-      setRaw("");
-      setDisplay("");
-    } else {
+    if (rawValue === "" || /^-?\d*\.?\d*$/.test(rawValue)) {
       setRaw(rawValue);
-      setDisplay(
-        new Intl.NumberFormat("en-US", {
-          maximumFractionDigits: 18,
-          minimumFractionDigits: 0,
-        }).format(rawValue)
-      );
+      if (rawValue === "" || isNaN(rawValue)) {
+        setDisplay("");
+      } else {
+        setDisplay(
+          new Intl.NumberFormat("en-US", {
+            maximumFractionDigits: 18,
+            minimumFractionDigits: 0,
+          }).format(rawValue)
+        );
+      }
     }
   };
 
