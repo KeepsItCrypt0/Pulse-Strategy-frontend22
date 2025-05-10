@@ -1,28 +1,22 @@
 import { useState, useEffect } from "react";
+import { formatNumber, formatDate } from "../utils/format";
 
 const ContractInfo = ({ contract, web3 }) => {
   const [info, setInfo] = useState({ balance: "0", issuancePeriod: "0", totalIssued: "0" });
-  const [backingRatio, setBackingRatio] = useState("0");
+  const [backingRatio, setBackingRatio] = useState("1 to 1");
+  const [lastMint, setLastMint] = useState({ date: null, amount: "0" });
+  const [lastDeposit, setLastDeposit] = useState({ date: null, amount: "0" });
   const [countdown, setCountdown] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const formatNumber = (value) => {
-    try {
-      const num = Number(value);
-      if (isNaN(num)) throw new Error("Invalid number");
-      return parseFloat(num.toFixed(4)).toString(); // Max 4 decimals, remove trailing zeros
-    } catch (err) {
-      console.error("Format number error:", { value, error: err.message });
-      return "0";
-    }
-  };
 
   const fetchInfo = async () => {
     try {
       setLoading(true);
       setError("");
       if (!contract || !web3) throw new Error("Contract or Web3 not initialized");
+
+      // Fetch contract info
       const result = await contract.methods.getContractInfo().call();
       if (!result || !result.contractBalance || !result.remainingIssuancePeriod) {
         throw new Error("Invalid contract info response");
@@ -30,18 +24,52 @@ const ContractInfo = ({ contract, web3 }) => {
       const ratio = await contract.methods.getVPLSBackingRatio().call();
       const totalIssued = await contract.methods.totalSupply().call();
       const ratioDecimal = web3.utils.fromWei(ratio || "0", "ether");
+
       setInfo({
-        balance: formatNumber(web3.utils.fromWei(result.contractBalance || "0", "ether")),
+        balance: web3.utils.fromWei(result.contractBalance || "0", "ether"),
         issuancePeriod: result.remainingIssuancePeriod || "0",
-        totalIssued: formatNumber(web3.utils.fromWei(totalIssued || "0", "ether")),
+        totalIssued: web3.utils.fromWei(totalIssued || "0", "ether"),
       });
-      setBackingRatio(formatNumber(ratioDecimal));
+      setBackingRatio(formatNumber(ratioDecimal, true));
+
+      // Fetch Mint and Deposit events
+      const mintEvents = await contract.getPastEvents("Mint", {
+        fromBlock: 0,
+        toBlock: "latest",
+      });
+      const depositEvents = await contract.getPastEvents("Deposit", {
+        fromBlock: 0,
+        toBlock: "latest",
+      });
+
+      // Get the most recent Mint event
+      if (mintEvents.length > 0) {
+        const latestMint = mintEvents[mintEvents.length - 1];
+        const block = await web3.eth.getBlock(latestMint.blockNumber);
+        setLastMint({
+          date: block.timestamp,
+          amount: web3.utils.fromWei(latestMint.returnValues.amount || "0", "ether"),
+        });
+      }
+
+      // Get the most recent Deposit event
+      if (depositEvents.length > 0) {
+        const latestDeposit = depositEvents[depositEvents.length - 1];
+        const block = await web3.eth.getBlock(latestDeposit.blockNumber);
+        setLastDeposit({
+          date: block.timestamp,
+          amount: web3.utils.fromWei(latestDeposit.returnValues.amount || "0", "ether"),
+        });
+      }
+
       console.log("Contract info fetched:", {
         balance: result.contractBalance,
         period: result.remainingIssuancePeriod,
         totalIssued,
         ratioRaw: ratio,
         ratioDecimal,
+        lastMint,
+        lastDeposit,
       });
     } catch (error) {
       console.error("Failed to fetch contract info:", error);
@@ -90,10 +118,32 @@ const ContractInfo = ({ contract, web3 }) => {
         </div>
       ) : (
         <>
-          <p><strong>Contract Balance:</strong> {info.balance} vPLS</p>
-          <p><strong>Total PLSTR Issued:</strong> {info.totalIssued} PLSTR</p>
-          <p><strong>Issuance Period Countdown:</strong> {countdown}</p>
-          <p><strong>VPLS Backing Ratio:</strong> {backingRatio}</p>
+          <p>
+            <strong>Contract Balance:</strong> {formatNumber(info.balance)} vPLS
+          </p>
+          <p>
+            <strong>Total PLSTR Issued:</strong> {formatNumber(info.totalIssued)} PLSTR
+          </p>
+          <p>
+            <strong>Issuance Period Countdown:</strong> {countdown}
+          </p>
+          <p>
+            <strong>VPLS Backing Ratio:</strong> {backingRatio}
+          </p>
+          <p>
+            <strong>Last Mint Date:</strong>{" "}
+            {lastMint.date ? formatDate(lastMint.date) : "Never"}
+          </p>
+          <p>
+            <strong>Last Mint Amount:</strong> {formatNumber(lastMint.amount)} PLSTR
+          </p>
+          <p>
+            <strong>Last Deposit Date:</strong>{" "}
+            {lastDeposit.date ? formatDate(lastDeposit.date) : "Never"}
+          </p>
+          <p>
+            <strong>Last Deposit Amount:</strong> {formatNumber(lastDeposit.amount)} vPLS
+          </p>
         </>
       )}
     </div>
