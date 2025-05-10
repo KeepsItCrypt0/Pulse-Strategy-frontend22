@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
-import { formatNumber, formatDate } from "../utils/format";
+import { formatNumber } from "../utils/format";
 
 const ContractInfo = ({ contract, web3 }) => {
   const [info, setInfo] = useState({ balance: "0", issuancePeriod: "0", totalIssued: "0" });
   const [backingRatio, setBackingRatio] = useState("1 to 1");
-  const [lastMint, setLastMint] = useState({ date: null, amount: null });
-  const [lastDeposit, setLastDeposit] = useState({ date: null, amount: null });
   const [countdown, setCountdown] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -32,56 +30,12 @@ const ContractInfo = ({ contract, web3 }) => {
       });
       setBackingRatio(formatNumber(ratioDecimal, true));
 
-      // Get the latest block number and calculate fromBlock (max 9,999 blocks)
-      const latestBlock = await web3.eth.getBlockNumber();
-      // Convert latestBlock to BigInt if it isn't already, and calculate fromBlock
-      const latestBlockBigInt = BigInt(latestBlock);
-      const fromBlockBigInt = latestBlockBigInt - BigInt(9999);
-      // Ensure fromBlock is at least 0 and convert back to number for Web3.js
-      const fromBlock = Number(fromBlockBigInt < 0n ? 0n : fromBlockBigInt);
-
-      // Fetch SharesMinted and StakedPLSDeposited events
-      const mintEvents = await contract.getPastEvents("SharesMinted", {
-        fromBlock,
-        toBlock: "latest",
-      });
-      const depositEvents = await contract.getPastEvents("StakedPLSDeposited", {
-        fromBlock,
-        toBlock: "latest",
-      });
-
-      // Get the most recent SharesMinted event
-      if (mintEvents.length > 0) {
-        const latestMint = mintEvents[mintEvents.length - 1];
-        setLastMint({
-          date: latestMint.returnValues.timestamp,
-          amount: web3.utils.fromWei(latestMint.returnValues.amount || "0", "ether"),
-        });
-      } else {
-        setLastMint({ date: null, amount: null });
-      }
-
-      // Get the most recent StakedPLSDeposited event
-      if (depositEvents.length > 0) {
-        const latestDeposit = depositEvents[depositEvents.length - 1];
-        setLastDeposit({
-          date: latestDeposit.returnValues.timestamp,
-          amount: web3.utils.fromWei(latestDeposit.returnValues.amount || "0", "ether"),
-        });
-      } else {
-        setLastDeposit({ date: null, amount: null });
-      }
-
       console.log("Contract info fetched:", {
         balance: result.contractBalance,
         period: result.remainingIssuancePeriod,
         totalIssued,
         ratioRaw: ratio,
         ratioDecimal,
-        lastMint,
-        lastDeposit,
-        fromBlock,
-        latestBlock,
       });
     } catch (error) {
       console.error("Failed to fetch contract info:", error);
@@ -141,22 +95,6 @@ const ContractInfo = ({ contract, web3 }) => {
           </p>
           <p>
             <strong>VPLS Backing Ratio:</strong> {backingRatio}
-          </p>
-          <p>
-            <strong>StrategyController recent Mint Date:</strong>{" "}
-            {lastMint.date ? formatDate(lastMint.date) : "N/A"}
-          </p>
-          <p>
-            <strong>StrategyController recent Mint Amount:</strong>{" "}
-            {lastMint.amount ? `${formatNumber(lastMint.amount)} PLSTR` : "N/A"}
-          </p>
-          <p>
-            <strong>StrategyController recent Deposit Date:</strong>{" "}
-            {lastDeposit.date ? formatDate(lastDeposit.date) : "N/A"}
-          </p>
-          <p>
-            <strong>StrategyController recent Deposit Amount:</strong>{" "}
-            {lastDeposit.amount ? `${formatNumber(lastDeposit.amount)} vPLS` : "N/A"}
           </p>
         </>
       )}
