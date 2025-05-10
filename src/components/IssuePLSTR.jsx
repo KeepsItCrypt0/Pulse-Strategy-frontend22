@@ -59,17 +59,18 @@ const IssuePLSTR = ({ web3, contract, account }) => {
 
   const handleAmountChange = (e) => {
     const rawValue = e.target.value.replace(/,/g, "");
-    if (rawValue === "" || isNaN(rawValue)) {
-      setAmount("");
-      setDisplayAmount("");
-    } else {
+    if (rawValue === "" || /^-?\d*\.?\d*$/.test(rawValue)) {
       setAmount(rawValue);
-      setDisplayAmount(
-        new Intl.NumberFormat("en-US", {
-          maximumFractionDigits: 18,
-          minimumFractionDigits: 0,
-        }).format(rawValue)
-      );
+      if (rawValue === "" || isNaN(rawValue)) {
+        setDisplayAmount("");
+      } else {
+        setDisplayAmount(
+          new Intl.NumberFormat("en-US", {
+            maximumFractionDigits: 18,
+            minimumFractionDigits: 0,
+          }).format(rawValue)
+        );
+      }
     }
   };
 
