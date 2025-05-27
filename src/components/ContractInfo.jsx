@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { formatNumber, formatDate, networks } from "../web3";
 
 const ContractInfo = ({ contract, web3, network }) => {
-  const [info, setInfo] = useState({ balance: "0", issuancePeriod: "0", totalIssued: "0" });
+  const [info, setInfo] = useState({ balance: "0", issuancePeriod: "Not loaded", totalIssued: "0" });
   const [backingRatio, setBackingRatio] = useState("1 to 1");
   const [countdown, setCountdown] = useState("");
   const [poolInfo, setPoolInfo] = useState({ poolAddress: "0x0", xBONDAmount: "0", plsxAmount: "0" });
@@ -14,18 +14,20 @@ const ContractInfo = ({ contract, web3, network }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { tokenName, contractName, shareName, blockExplorerUrls } =
-    networks[network] || { tokenName: "Token", contractName: "Contract", shareName: "Share", blockExplorerUrls: [""] }; // Fallback values
+    networks[network] || { tokenName: "Token", contractName: "Contract", shareName: "Share", blockExplorerUrls: [""] };
 
-  const fetchInfo = async () => {
+  const fetchInfo = async (retryCount = 0) => {
+    const maxRetries = 3;
     try {
       setLoading(true);
       setError("");
       if (!contract || !web3) throw new Error("Contract or Web3 not initialized");
 
       const result = await contract.methods.getContractInfo().call();
-      if (!result || !result.contractBalance || !result.remainingIssuancePeriod) {
-        throw new Error("Invalid contract info response");
+      if (!result || !result.contractBalance || result.remainingIssuancePeriod === undefined) {
+        throw new Error("Invalid contract info response from getContractInfo");
       }
+
       const ratioMethod = network === "ethereum" ? "getVPLSBackingRatio" : "getPLSXBackingRatio";
       if (!contract.methods[ratioMethod]) {
         throw new Error(`Method ${ratioMethod} not found in contract ABI`);
@@ -35,15 +37,34 @@ const ContractInfo = ({ contract, web3, network }) => {
 
       setInfo({
         balance: formatNumber(web3.utils.fromWei(result.contractBalance || "0", "ether")),
-        issuancePeriod: result.remainingIssuancePeriod || "0",
+        issuancePeriod: result.remainingIssuancePeriod === "0" ? "Ended" : result.remainingIssuancePeriod,
         totalIssued: formatNumber(web3.utils.fromWei(totalIssued || "0", "ether")),
       });
       setBackingRatio(formatNumber(web3.utils.fromWei(ratio || "0", "ether"), true));
 
       if (network === "pulsechain") {
-        if (!contract.methods.getPoolAddress || !contract.methods.getPoolLiquidity) {
-          throw new Error("Pool-related methods not found in contract ABI");
+        const poolMethods = [
+          "getPoolAddress",
+          "getPoolLiquidity",
+          "getPoolDepthRatio",
+          "getHeldLPTokens",
+          "getTimeUntilNextWithdrawal",
+          "getTotalBurned",
+          "getTotalPLSXTaxed",
+        ];
+        for (const method of poolMethods) {
+          if (!contract.methods[method]) {
+            console.warn(`Method ${method} not found in contract ABI, using defaults`);
+            setPoolInfo({ poolAddress: "0x0", xBONDAmount: "0", plsxAmount: "0" });
+            setPoolDepthRatio("0");
+            setHeldLPTokens("0");
+            setTimeUntilWithdrawal("0");
+            setTotalBurned("0");
+            setTotalPLSXTaxed("0");
+            return;
+          }
         }
+
         const poolAddress = await contract.methods.getPoolAddress().call();
         const poolLiquidity = await contract.methods.getPoolLiquidity().call();
         const depthRatio = await contract.methods.getPoolDepthRatio().call();
@@ -53,7 +74,7 @@ const ContractInfo = ({ contract, web3, network }) => {
         const taxed = await contract.methods.getTotalPLSXTaxed().call();
 
         setPoolInfo({
-          poolAddress,
+          poolAddress: poolAddress || "0x0",
           xBONDAmount: formatNumber(web3.utils.fromWei(poolLiquidity.xBONDAmount || "0", "ether")),
           plsxAmount: formatNumber(web3.utils.fromWei(poolLiquidity.plsxAmount || "0", "ether")),
         });
@@ -62,34 +83,18 @@ const ContractInfo = ({ contract, web3, network }) => {
         setTimeUntilWithdrawal(withdrawalTime || "0");
         setTotalBurned(formatNumber(web3.utils.fromWei(burned || "0", "ether")));
         setTotalPLSXTaxed(formatNumber(web3.utils.fromWei(taxed || "0", "ether")));
-      } else {
-        setPoolInfo({ poolAddress: "0x0", xBONDAmount: "0", plsxAmount: "0" });
-        setPoolDepthRatio("0");
-        setHeldLPTokens("0");
-        setTimeUntilWithdrawal("0");
-        setTotalBurned("0");
-        setTotalPLSXTaxed("0");
       }
-
-      console.log("Contract info fetched:", {
-        balance: result.contractBalance,
-        period: result.remainingIssuancePeriod,
-        totalIssued,
-        ratioRaw: ratio,
-        backingRatio,
-        poolInfo: network === "pulsechain" ? poolInfo : null,
-        poolDepthRatio,
-        heldLPTokens,
-        timeUntilWithdrawal,
-        totalBurned,
-        totalPLSXTaxed,
-      });
     } catch (error) {
       console.error("Failed to fetch contract info:", error);
+      if (retryCount < maxRetries) {
+        setError(`Retrying... (Attempt ${retryCount + 1}/${maxRetries})`);
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+        return fetchInfo(retryCount + 1);
+      }
       setError(
         `Failed to load contract data: ${
           error.message.includes("call revert") || error.message.includes("invalid opcode")
-            ? "Method not found or ABI mismatch"
+            ? `Method ${error.message.split(" ")[0]} not found or ABI mismatch`
             : error.message || "Unknown error"
         }`
       );
@@ -101,7 +106,7 @@ const ContractInfo = ({ contract, web3, network }) => {
   useEffect(() => {
     if (contract && web3 && network) {
       fetchInfo();
-      const interval = setInterval(fetchInfo, 30000); // Refresh every 30 seconds
+      const interval = setInterval(fetchInfo, 30000);
       return () => clearInterval(interval);
     }
   }, [contract, web3, network]);
@@ -110,7 +115,7 @@ const ContractInfo = ({ contract, web3, network }) => {
     const updateCountdown = () => {
       const seconds = Number(info.issuancePeriod);
       if (isNaN(seconds) || seconds <= 0) {
-        setCountdown("Issuance period ended");
+        setCountdown(info.issuancePeriod === "Ended" ? "Ended" : "Not set");
         return;
       }
       const days = Math.floor(seconds / 86400);
@@ -177,7 +182,7 @@ const ContractInfo = ({ contract, web3, network }) => {
               </p>
               <p>
                 <strong>Time Until Next Withdrawal:</strong>{" "}
-                {timeUntilWithdrawal === "0" ? "Ready" : formatDate(Number(timeUntilWithdrawal))}
+                {timeUntilWithdrawal === "0" ? "Ready" : formatDate(Number(timeUntilWithdrawal) * 1000)}
               </p>
               <p>
                 <strong>Total {shareName} Burned:</strong> {formatNumber(totalBurned)} {shareName}
