@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { getTokenContract, formatNumber, networks } from "../../web3";
+import { useState, useEffect } from "react";
+import { getWeb3 } from "../../web3";
+import { formatNumber, formatDate } from "../../format";
 
 const xBONDIssue = ({ web3, contract, account }) => {
   const [amount, setAmount] = useState("");
