@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getTokenContract, formatNumber, networks } from "./utils/format.js";
+import { getTokenContract, formatNumber, networks } from "./utils/format";
 
 const PulseStrategyAdminPanel = ({ web3, contract, account }) => {
   const [mintAmount, setMintAmount] = useState("");
