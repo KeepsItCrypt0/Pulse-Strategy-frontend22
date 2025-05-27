@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { getWeb3, getContract, switchNetwork } from "./web3";
-import { networks } from "./web3"; // Updated import
+import { getWeb3, getContract, switchNetwork, networks } from "./web3";
 import PulseStrategyContractInfo from "./components/pulseStrategy/PulseStrategyContractInfo.jsx";
 import PulseStrategyIssuePLSTR from "./components/pulseStrategy/PulseStrategyIssuePLSTR.jsx";
 import PulseStrategyUserInfo from "./components/pulseStrategy/PulseStrategyUserInfo.jsx";
@@ -11,7 +10,6 @@ import xBONDIssue from "./components/xbond/xBONDIssue.jsx";
 import xBONDUserInfo from "./components/xbond/xBONDUserInfo.jsx";
 import xBONDRedeem from "./components/xbond/xBONDRedeem.jsx";
 import xBONDWithdrawLiquidity from "./components/xbond/xBONDWithdrawLiquidity.jsx";
-import ConnectWallet from "./components/ConnectWallet.jsx";
 import "./index.css";
 
 function App() {
@@ -22,11 +20,12 @@ function App() {
   const [isController, setIsController] = useState(false);
   const [loading, setLoading] = useState(false);
   const [networkError, setNetworkError] = useState("");
+  const [walletError, setWalletError] = useState("");
 
-  const initializeWeb3 = async (selectedNetwork, retryCount = 0) => {
-    const maxRetries = 3;
+  const initializeWeb3 = async (selectedNetwork) => {
     try {
       setNetworkError("");
+      setWalletError("");
       setLoading(true);
       if (!window.ethereum) {
         throw new Error("MetaMask is not installed. Please install MetaMask and try again.");
@@ -65,6 +64,22 @@ function App() {
     }
   };
 
+  const handleConnectWallet = async (selectedNetwork) => {
+    try {
+      setWalletError("");
+      if (!window.ethereum) {
+        throw new Error("MetaMask is not installed. Please install MetaMask.");
+      }
+      const web3Instance = await getWeb3();
+      const accounts = await web3Instance.eth.request({ method: "eth_requestAccounts" });
+      if (!accounts[0]) throw new Error("No accounts found. Please unlock MetaMask.");
+      await initializeWeb3(selectedNetwork);
+    } catch (err) {
+      console.error("Wallet connection failed:", err);
+      setWalletError(err.message || "Failed to connect wallet. Ensure MetaMask is installed and unlocked.");
+    }
+  };
+
   useEffect(() => {
     const handleNetworkChange = (chainId) => {
       const chainIdHex = `0x${Number(chainId).toString(16)}`;
@@ -81,12 +96,6 @@ function App() {
     }
   }, [web3, network]);
 
-  const handleNetworkSwitch = async (selectedNetwork) => {
-    setLoading(true);
-    setNetworkError("");
-    await initializeWeb3(selectedNetwork);
-  };
-
   const handleRetry = () => {
     if (network) {
       initializeWeb3(network);
@@ -101,22 +110,40 @@ function App() {
     <div className="min-h-screen bg-gradient-to-br from-purple-900 to-blue-900 flex items-center justify-center p-4">
       <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 max-w-2xl w-full card">
         <h1 className="text-2xl font-bold mb-4 text-purple-600">{shareName || "Strategy"} Strategy</h1>
-        <ConnectWallet
-          account={account}
-          web3={web3}
-          network={network}
-          onConnect={(newAccount) => initializeWeb3(network || "ethereum")}
-        />
         <div className="mb-4">
           <button
-            onClick={() => handleNetworkSwitch("ethereum")}
+            onClick={() => handleConnectWallet("ethereum")}
+            disabled={loading || (network === "ethereum" && account)}
+            className="btn-primary mr-2"
+          >
+            {loading && network === "ethereum" ? "Connecting..." : "Connect Wallet (Ethereum)"}
+          </button>
+          <button
+            onClick={() => handleConnectWallet("pulsechain")}
+            disabled={loading || (network === "pulsechain" && account)}
+            className="btn-primary"
+          >
+            {loading && network === "pulsechain" ? "Connecting..." : "Connect Wallet (PulseChain)"}
+          </button>
+        </div>
+        {account && (
+          <div className="mb-4">
+            <p className="text-gray-600">
+              Connected: {account.slice(0, 6)}...{account.slice(-4)}
+            </p>
+          </div>
+        )}
+        {walletError && <p className="text-red-400 mb-4">{walletError}</p>}
+        <div className="mb-4">
+          <button
+            onClick={() => initializeWeb3("ethereum")}
             disabled={loading || network === "ethereum"}
             className="btn-primary mr-2"
           >
             {loading && network === "ethereum" ? "Switching..." : "Switch to Ethereum"}
           </button>
           <button
-            onClick={() => handleNetworkSwitch("pulsechain")}
+            onClick={() => initializeWeb3("pulsechain")}
             disabled={loading || network === "pulsechain"}
             className="btn-primary"
           >
@@ -132,7 +159,7 @@ function App() {
           </div>
         )}
         {loading && !networkError && <p className="text-gray-600 mb-4">Loading...</p>}
-        {!account && !loading && !networkError && (
+        {!account && !loading && !networkError && !walletError && (
           <p className="text-gray-600 mb-4">Please connect your wallet to continue.</p>
         )}
         {account && contract && network && !networkError && !loading && (
