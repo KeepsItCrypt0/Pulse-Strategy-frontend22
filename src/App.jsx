@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react";
-import { getWeb3, getContract, switchNetwork, networks } from "./web3";
-import { formatNumber, formatDate } from "./format";
 import ConnectWallet from "./components/ConnectWallet.jsx";
 import PulseStrategyContractInfo from "./components/pulseStrategy/PulseStrategyContractInfo.jsx";
 import PulseStrategyIssuePLSTR from "./components/pulseStrategy/PulseStrategyIssuePLSTR.jsx";
@@ -12,7 +10,8 @@ import xBONDIssue from "./components/xbond/xBONDIssue.jsx";
 import xBONDUserInfo from "./components/xbond/xBONDUserInfo.jsx";
 import xBONDRedeem from "./components/xbond/xBONDRedeem.jsx";
 import xBONDWithdrawLiquidity from "./components/xbond/xBONDWithdrawLiquidity.jsx";
-import "./index.css";
+import { getWeb3, getContract, contractAddress, switchNetwork, networks } from "./web3";
+
 
 function App() {
   const [web3, setWeb3] = useState(null);
