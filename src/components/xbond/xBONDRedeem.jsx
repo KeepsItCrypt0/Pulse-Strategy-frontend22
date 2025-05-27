@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getTokenContract, formatNumber, networks } from "../../web3";
+import { getTokenContract, formatNumber, networks } from "./utils/format.js";
 
 const xBONDRedeem = ({ contract, account, web3 }) => {
   const [amount, setAmount] = useState("");
