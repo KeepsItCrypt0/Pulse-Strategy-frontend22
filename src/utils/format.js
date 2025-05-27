@@ -23,3 +23,10 @@ export const formatDate = (timestamp) => {
     timeStyle: "short",
   });
 };
+
+export const networks = {
+  pulsechain: {
+    shareName: "Share",
+    tokenName: "Token",
+  },
+};
