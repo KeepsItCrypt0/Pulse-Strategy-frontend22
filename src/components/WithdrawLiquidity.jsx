@@ -6,7 +6,7 @@ const WithdrawLiquidity = ({ web3, contract, account, network }) => {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true); // For initial data fetch
   const [error, setError] = useState("");
-  const { shareName, tokenName } = networks[network] || { shareName: "", tokenName: "" };
+  const { shareName, tokenName } = networks[network] || { shareName: "Share", tokenName: "Token" }; // Fallback values
 
   const fetchWithdrawalTime = async () => {
     try {
@@ -15,9 +15,12 @@ const WithdrawLiquidity = ({ web3, contract, account, network }) => {
       if (!contract || !web3) {
         throw new Error("Contract or Web3 not initialized");
       }
+      if (!contract.methods.getTimeUntilNextWithdrawal) {
+        throw new Error("Method getTimeUntilNextWithdrawal not found in contract ABI");
+      }
       const withdrawalTime = await contract.methods.getTimeUntilNextWithdrawal().call();
       console.log("Withdrawal time fetched:", { withdrawalTime });
-      setTimeUntilWithdrawal(withdrawalTime ? Number(withdrawalTime) : null);
+      setTimeUntilWithdrawal(withdrawalTime ? Number(withdrawalTime) : 0);
     } catch (err) {
       console.error("Failed to fetch withdrawal time:", err);
       setError(
@@ -46,6 +49,9 @@ const WithdrawLiquidity = ({ web3, contract, account, network }) => {
     setError("");
     try {
       if (!contract || !account) throw new Error("Contract or account not initialized");
+      if (!contract.methods.withdrawLiquidityAndReinvest) {
+        throw new Error("Method withdrawLiquidityAndReinvest not found in contract ABI");
+      }
       await contract.methods.withdrawLiquidityAndReinvest().send({ from: account });
       alert("Liquidity withdrawn and reinvested successfully!");
       await fetchWithdrawalTime();
@@ -60,6 +66,8 @@ const WithdrawLiquidity = ({ web3, contract, account, network }) => {
         errorMessage = "Insufficient LP tokens to withdraw";
       } else if (err.message.includes("SwapFailed")) {
         errorMessage = "Token swap failed";
+      } else if (err.message.includes("NotOwner")) {
+        errorMessage = "Only the contract owner can withdraw liquidity";
       } else if (err.message) {
         errorMessage = `Error withdrawing liquidity: ${err.message}`;
       }
@@ -80,15 +88,26 @@ const WithdrawLiquidity = ({ web3, contract, account, network }) => {
       </p>
       {initialLoading ? (
         <p className="text-gray-600 mb-4">Loading withdrawal time...</p>
+      ) : error ? (
+        <div>
+          <p className="text-red-400 mb-4">{error}</p>
+          <button onClick={fetchWithdrawalTime} className="text-purple-300 hover:text-purple-400">
+            Retry
+          </button>
+        </div>
       ) : (
         <p className="text-gray-600 mb-4">
           <strong>Next Withdrawal Available:</strong>{" "}
-          {timeUntilWithdrawal === null ? "N/A" : timeUntilWithdrawal === 0 ? "Ready" : formatDate(timeUntilWithdrawal)}
+          {timeUntilWithdrawal === null
+            ? "N/A"
+            : timeUntilWithdrawal <= 0
+            ? "Ready"
+            : formatDate(timeUntilWithdrawal)}
         </p>
       )}
       <button
         onClick={handleWithdrawLiquidity}
-        disabled={loading || initialLoading || timeUntilWithdrawal !== 0}
+        disabled={loading || initialLoading || timeUntilWithdrawal === null || timeUntilWithdrawal > 0}
         className="btn-primary"
       >
         {loading ? "Processing..." : "Withdraw & Reinvest"}
