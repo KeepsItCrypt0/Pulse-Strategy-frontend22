@@ -6,11 +6,11 @@ const UserInfo = ({ contract, account, web3, network }) => {
   const [tokenBalance, setTokenBalance] = useState("0");
   const [redeemableTokens, setRedeemableTokens] = useState("0");
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true); // For initial data fetch
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState("");
-  const { tokenName, shareName } = networks[network] || { tokenName: "Token", shareName: "Share" }; // Fallback values
+  const { tokenName, shareName } = networks[network] || { tokenName: "Token", shareName: "Share" };
 
-  const fetchInfo = async () => {
+  const fetchInfo = async (isInitial = false) => {
     try {
       setLoading(true);
       setError("");
@@ -25,7 +25,9 @@ const UserInfo = ({ contract, account, web3, network }) => {
       if (!contract.methods[redeemMethod]) {
         throw new Error(`Method ${redeemMethod} not found in contract ABI`);
       }
-      const redeemable = await contract.methods[redeemMethod](shareBal).call();
+      const redeemable = network === "ethereum"
+        ? await contract.methods[redeemMethod](account, shareBal).call()
+        : await contract.methods[redeemMethod](shareBal).call();
 
       setShareBalance(formatNumber(web3.utils.fromWei(shareBal || "0", "ether")));
       setTokenBalance(formatNumber(web3.utils.fromWei(tokenBal || "0", "ether")));
@@ -40,20 +42,20 @@ const UserInfo = ({ contract, account, web3, network }) => {
       setError(
         `Failed to load user data: ${
           err.message.includes("call revert") || err.message.includes("invalid opcode")
-            ? "Method not found or ABI mismatch"
+            ? `Method ${redeemMethod} not found or ABI mismatch`
             : err.message || "Unknown error"
         }`
       );
     } finally {
       setLoading(false);
-      setInitialLoading(false);
+      if (isInitial) setInitialLoading(false);
     }
   };
 
   useEffect(() => {
     if (contract && web3 && account && network) {
-      fetchInfo();
-      const interval = setInterval(fetchInfo, 30000); // Refresh every 30 seconds
+      fetchInfo(true); // Initial fetch
+      const interval = setInterval(() => fetchInfo(), 30000); // Refresh every 30 seconds
       return () => clearInterval(interval);
     }
   }, [contract, web3, account, network]);
@@ -82,7 +84,7 @@ const UserInfo = ({ contract, account, web3, network }) => {
             <strong>{tokenName} Balance:</strong> {formatNumber(tokenBalance)} {tokenName}
           </p>
           <p>
-            <strong>Redeemable {tokenName}:</strong> {formatNumber(redeemableTokens)} {tokenName}
+            <strong>Total Redeemable {tokenName}:</strong> {formatNumber(redeemableTokens)} {tokenName}
           </p>
         </>
       )}
