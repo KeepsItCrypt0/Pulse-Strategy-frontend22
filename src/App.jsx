@@ -6,9 +6,9 @@ import PulseStrategyUserInfo from "./components/pulseStrategy/PulseStrategyUserI
 import PulseStrategyRedeemPLSTR from "./components/pulseStrategy/PulseStrategyRedeemPLSTR.jsx";
 import PulseStrategyAdminPanel from "./components/pulseStrategy/PulseStrategyAdminPanel.jsx";
 import xBONDContractInfo from "./components/xbond/xBONDContractInfo.jsx";
-import xBONDIssuePLSTR from "./components/xbond/xBONDIssuePLSTR.jsx";
+import xBONDIssue from "./components/xbond/xBONDIssue.jsx";
 import xBONDUserInfo from "./components/xbond/xBONDUserInfo.jsx";
-import xBONDRedeemPLSTR from "./components/xbond/xBONDRedeemPLSTR.jsx";
+import xBONDRedeem from "./components/xbond/xBONDRedeem.jsx";
 import xBONDWithdrawLiquidity from "./components/xbond/xBONDWithdrawLiquidity.jsx";
 import ConnectWallet from "./components/ConnectWallet.jsx";
 import "./index.css";
