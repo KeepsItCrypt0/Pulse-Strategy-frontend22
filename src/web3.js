@@ -1,4 +1,4 @@
-import { Web3 } from "web3";
+import Web3 from "web3";
 
 export const pulseStrategyAddress = "0x6c1dA678A1B615f673208e74AB3510c22117090e";
 export const xBONDAddress = "0xDb7ada7a6e8fA3f3bFEEC4376E0Ac5F54F6d1EC8";
