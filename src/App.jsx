@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { getWeb3, getContract, switchNetwork, networks } from "./web3";
+import { formatNumber, formatDate } from "./format";
+import ConnectWallet from "./components/ConnectWallet.jsx";
 import PulseStrategyContractInfo from "./components/pulseStrategy/PulseStrategyContractInfo.jsx";
 import PulseStrategyIssuePLSTR from "./components/pulseStrategy/PulseStrategyIssuePLSTR.jsx";
 import PulseStrategyUserInfo from "./components/pulseStrategy/PulseStrategyUserInfo.jsx";
@@ -64,7 +66,7 @@ function App() {
     }
   };
 
-  const handleConnectWallet = async (selectedNetwork) => {
+  const handleConnectWallet = async () => {
     try {
       setWalletError("");
       if (!window.ethereum) {
@@ -73,10 +75,16 @@ function App() {
       const web3Instance = await getWeb3();
       const accounts = await web3Instance.eth.request({ method: "eth_requestAccounts" });
       if (!accounts[0]) throw new Error("No accounts found. Please unlock MetaMask.");
-      await initializeWeb3(selectedNetwork);
+      await initializeWeb3(network || "ethereum"); // Default to ethereum if network not set
     } catch (err) {
       console.error("Wallet connection failed:", err);
       setWalletError(err.message || "Failed to connect wallet. Ensure MetaMask is installed and unlocked.");
+    }
+  };
+
+  const handleRetry = () => {
+    if (network) {
+      initializeWeb3(network);
     }
   };
 
@@ -96,12 +104,6 @@ function App() {
     }
   }, [web3, network]);
 
-  const handleRetry = () => {
-    if (network) {
-      initializeWeb3(network);
-    }
-  };
-
   const { tokenName, shareName } = network && networks[network] ? networks[network] : { tokenName: "", shareName: "" };
 
   console.log("App state:", { web3, contract, account, network, networkError, loading });
@@ -110,29 +112,13 @@ function App() {
     <div className="min-h-screen bg-gradient-to-br from-purple-900 to-blue-900 flex items-center justify-center p-4">
       <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 max-w-2xl w-full card">
         <h1 className="text-2xl font-bold mb-4 text-purple-600">{shareName || "Strategy"} Strategy</h1>
-        <div className="mb-4">
-          <button
-            onClick={() => handleConnectWallet("ethereum")}
-            disabled={loading || (network === "ethereum" && account)}
-            className="btn-primary mr-2"
-          >
-            {loading && network === "ethereum" ? "Connecting..." : "Connect Wallet (Ethereum)"}
-          </button>
-          <button
-            onClick={() => handleConnectWallet("pulsechain")}
-            disabled={loading || (network === "pulsechain" && account)}
-            className="btn-primary"
-          >
-            {loading && network === "pulsechain" ? "Connecting..." : "Connect Wallet (PulseChain)"}
-          </button>
-        </div>
-        {account && (
-          <div className="mb-4">
-            <p className="text-gray-600">
-              Connected: {account.slice(0, 6)}...{account.slice(-4)}
-            </p>
-          </div>
-        )}
+        <ConnectWallet
+          account={account}
+          web3={web3}
+          network={network}
+          onConnect={handleConnectWallet}
+          loading={loading}
+        />
         {walletError && <p className="text-red-400 mb-4">{walletError}</p>}
         <div className="mb-4">
           <button
