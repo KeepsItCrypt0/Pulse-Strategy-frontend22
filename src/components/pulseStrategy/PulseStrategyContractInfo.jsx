@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { formatNumber, formatDate,} from "./utils/format";
+import { formatNumber, formatDate,} from "./utils/format.js";
 const PulseStrategyContractInfo = ({ contract, web3 }) => {
   const [info, setInfo] = useState({ balance: "0", issuancePeriod: "Not loaded", totalIssued: "0" });
   const [backingRatio, setBackingRatio] = useState("1 to 1");
