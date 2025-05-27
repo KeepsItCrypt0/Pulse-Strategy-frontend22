@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { formatDate, networks } from "../../utils/format";
+import { formatDate, networks } from "../../utils/format.js";
 
 const xBONDWithdrawLiquidity = ({ web3, contract, account, network }) => {
   const [timeUntilWithdrawal, setTimeUntilWithdrawal] = useState(null);
