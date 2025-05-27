@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { getTokenContract, formatNumber, networks } from "../../web3";
 
-const xBONDRedeemPLSTR = ({ contract, account, web3 }) => {
+const xBONDRedeem = ({ contract, account, web3 }) => {
   const [amount, setAmount] = useState("");
   const [displayAmount, setDisplayAmount] = useState("");
   const [shareBalance, setShareBalance] = useState("0");
@@ -130,4 +130,4 @@ const xBONDRedeemPLSTR = ({ contract, account, web3 }) => {
   );
 };
 
-export default xBONDRedeemPLSTR;
+export default xBONDRedeem;
