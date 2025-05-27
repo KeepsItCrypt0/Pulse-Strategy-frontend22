@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { getWeb3, getContract, switchNetwork, networks, formatNumber, formatDate } from "./web3";
-import AdminPanel from "./components/AdminPanel";
-import "./App.css";
+import AdminPanel from "./components/AdminPanel.jsx";
+import "./index.css"; // Changed from ./App.css to ./index.css
 
 function App() {
   const [web3, setWeb3] = useState(null);
