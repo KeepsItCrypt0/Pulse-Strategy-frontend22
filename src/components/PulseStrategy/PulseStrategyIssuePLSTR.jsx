@@ -1,46 +1,34 @@
 import { useState, useEffect } from "react";
-import { getTokenContract, formatNumber, networks } from "../web3";
+import { getTokenContract, formatNumber, networks } from "../../web3";
 
-const IssuePLSTR = ({ web3, contract, account, network }) => {
+const PulseStrategyIssuePLSTR = ({ web3, contract, account }) => {
   const [amount, setAmount] = useState("");
   const [displayAmount, setDisplayAmount] = useState("");
-  const [tokenBalance, setTokenBalance] = useState("0");
   const [estimatedShares, setEstimatedShares] = useState("0");
-  const [estimatedFee, setEstimatedFee] = useState("0");
+  const [userTokenBalance, setUserTokenBalance] = useState("0");
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState("");
-  const { tokenName, contractName, shareName } = networks[network] || { tokenName: "Token", contractName: "Contract", shareName: "Share" };
-  const MIN_ISSUE_AMOUNT = network === "ethereum" ? 1000 : 10;
-  const MIN_INITIAL_LIQUIDITY = network === "pulsechain" ? 10 : 0;
+  const { tokenName, shareName } = networks["ethereum"] || { tokenName: "vPLS", shareName: "PLSTR" };
 
   const fetchData = async () => {
     try {
       setInitialLoading(true);
       setError("");
-      if (!web3 || !account) throw new Error("Web3 or account not initialized");
-      const tokenContract = await getTokenContract(web3, network);
+      if (!contract || !web3 || !account || !/^[0x][0-9a-fA-F]{40}$/.test(account)) {
+        throw new Error("Contract, Web3, or invalid account not initialized");
+      }
+
+      const tokenContract = await getTokenContract(web3, "ethereum");
       const balance = await tokenContract.methods.balanceOf(account).call();
-      if (balance === undefined || balance === null) throw new Error(`Invalid ${tokenName} balance response`);
-      setTokenBalance(formatNumber(web3.utils.fromWei(balance, "ether")));
-      console.log(`${tokenName} balance fetched:`, { balance });
+      setUserTokenBalance(formatNumber(web3.utils.fromWei(balance || "0", "ether")));
 
-      if (contract && amount && Number(amount) > 0) {
+      if (amount && Number(amount) > 0) {
         const amountWei = web3.utils.toWei(amount, "ether");
-        if (!contract.methods.calculateSharesReceived) throw new Error("Method calculateSharesReceived not found in contract ABI");
-        const result = await contract.methods.calculateSharesReceived(amountWei).call();
-        if (!result || !result.shares || !result.totalFee) throw new Error("Invalid shares calculation response");
-        setEstimatedShares(formatNumber(web3.utils.fromWei(result.shares, "ether")));
-        setEstimatedFee(formatNumber(web3.utils.fromWei(result.totalFee, "ether")));
-        console.log(`Estimated ${shareName} fetched:`, { amount, shares: result.shares, fee: result.totalFee });
-
-        const contractInfo = await contract.methods.getContractInfo().call();
-        if (Number(web3.utils.fromWei(contractInfo.contractBalance, "ether")) === 0) {
-          console.warn(`${contractName} contract balance is 0, issuance may fail`);
-        }
+        const shares = await contract.methods.calculateSharesReceived(amountWei).call();
+        setEstimatedShares(formatNumber(web3.utils.fromWei(shares || "0", "ether")));
       } else {
         setEstimatedShares("0");
-        setEstimatedFee("0");
       }
     } catch (err) {
       console.error("Failed to fetch data:", err);
@@ -57,12 +45,12 @@ const IssuePLSTR = ({ web3, contract, account, network }) => {
   };
 
   useEffect(() => {
-    if (web3 && account && network) {
+    if (contract && web3 && account) {
       fetchData();
       const interval = setInterval(fetchData, 30000);
       return () => clearInterval(interval);
     }
-  }, [web3, account, network, amount, contract]);
+  }, [contract, web3, account, amount]);
 
   const handleAmountChange = (e) => {
     const rawValue = e.target.value.replace(/,/g, "");
@@ -81,34 +69,20 @@ const IssuePLSTR = ({ web3, contract, account, network }) => {
     setError("");
     try {
       const amountNum = Number(amount);
-      if (amountNum < MIN_ISSUE_AMOUNT) throw new Error(`Amount must be at least ${MIN_ISSUE_AMOUNT} ${tokenName}`);
-      if (network === "pulsechain" && amountNum < MIN_INITIAL_LIQUIDITY) throw new Error(`Initial deposit must be at least ${MIN_INITIAL_LIQUIDITY} ${tokenName}`);
-      if (!contract || !web3) throw new Error("Contract or Web3 not initialized");
-      const tokenContract = await getTokenContract(web3, network);
+      if (amountNum <= 0) throw new Error("Amount must be greater than 0");
+      if (amountNum > Number(userTokenBalance)) throw new Error(`Amount exceeds ${tokenName} balance`);
       const amountWei = web3.utils.toWei(amount, "ether");
-      const contractAddress = contract.options.address;
-
-      const approveTx = await tokenContract.methods.approve(contractAddress, amountWei).send({ from: account });
-      await web3.eth.getTransactionReceipt(approveTx.transactionHash); // Wait for approval
-      if (network === "pulsechain") {
-        const poolAddress = await contract.methods.getPoolAddress().call();
-        if (poolAddress === "0x0") throw new Error("No liquidity pool available for initial issuance");
-      }
-      const issueTx = await contract.methods.issueShares(amountWei).send({ from: account });
-      console.log(`Transaction hash: ${issueTx.transactionHash}`);
+      await contract.methods.issueShares(amountWei).send({ from: account });
       alert(`${shareName} issued successfully!`);
       setAmount("");
       setDisplayAmount("");
       await fetchData();
     } catch (err) {
       let errorMessage = `Error issuing ${shareName}: ${err.message || "Unknown error"}`;
-      if (err.message.includes("IssuancePeriodEnded")) errorMessage = `Issuance period has ended (ended after 120 days)`;
-      else if (err.message.includes("InsufficientInitialLiquidity")) errorMessage = `Initial deposit must be at least ${MIN_INITIAL_LIQUIDITY} ${tokenName}`;
-      else if (err.message.includes("BelowMinimumShareAmount")) errorMessage = `Shares received must be at least ${MIN_ISSUE_AMOUNT} ${shareName}`;
-      else if (err.message.includes("InsufficientAllowance")) errorMessage = `Insufficient ${tokenName} allowance for contract`;
-      else if (err.message.includes("InsufficientFee")) errorMessage = `Fee amount is too low`;
+      if (err.message.includes("InsufficientBalance")) errorMessage = `Insufficient ${tokenName} balance`;
+      else if (err.message.includes("IssuancePeriodEnded")) errorMessage = "Issuance period has ended";
       setError(errorMessage);
-      console.error(`Issue ${shareName} error:`, err);
+      console.error("Issue shares error:", err);
     } finally {
       setLoading(false);
     }
@@ -127,45 +101,28 @@ const IssuePLSTR = ({ web3, contract, account, network }) => {
           </button>
         </div>
       ) : (
-        <div className="mb-4">
-          <p className="text-gray-600 mb-2">
-            Estimated Fee: <span className="text-purple-600">{formatNumber(estimatedFee)} {tokenName}</span>
-          </p>
-          <p className="text-gray-600 mb-2">
-            Estimated {shareName} Receivable:{" "}
-            <span className="text-purple-600">{formatNumber(estimatedShares)} {shareName}</span>
-          </p>
+        <>
+          <p className="text-gray-600 mb-2">Estimated {shareName} Receivable: {estimatedShares} {shareName}</p>
+          <p className="text-gray-600 mb-2">User {tokenName} Balance: {userTokenBalance} {tokenName}</p>
           <input
             type="text"
             value={displayAmount}
             onChange={handleAmountChange}
             placeholder={`Enter ${tokenName} amount`}
-            className="w-full p-2 border rounded-lg"
+            className="w-full p-2 border rounded-lg mb-4"
           />
-          <p className="text-sm text-gray-600 mt-1">
-            Minimum: <span className="text-purple-600 font-medium">{MIN_ISSUE_AMOUNT} {tokenName}</span>
-            {network === "pulsechain" && (
-              <span>
-                {" (Initial deposit: "}
-                <span className="text-purple-600 font-medium">{MIN_INITIAL_LIQUIDITY} {tokenName}</span>)
-              </span>
-            )}
-          </p>
-          <p className="text-gray-600 mt-1">
-            User {tokenName} Balance: <span className="text-purple-600">{formatNumber(tokenBalance)} {tokenName}</span>
-          </p>
-        </div>
+          <button
+            onClick={handleIssue}
+            disabled={loading || !amount || Number(amount) <= 0 || Number(amount) > Number(userTokenBalance)}
+            className="btn-primary"
+          >
+            {loading ? "Processing..." : `Issue ${shareName}`}
+          </button>
+        </>
       )}
-      <button
-        onClick={handleIssue}
-        disabled={loading || initialLoading || !amount || Number(amount) < MIN_ISSUE_AMOUNT || Number(amount) > Number(tokenBalance)}
-        className="btn-primary"
-      >
-        {loading ? "Processing..." : `Issue ${shareName}`}
-      </button>
-      {error && <p className="text-red-400 mt-4">{error}</p>}
+      {error && <p className="text-red-400 mt-2">{error}</p>}
     </div>
   );
 };
 
-export default IssuePLSTR;
+export default PulseStrategyIssuePLSTR;
