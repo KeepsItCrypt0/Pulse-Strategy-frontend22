@@ -788,7 +788,7 @@ export const pulseStrategyABI = [
 		"stateMutability": "view",
 		"type": "function"
 	}
-];
+]
 export const xBONDAbi = [
 	{
 		"inputs": [],
@@ -1666,7 +1666,7 @@ export const xBONDAbi = [
 		"stateMutability": "nonpayable",
 		"type": "function"
 	}
-];
+]
 export const vPLSABI = [
   {
     "constant": true,
@@ -1695,7 +1695,7 @@ export const vPLSABI = [
     "outputs": [{ "name": "success", "type": "bool" }],
     "type": "function"
   }
-];
+]
 export const plsxABI = [
     {
         "inputs": [],
@@ -2370,7 +2370,7 @@ export const plsxABI = [
         "name": "Transfer",
         "type": "event"
     }
-];
+]
 
 export const getWeb3 = async () => {
   if (window.ethereum) {
