@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { formatNumber, networks } from "../../web3";
+import { getWeb3 } from "../../web3";
+import { formatNumber, formatDate } from "../../format";
 
 const xBONDContractInfo = ({ contract, web3 }) => {
   const [contractBalance, setContractBalance] = useState(null);
