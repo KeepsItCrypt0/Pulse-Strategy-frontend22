@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getWeb3 } from "../../web3"; // Adjusted to match src/web3.js
+import { getWeb3 } from "../../web3";
 
 const ConnectWallet = ({ account, web3, network, onConnect }) => {
   const [error, setError] = useState("");
