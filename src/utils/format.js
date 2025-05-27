@@ -28,5 +28,11 @@ export const networks = {
   pulsechain: {
     shareName: "Share",
     tokenName: "Token",
+    chainId: 369,
+  },
+  ethereum: {
+    shareName: "ETH Share",
+    tokenName: "ETH",
+    chainId: 1,
   },
 };
