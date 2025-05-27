@@ -5,6 +5,7 @@ import IssuePLSTR from "./components/IssuePLSTR";
 import RedeemPLSTR from "./components/RedeemPLSTR";
 import AdminPanel from "./components/AdminPanel";
 import UserInfo from "./components/UserInfo";
+import WithdrawLiquidity from "./components/WithdrawLiquidity"; // New import
 import { getWeb3, getContract, switchNetwork, networks } from "./web3";
 
 function App() {
@@ -101,10 +102,10 @@ function App() {
             <UserInfo contract={contract} account={account} web3={web3} network={network} />
             <IssuePLSTR web3={web3} contract={contract} account={account} network={network} />
             <RedeemPLSTR contract={contract} account={account} web3={web3} network={network} />
-            {isController && network === "ethereum" && (
-              <AdminPanel web3={web3} contract={contract} account={account} network={network} />
-            )}
             {network === "pulsechain" && (
+              <WithdrawLiquidity web3={web3} contract={contract} account={account} network={network} />
+            )}
+            {isController && network === "ethereum" && (
               <AdminPanel web3={web3} contract={contract} account={account} network={network} />
             )}
           </>
@@ -139,14 +140,13 @@ function App() {
             className="footer-link flex items-center"
           >
             <svg className="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 17.773 3.633 17.398 3.633 17.398c-1.146-.583.087-.573.087-.573 1.268.09 1.937 1.303 1.937 1.303 1.126 1.926 2.957 1.37 3.678 1.048.115-.815.444-1.37.811-1.685-2.828-.32-5.803-1.414-5.803-6.292 0-1.39.496-2.523 1.31-3.415-.132-.323-.568-1.62.124-3.374 0 0 1.07-.344 3.502 1.305 1.016-.282 2.107-.423 3.192-.428 1.085.005 2.176.146 3.192.428 2.43-1.649 3.498-1.305 3.498-1.305.694 1.754.258 3.051.126 3.374.817.892 1.31 2.025 1.31 3.415 0 4.89-2.979 5.97-5.816 6.287.458.395.867 1.175.867 2.368 0 1.708-.015 3.086-.015 3.505 0 .322.216.694.825.577C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+              <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 17.773 3.633 17.398 3.633 17.398c-1.146-.583.087-.573.087-.573 1.268.09 1.937 1.303 1.937 1.303 1.126 1.926 2.957 1.37 3.678 1.1.115-.815.444-1.37.811-1.685-2.395-2.32-5.803-1.414-5.803-6.292 0 0-1.07-.344 3.502 1.305 1.016-.282 2.107-.423 3.192-.428 3.192.005 1.085-2.176.146 3.025 3.192.428 2.694 1.754.258 3.051.1.264 3.374.0 0 .8.892.2.025 1.31.0 4.415 0 4.89-2.979 5.97-5.816 6.287.458.395.867 1.175.867 2.368 0 1.708-.015 3.086-.015 3.0 0 .322.216.694.825.577 C0 22.092 24 17.592 24 12.297 c0-6.627-5.373-12-12 z" />
             </svg>
             View Contract on GitHub
           </a>
         </div>
       </footer>
     </div>
-  );
 }
 
 export default App;
