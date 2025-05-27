@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import { getWeb3, getContract, switchNetwork, networks, formatNumber, formatDate } from "./web3";
-import AdminPanel from "./components/AdminPanel.jsx";
+import PulseStrategyContractInfo from "./components/pulseStrategy/PulseStrategyContractInfo.jsx";
+import PulseStrategyIssuePLSTR from "./components/pulseStrategy/PulseStrategyIssuePLSTR.jsx";
+import PulseStrategyUserInfo from "./components/pulseStrategy/PulseStrategyUserInfo.jsx";
+import PulseStrategyRedeemPLSTR from "./components/pulseStrategy/PulseStrategyRedeemPLSTR.jsx";
+import PulseStrategyAdminPanel from "./components/pulseStrategy/PulseStrategyAdminPanel.jsx";
+import xBONDContractInfo from "./components/xbond/xBONDContractInfo.jsx";
+import xBONDIssuePLSTR from "./components/xbond/xBONDIssuePLSTR.jsx";
+import xBONDUserInfo from "./components/xbond/xBONDUserInfo.jsx";
+import xBONDRedeemPLSTR from "./components/xbond/xBONDRedeemPLSTR.jsx";
+import xBONDWithdrawLiquidity from "./components/xbond/xBONDWithdrawLiquidity.jsx";
 import ConnectWallet from "./components/ConnectWallet.jsx";
-import ContractInfo from "./components/ContractInfo.jsx";
-import IssuePLSTR from "./components/IssuePLSTR.jsx";
-import UserInfo from "./components/UserInfo.jsx";
-import WithdrawLiquidity from "./components/WithdrawLiquidity.jsx";
-import RedeemPLSTR from "./components/RedeemPLSTR.jsx";
 import "./index.css";
 
 function App() {
@@ -15,17 +19,9 @@ function App() {
   const [account, setAccount] = useState(null);
   const [network, setNetwork] = useState(null);
   const [isController, setIsController] = useState(false);
-  const [contractInfo, setContractInfo] = useState({
-    balance: "0",
-    issuancePeriod: "Not loaded",
-  });
-  const [shareBalance, setShareBalance] = useState("0");
-  const [totalSupply, setTotalSupply] = useState("0");
-  const [redeemable, setRedeemable] = useState("0");
   const [loading, setLoading] = useState(false);
   const [networkError, setNetworkError] = useState("");
   const [dataLoading, setDataLoading] = useState(false);
-  const { tokenName, shareName } = network ? networks[network] : { tokenName: "", shareName: "" };
 
   const initializeWeb3 = async (selectedNetwork, retryCount = 0) => {
     const maxRetries = 3;
@@ -33,9 +29,7 @@ function App() {
       setNetworkError("");
       setLoading(true);
       const web3Instance = await getWeb3();
-      if (!web3Instance) {
-        throw new Error("No web3 provider detected");
-      }
+      if (!web3Instance) throw new Error("No web3 provider detected");
       setWeb3(web3Instance);
       const networkId = await web3Instance.eth.net.getId();
       const expectedNetworkId = selectedNetwork === "ethereum" ? 1 : 369;
@@ -50,14 +44,10 @@ function App() {
         }
       }
       const accounts = await web3Instance.eth.getAccounts();
-      if (!accounts[0]) {
-        throw new Error("No accounts available. Please connect MetaMask.");
-      }
+      if (!accounts[0]) throw new Error("No accounts available. Please connect MetaMask.");
       setAccount(accounts[0]);
       const contractInstance = await getContract(web3Instance, selectedNetwork);
-      if (!contractInstance) {
-        throw new Error("Failed to initialize contract");
-      }
+      if (!contractInstance) throw new Error("Failed to initialize contract");
       setContract(contractInstance);
       let controller = false;
       if (selectedNetwork === "ethereum") {
@@ -108,22 +98,10 @@ function App() {
         console.error("Failed to fetch redeemable amount:", error);
         redeemableAmount = "0";
       }
-      setContractInfo({
-        balance: formatNumber(web3.utils.fromWei(info.contractBalance || "0", "ether")),
-        issuancePeriod: info.remainingIssuancePeriod
-          ? formatDate(Number(info.remainingIssuancePeriod) * 1000) // Convert seconds to milliseconds
-          : "Not set",
-      });
-      setShareBalance(formatNumber(web3.utils.fromWei(balance || "0", "ether")));
-      setTotalSupply(formatNumber(web3.utils.fromWei(supply || "0", "ether")));
-      setRedeemable(formatNumber(web3.utils.fromWei(redeemableAmount, "ether")));
+      // Pass data to child components instead of storing in App state
     } catch (error) {
       console.error("Failed to fetch contract data:", error);
-      let errorMessage = `Failed to fetch data: ${error.message}`;
-      if (error.message.includes("call revert") || error.message.includes("invalid opcode")) {
-        errorMessage = "Failed to fetch data: Contract method not found or ABI mismatch";
-      }
-      setNetworkError(errorMessage);
+      setNetworkError(`Failed to fetch data: ${error.message}`);
     } finally {
       setDataLoading(false);
     }
@@ -168,6 +146,8 @@ function App() {
     }
   };
 
+  const { tokenName, shareName } = network ? networks[network] : { tokenName: "", shareName: "" };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 to-blue-900 flex items-center justify-center p-4">
       <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 max-w-2xl w-full card">
@@ -205,21 +185,22 @@ function App() {
         {(loading || dataLoading) && !networkError && <p className="text-gray-600 mb-4">Loading...</p>}
         {account && contract && network && !networkError && (
           <>
-            <ContractInfo contract={contract} web3={web3} network={network} />
-            <div className="mb-4">
-              <p>Account: {account.slice(0, 6)}...{account.slice(-4)}</p>
-              <p>Contract Balance: {contractInfo.balance} {tokenName}</p>
-              <p>Issuance Period: {contractInfo.issuancePeriod}</p>
-              <p>Your {shareName} Balance: {shareBalance}</p>
-              <p>Total {shareName} Supply: {totalSupply}</p>
-              <p>Redeemable {tokenName}: {redeemable}</p>
-            </div>
-            <IssuePLSTR web3={web3} contract={contract} account={account} network={network} />
-            <UserInfo contract={contract} account={account} web3={web3} network={network} />
-            {network === "pulsechain" && <WithdrawLiquidity web3={web3} contract={contract} account={account} network={network} />}
-            <RedeemPLSTR contract={contract} account={account} web3={web3} network={network} />
-            {isController && network === "ethereum" && (
-              <AdminPanel web3={web3} contract={contract} account={account} network={network} />
+            {network === "ethereum" ? (
+              <>
+                <PulseStrategyContractInfo contract={contract} web3={web3} />
+                <IssuePLSTR web3={web3} contract={contract} account={account} />
+                <PulseStrategyUserInfo contract={contract} account={account} web3={web3} />
+                <PulseStrategyRedeemPLSTR contract={contract} account={account} web3={web3} />
+                {isController && <PulseStrategyAdminPanel web3={web3} contract={contract} account={account} />}
+              </>
+            ) : (
+              <>
+                <xBONDContractInfo contract={contract} web3={web3} />
+                <xBONDIssuePLSTR web3={web3} contract={contract} account={account} />
+                <xBONDUserInfo contract={contract} account={account} web3={web3} />
+                <xBONDRedeemPLSTR contract={contract} account={account} web3={web3} />
+                <xBONDWithdrawLiquidity web3={web3} contract={contract} account={account} />
+              </>
             )}
           </>
         )}
