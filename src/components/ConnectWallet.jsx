@@ -4,7 +4,7 @@ import { networks } from "../web3";
 const ConnectWallet = ({ account, web3, network }) => {
   const [isConnected, setIsConnected] = useState(!!account);
   const [error, setError] = useState("");
-  const { chainName } = networks[network];
+  const { chainName } = networks[network] || { chainName: "Unknown Network" }; // Fallback value
 
   const connectWallet = async () => {
     try {
@@ -12,27 +12,64 @@ const ConnectWallet = ({ account, web3, network }) => {
       if (!window.ethereum) {
         throw new Error("No crypto wallet found. Please install MetaMask.");
       }
+      // Request accounts
       await window.ethereum.request({ method: "eth_requestAccounts" });
       const accounts = await web3.eth.getAccounts();
-      setIsConnected(!!accounts[0]);
+      if (!accounts[0]) {
+        throw new Error("No accounts available. Please connect MetaMask.");
+      }
+      setIsConnected(true);
       console.log("Wallet connected:", accounts[0]);
+
+      // Validate network (optional enhancement)
+      const networkId = await web3.eth.net.getId();
+      const expectedNetworkId = network === "ethereum" ? 1 : 369;
+      if (Number(networkId) !== expectedNetworkId) {
+        setError(`Please switch to ${chainName} (chainId: ${expectedNetworkId}) in MetaMask.`);
+      }
     } catch (err) {
       console.error("Wallet connection failed:", err);
-      setError(`Connection failed: ${err.message || "Unknown error"}`);
+      let errorMessage = "Connection failed: Unknown error";
+      if (err.code === 4001) {
+        errorMessage = "Connection failed: User rejected the request.";
+      } else if (err.message) {
+        errorMessage = `Connection failed: ${err.message}`;
+      }
+      setError(errorMessage);
     }
   };
 
   useEffect(() => {
     setIsConnected(!!account);
+
     const handleAccountsChanged = (accounts) => {
       setIsConnected(!!accounts[0]);
       console.log("Accounts changed:", accounts);
+      if (!accounts[0]) {
+        setError("Wallet disconnected. Please reconnect.");
+      }
     };
+
+    const handleChainChanged = (chainId) => {
+      console.log("Chain changed:", chainId);
+      const networkId = Number(chainId);
+      const expectedNetworkId = network === "ethereum" ? 1 : 369;
+      if (networkId !== expectedNetworkId) {
+        setError(`Network mismatch: Please switch to ${chainName} (chainId: ${expectedNetworkId}).`);
+      } else {
+        setError("");
+      }
+    };
+
     if (window.ethereum) {
       window.ethereum.on("accountsChanged", handleAccountsChanged);
-      return () => window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+      window.ethereum.on("chainChanged", handleChainChanged);
+      return () => {
+        window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+        window.ethereum.removeListener("chainChanged", handleChainChanged);
+      };
     }
-  }, [account]);
+  }, [account, network, chainName]);
 
   return (
     <div className="mt-6 text-center">
