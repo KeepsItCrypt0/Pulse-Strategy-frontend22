@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { formatNumber } from "../utils/format";
+import { getTokenContract, formatNumber, formatDate } from "../web3.utils";
 
-const AdminPanel = ({ web3, contract, account }) => {
+const AdminPanel = ({ web3, contract, account, network }) => {
   const [mintAmount, setMintAmount] = useState("");
   const [displayMintAmount, setDisplayMintAmount] = useState("");
   const [depositAmount, setDepositAmount] = useState("");
@@ -15,6 +15,7 @@ const AdminPanel = ({ web3, contract, account }) => {
   const [error, setError] = useState("");
   const [mintCountdown, setMintCountdown] = useState("");
   const [remainingSeconds, setRemainingSeconds] = useState("0");
+  const { tokenName, shareName } = networks[network];
 
   const fetchMintInfo = async () => {
     try {
@@ -23,83 +24,58 @@ const AdminPanel = ({ web3, contract, account }) => {
         throw new Error("Contract not initialized");
       }
 
-      // Try getOwnerMintInfo for next mint timestamp
-      let nextMintTime = "0";
-      if (contract.methods.getOwnerMintInfo) {
-        try {
-          const result = await contract.methods.getOwnerMintInfo().call();
-          nextMintTime = result.nextMintTime || "0";
-          console.log("Next mint time from getOwnerMintInfo:", nextMintTime);
-        } catch (err) {
-          console.warn("getOwnerMintInfo failed:", err.message);
-        }
-      } else {
-        console.warn("getOwnerMintInfo method not available");
-      }
-
-      // Fetch remainingIssuancePeriod (duration in seconds)
+      const result = await contract.methods.getOwnerMintInfo().call();
+      const nextMintTime = result.nextMintTime || "0";
       const info = await contract.methods.getContractInfo().call();
       const issuancePeriod = info.remainingIssuancePeriod || "0";
-      console.log("remainingIssuancePeriod:", issuancePeriod);
 
-      // Use remainingIssuancePeriod as the duration if non-zero
       if (Number(issuancePeriod) > 0) {
         setRemainingSeconds(issuancePeriod);
-        console.log("Using remainingIssuancePeriod for countdown:", issuancePeriod);
       } else if (Number(nextMintTime) > 0) {
-        // Fallback to nextMintTime if issuancePeriod is 0
-        setRemainingSeconds(nextMintTime);
-        console.log("Using nextMintTime for countdown:", nextMintTime);
+        setRemainingSeconds(nextMintTime - Math.floor(Date.now() / 1000));
       } else {
-        throw new Error("No valid countdown data available");
+        setRemainingSeconds("0");
       }
+
+      console.log("Mint info fetched:", { nextMintTime, issuancePeriod });
     } catch (err) {
       console.error("Failed to fetch mint info:", err);
-      setError(`Failed to load mint info: ${err.message || "Unknown error"}`);
+      setError(errorMessage(`Failed to load mint info: ${err.message || "Unknown error"}`));
       setRemainingSeconds("0");
     }
   };
 
   useEffect(() => {
-    if (contract && web3) {
+    if (contract && web3 && network === "ethereum") {
       fetchMintInfo();
-      // Retry on MetaMask errors
-      const retryInterval = setInterval(() => {
-        if (error.includes("message channel closed")) {
-          console.log("Retrying fetchMintInfo due to MetaMask error...");
-          fetchMintInfo();
-        }
-      }, 5000);
-      return () => clearInterval(retryInterval);
     }
-  }, [contract, web3]);
+  }, [contract, web3, network]);
 
   useEffect(() => {
     const updateCountdown = () => {
       const seconds = Number(remainingSeconds);
-      console.log("Updating countdown with remainingSeconds:", seconds);
       if (seconds <= 0) {
-        setMintCountdown("Issuance Period Ended or Data Unavailable");
+        setMintCountdown("Ready to mint");
         return;
       }
       const days = Math.floor(seconds / 86400);
       const hours = Math.floor((seconds % 86400) / 3600);
       const minutes = Math.floor((seconds % 3600) / 60);
       const secs = seconds % 60;
-      const countdownText = `${days}d ${hours}h ${minutes}m ${secs}s`;
-      setMintCountdown(countdownText);
-      console.log("Countdown set to:", countdownText);
+      setMintCountdown(`${days}d ${hours}h ${minutes}m ${secs}s`);
     };
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
-    return () => clearInterval(interval);
-  }, [remainingSeconds]);
+    if (network === "ethereum") {
+      updateCountdown();
+      const interval = setInterval(updateCountdown, 1000);
+      return () => clearInterval(interval);
+    }
+      }, [remainingSeconds, network]);
 
   const handleNumericInputChange = (e, setRaw, setDisplay) => {
     const rawValue = e.target.value.replace(/,/g, "");
     if (rawValue === "" || /^-?\d*\.?\d*$/.test(rawValue)) {
       setRaw(rawValue);
-      if (rawValue === "" || isNaN(rawValue)) {
+      if (rawValue === "" || isNaN(rawValue) {
         setDisplay("");
       } else {
         setDisplay(
@@ -110,21 +86,21 @@ const AdminPanel = ({ web3, contract, account }) => {
         );
       }
     }
-  };
+  );
 
   const handleMint = async () => {
     setLoading(true);
     setError("");
     try {
       const amountWei = web3.utils.toWei(mintAmount, "ether");
-      await contract.methods.mintShares(amountWei).send({ from: account });
-      alert("PLSTR minted successfully!");
+      await contract.methods.mintShares(amountWei).send({ from: account }));
+      alert(`Minting ${shareName} successful!`);
       setMintAmount("");
       setDisplayMintAmount("");
-      fetchMintInfo(); // Refresh after minting
-      console.log("PLSTR minted:", { amountWei });
+      fetchMintInfo();
+      console.log(`${shareName} minted:`, { amountWei });
     } catch (err) {
-      setError(`Error minting PLSTR: ${err.message || "Unknown error"}`);
+      setError(errorMessage(`Error minting ${shareName}: ${err.message || "Mint failed"}`));
       console.error("Mint error:", err);
     } finally {
       setLoading(false);
@@ -136,13 +112,17 @@ const AdminPanel = ({ web3, contract, account }) => {
     setError("");
     try {
       const amountWei = web3.utils.toWei(depositAmount, "ether");
+      const tokenContract = await getTokenContract(web3, network);
+      await contractTokenContract.methods
+        .approve(contract._address, amountWei)
+        .send({ from: account });
       await contract.methods.depositStakedPLS(amountWei).send({ from: account });
-      alert("vPLS deposited successfully!");
+      alert(`Deposited ${tokenName} successfully deposited!`);
       setDepositAmount("");
       setDisplayDepositAmount("");
-      console.log("vPLS deposited:", { amountWei });
+      console.log("Deposited tokens:", { amountWei });
     } catch (err) {
-      setError(`Error depositing vPLS: ${err.message || "Unknown error"}`);
+      setError(errorMessage(`Error depositing ${tokenName}: ${err.message || "Deposit failed"}`));
       console.error("Deposit error:", err);
     } finally {
       setLoading(false);
@@ -153,18 +133,18 @@ const AdminPanel = ({ web3, contract, account }) => {
     setLoading(true);
     setError("");
     try {
-      const amountWei = web3.utils.toWei(recoverAmount, "ether");
+      const amountWei = web3.utils.toWei(recoverAmount, "");
       await contract.methods
         .recoverTokens(tokenAddress, recipientAddress, amountWei)
         .send({ from: account });
-      alert("Tokens recovered successfully!");
+      alert("Tokens successfully recovered!");
       setTokenAddress("");
       setRecipientAddress("");
       setRecoverAmount("");
       setDisplayRecoverAmount("");
-      console.log("Tokens recovered:", { tokenAddress, recipientAddress, amountWei });
+      console.log("Tokens recovered:", { tokenAddress, recipientAddress, amount });
     } catch (err) {
-      setError(`Error recovering tokens: ${err.message || "Unknown error"}`);
+      setError(errorMessage(`Error recovering tokens: ${err.message || "Recover failed"}`));
       console.error("Recover error:", err);
     } finally {
       setLoading(false);
@@ -176,77 +156,79 @@ const AdminPanel = ({ web3, contract, account }) => {
     setError("");
     try {
       await contract.methods.transferOwnership(newOwner).send({ from: account });
-      alert("Ownership transferred successfully!");
+      alert("Ownership successfully transferred!");
       setNewOwner("");
       console.log("Ownership transferred:", { newOwner });
     } catch (err) {
-      setError(`Error transferring ownership: ${err.message || "Unknown error"}`);
+      setError(errorMessage(`Error transferring ownership: ${err.message || "Transfer failed"}`));
       console.error("Transfer ownership error:", err);
     } finally {
       setLoading(false);
     }
   };
 
+  if (network === "pulsechain") return null; // xBOND has no admin functions
+
   return (
-    <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
+    <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card bg-white">
       <h2 className="text-xl font-semibold mb-4 text-purple-600">Admin Panel</h2>
-      <p className="text-gray-600 mb-4">Next Mint In: {mintCountdown}</p>
+      <p className="text-gray-600 mb-4">Next mint available: {mintCountdown}</p>
       <div className="mb-6">
-        <h3 className="text-lg font-medium mb-2">Mint PLSTR</h3>
+        <h3 className="text-lg font-medium mb-2">Mint {shareName}</h3>
         <input
           type="text"
           value={displayMintAmount}
           onChange={(e) => handleNumericInputChange(e, setMintAmount, setDisplayMintAmount)}
           placeholder="Amount to mint"
-          className="w-full p-2 border rounded-lg mb-2"
+          className="w-full p-2 border rounded-lg p-2 mb-2"
         />
         <button
           onClick={handleMint}
           disabled={loading || !mintAmount}
           className="btn-primary"
         >
-          {loading ? "Processing..." : "Mint PLSTR"}
+          {loading ? "Processing..." : `Mint ${shareName}`.formatMint}
         </button>
       </div>
-      <div className="mb-6">
-        <h3 className="text-lg font-medium mb-2">Deposit vPLS</h3>
+    <div className="mb-6">
+      <h3 className="text-lg font-medium mb-2">Deposit {tokenName}</h3>
         <input
           type="text"
           value={displayDepositAmount}
           onChange={(e) => handleNumericInputChange(e, setDepositAmount, setDisplayDepositAmount)}
           placeholder="Amount to deposit"
-          className="w-full p-2 border rounded-lg mb-2"
+          className="w-full p-2 border rounded-lg p-2 mb-2"
         />
         <button
           onClick={handleDeposit}
           disabled={loading || !depositAmount}
           className="btn-primary"
         >
-          {loading ? "Processing..." : "Deposit vPLS"}
+          {loading ? "Processing..." : `Deposit ${tokenName}`.formatDeposit}
         </button>
       </div>
-      <div className="mb-6">
-        <h3 className="text-lg font-medium mb-2">Recover Tokens</h3>
+    <div className="mb-6">
+      <h3 className="text-lg font-medium mb-2">Recover Tokens</h3>
         <input
           type="text"
           value={tokenAddress}
           onChange={(e) => setTokenAddress(e.target.value)}
           placeholder="Token address"
-          className="w-full p-2 border rounded-lg mb-2"
+          className="w-full p-2 border rounded-lg p-2 mb-2"
         />
         <input
           type="text"
           value={recipientAddress}
           onChange={(e) => setRecipientAddress(e.target.value)}
           placeholder="Recipient address"
-          className="w-full p-2 border rounded-lg mb-2"
+          className="w-full p-2 border rounded-lg p-2 mb-2"
         />
         <input
           type="text"
           value={displayRecoverAmount}
           onChange={(e) => handleNumericInputChange(e, setRecoverAmount, setDisplayRecoverAmount)}
           placeholder="Amount to recover"
-          className="w-full p-2 border rounded-lg mb-2"
+          className="w-full p-2 border rounded-lg p-2 mb-2"
         />
         <button
           onClick={handleRecover}
@@ -256,14 +238,14 @@ const AdminPanel = ({ web3, contract, account }) => {
           {loading ? "Processing..." : "Recover Tokens"}
         </button>
       </div>
-      <div>
-        <h3 className="text-lg font-medium mb-2">Transfer Ownership</h3>
+    <div>
+      <h3 className="text-lg font-medium mb-2">Transfer Ownership</h3>
         <input
           type="text"
           value={newOwner}
           onChange={(e) => setNewOwner(e.target.value)}
           placeholder="New owner address"
-          className="w-full p-2 border rounded-lg mb-2"
+          className="w-full p-2 border rounded-lg p-2 mb-2"
         />
         <button
           onClick={handleTransferOwnership}
