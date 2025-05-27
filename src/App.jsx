@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { getWeb3, getContract, switchNetwork, networks, formatNumber, formatDate } from "./web3";
+import { getWeb3, getContract, switchNetwork } from "./web3";
+import { networks, formatNumber, formatDate } from "../../utils/format";
 import PulseStrategyContractInfo from "./components/pulseStrategy/PulseStrategyContractInfo.jsx";
 import PulseStrategyIssuePLSTR from "./components/pulseStrategy/PulseStrategyIssuePLSTR.jsx";
 import PulseStrategyUserInfo from "./components/pulseStrategy/PulseStrategyUserInfo.jsx";
@@ -28,6 +29,9 @@ function App() {
     try {
       setNetworkError("");
       setLoading(true);
+      if (!window.ethereum) {
+        throw new Error("MetaMask is not installed. Please install MetaMask and try again.");
+      }
       const web3Instance = await getWeb3();
       if (!web3Instance) throw new Error("No web3 provider detected");
       setWeb3(web3Instance);
@@ -98,7 +102,6 @@ function App() {
         console.error("Failed to fetch redeemable amount:", error);
         redeemableAmount = "0";
       }
-      // Pass data to child components instead of storing in App state
     } catch (error) {
       console.error("Failed to fetch contract data:", error);
       setNetworkError(`Failed to fetch data: ${error.message}`);
@@ -118,7 +121,7 @@ function App() {
   useEffect(() => {
     const handleNetworkChange = (chainId) => {
       const chainIdNum = Number(chainId);
-      if (network && networks[network].chainId !== chainIdNum) {
+      if (network && networks[network]?.chainId !== chainIdNum) {
         setNetworkError(`Network changed to unexpected chain (${chainIdNum}). Please switch to ${network}.`);
         setWeb3(null);
         setContract(null);
@@ -146,12 +149,14 @@ function App() {
     }
   };
 
-  const { tokenName, shareName } = network ? networks[network] : { tokenName: "", shareName: "" };
+  const { tokenName, shareName } = network && networks[network] ? networks[network] : { tokenName: "", shareName: "" };
+
+  console.log("App state:", { web3, contract, account, network, networkError, loading, dataLoading });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 to-blue-900 flex items-center justify-center p-4">
       <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 max-w-2xl w-full card">
-        <h1 className="text-2xl font-bold mb-4 text-purple-600">{shareName} Strategy</h1>
+        <h1 className="text-2xl font-bold mb-4 text-purple-600">{shareName || "Strategy"} Strategy</h1>
         <ConnectWallet
           account={account}
           web3={web3}
@@ -183,12 +188,15 @@ function App() {
           </div>
         )}
         {(loading || dataLoading) && !networkError && <p className="text-gray-600 mb-4">Loading...</p>}
+        {!account && !loading && !networkError && (
+          <p className="text-gray-600 mb-4">Please connect your wallet to continue.</p>
+        )}
         {account && contract && network && !networkError && (
           <>
             {network === "ethereum" ? (
               <>
                 <PulseStrategyContractInfo contract={contract} web3={web3} />
-                <IssuePLSTR web3={web3} contract={contract} account={account} />
+                <PulseStrategyIssuePLSTR web3={web3} contract={contract} account={account} />
                 <PulseStrategyUserInfo contract={contract} account={account} web3={web3} />
                 <PulseStrategyRedeemPLSTR contract={contract} account={account} web3={web3} />
                 {isController && <PulseStrategyAdminPanel web3={web3} contract={contract} account={account} />}
@@ -196,10 +204,10 @@ function App() {
             ) : (
               <>
                 <xBONDContractInfo contract={contract} web3={web3} />
-                <xBONDIssuePLSTR web3={web3} contract={contract} account={account} />
+                <xBONDIssue web3={web3} contract={contract} account={account} />
                 <xBONDUserInfo contract={contract} account={account} web3={web3} />
-                <xBONDRedeemPLSTR contract={contract} account={account} web3={web3} />
-                <xBONDWithdrawLiquidity web3={web3} contract={contract} account={account} />
+                <xBONDRedeem web3={web3} contract={contract} account={account} />
+                <xBONDWithdrawLiquidity web3={web3} contract={contract} account={account} network={network} />
               </>
             )}
           </>
