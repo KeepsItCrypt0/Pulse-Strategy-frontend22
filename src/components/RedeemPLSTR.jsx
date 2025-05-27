@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { formatNumber, networks } from "../web3";
+import { getTokenContract, formatNumber, networks } from "../web3";
 
 const RedeemPLSTR = ({ contract, account, web3, network }) => {
   const [amount, setAmount] = useState("");
@@ -31,7 +31,7 @@ const RedeemPLSTR = ({ contract, account, web3, network }) => {
         if (!contract.methods[redeemMethod]) {
           throw new Error(`Method ${redeemMethod} not found in contract ABI`);
         }
-        const redeemable = await contract.methods[redeemMethod](amountWei).call();
+        const redeemable = await contract.methods[redeemMethod](account, amountWei).call(); // Note: Added account parameter for getRedeemableStakedPLS
         if (redeemable === undefined || redeemable === null) {
           throw new Error(`Invalid redeemable ${tokenName} response`);
         }
@@ -68,10 +68,7 @@ const RedeemPLSTR = ({ contract, account, web3, network }) => {
       setDisplayAmount(
         rawValue === "" || isNaN(rawValue)
           ? ""
-          : new Intl.NumberFormat("en-US", {
-              maximumFractionDigits: 18,
-              minimumFractionDigits: 0,
-            }).format(rawValue)
+          : new Intl.NumberFormat("en-US", { maximumFractionDigits: 18, minimumFractionDigits: 0 }).format(rawValue)
       );
     }
   };
@@ -81,38 +78,31 @@ const RedeemPLSTR = ({ contract, account, web3, network }) => {
     setError("");
     try {
       const amountNum = Number(amount);
-      if (amountNum <= 0) {
-        throw new Error("Amount must be greater than 0");
-      }
-      if (amountNum > Number(shareBalance)) {
-        throw new Error(`Amount exceeds ${shareName} balance`);
-      }
+      if (amountNum <= 0) throw new Error("Amount must be greater than 0");
+      if (amountNum > Number(shareBalance)) throw new Error(`Amount exceeds ${shareName} balance`);
       const amountWei = web3.utils.toWei(amount, "ether");
-      const contractBalance = await web3.eth.getBalance(contract.options.address);
+      const tokenContract = await getTokenContract(web3, network);
+      const contractTokenBalance = await tokenContract.methods.balanceOf(contract.options.address).call();
       const redeemMethod = network === "ethereum" ? "getRedeemableStakedPLS" : "getRedeemablePLSX";
-      if (!contract.methods[redeemMethod]) {
-        throw new Error(`Method ${redeemMethod} not found in contract ABI`);
+      if (!contract.methods[redeemMethod]) throw new Error(`Method ${redeemMethod} not found in contract ABI`);
+      const redeemable = await contract.methods[redeemMethod](account, amountWei).call(); // Note: Added account parameter
+      const { remainingIssuancePeriod } = await contract.methods.getContractInfo().call();
+      if (remainingIssuancePeriod === "0") throw new Error("Redemption not available: Issuance period has ended");
+      if (Number(web3.utils.fromWei(redeemable, "ether")) > Number(web3.utils.fromWei(contractTokenBalance, "ether"))) {
+        throw new Error("Insufficient contract token balance for redemption");
       }
-      const redeemable = await contract.methods[redeemMethod](amountWei).call();
-      if (Number(web3.utils.fromWei(redeemable, "ether")) > Number(web3.utils.fromWei(contractBalance, "ether"))) {
-        throw new Error("Insufficient contract balance for redemption");
-      }
-      await contract.methods.redeemShares(amountWei).send({ from: account });
+      const tx = await contract.methods.redeemShares(amountWei).send({ from: account });
+      console.log(`Transaction hash: ${tx.transactionHash}`);
       alert(`${shareName} redeemed successfully!`);
       setAmount("");
       setDisplayAmount("");
       await fetchData();
     } catch (err) {
       let errorMessage = `Error redeeming ${shareName}: ${err.message || "Unknown error"}`;
-      if (err.message.includes("InsufficientBalance")) {
-        errorMessage = `Insufficient ${shareName} balance`;
-      } else if (err.message.includes("ZeroSupply")) {
-        errorMessage = `No ${shareName} shares exist`;
-      } else if (err.message.includes("InsufficientContractBalance")) {
-        errorMessage = `Contract has insufficient ${tokenName} balance`;
-      } else if (err.message.includes("call revert") || err.message.includes("invalid opcode")) {
-        errorMessage = `Method not found or ABI mismatch`;
-      }
+      if (err.message.includes("InsufficientBalance")) errorMessage = `Insufficient ${shareName} balance`;
+      else if (err.message.includes("ZeroSupply")) errorMessage = `No ${shareName} shares exist`;
+      else if (err.message.includes("InsufficientContractBalance")) errorMessage = `Contract has insufficient ${tokenName} balance`;
+      else if (err.message.includes("call revert") || err.message.includes("invalid opcode")) errorMessage = `Method not found or ABI mismatch`;
       setError(errorMessage);
       console.error(`Redeem ${shareName} error:`, err);
     } finally {
