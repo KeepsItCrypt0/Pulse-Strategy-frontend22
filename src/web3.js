@@ -10,9 +10,11 @@ export const networks = {
     chainId: "0x1",
     chainName: "Ethereum Mainnet",
     rpcUrls: [
+      "https://cloudflare-eth.com",
+      "https://rpc.ankr.com/eth",
+      "https://eth-mainnet.public.blastapi.io",
       "https://eth-mainnet.g.alchemy.com/v2/60nF9qKWaj8FPzlhEuGUmam6bn2tIgBN",
       "https://mainnet.infura.io/v3/0c7b379c34424040826f02574f89b57d",
-      "https://cloudflare-eth.com",
     ],
     blockExplorerUrls: ["https://etherscan.io"],
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
@@ -30,6 +32,7 @@ export const networks = {
       "https://pulsechain-rpc.publicnode.com",
       "https://rpc-pulsechain.g4mm4.io",
       "https://pulse-rpc.publicnode.com",
+      "https://rpc.v4.testnet.pulsechain.com",
     ],
     blockExplorerUrls: ["https://scan.pulsechain.com"],
     nativeCurrency: { name: "Pulse", symbol: "PLS", decimals: 18 },
@@ -788,7 +791,8 @@ export const pulseStrategyABI = [
 		"stateMutability": "view",
 		"type": "function"
 	}
-]
+];
+
 export const xBONDAbi = [
 	{
 		"inputs": [],
@@ -1666,7 +1670,7 @@ export const xBONDAbi = [
 		"stateMutability": "nonpayable",
 		"type": "function"
 	}
-]
+];
 
 export const getWeb3 = async () => {
   if (window.ethereum) {
@@ -1800,9 +1804,14 @@ export const formatNumber = (value, isRatio = false) => {
 
 export const formatDate = (timestamp) => {
   if (!timestamp || timestamp === "0") return "Never";
-  const date = new Date(Number(timestamp) * 1000);
-  return date.toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  try {
+    const date = new Date(Number(timestamp) * 1000);
+    return date.toLocaleString("en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  } catch (error) {
+    console.error("Format date error:", { timestamp, error });
+    return "Invalid date";
+  }
 };
