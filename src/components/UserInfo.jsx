@@ -5,7 +5,8 @@ const UserInfo = ({ contract, account, web3, network }) => {
   const [shareBalance, setShareBalance] = useState("0");
   const [tokenBalance, setTokenBalance] = useState("0");
   const [redeemableTokens, setRedeemableTokens] = useState("0");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true); // For initial data fetch
   const [error, setError] = useState("");
   const { tokenName, shareName } = networks[network] || { tokenName: "Token", shareName: "Share" }; // Fallback values
 
@@ -13,8 +14,8 @@ const UserInfo = ({ contract, account, web3, network }) => {
     try {
       setLoading(true);
       setError("");
-      if (!contract || !web3 || !account) {
-        throw new Error("Contract, Web3, or account not initialized");
+      if (!contract || !web3 || !account || !/^[0x][0-9a-fA-F]{40}$/.test(account)) {
+        throw new Error("Contract, Web3, or invalid account not initialized");
       }
 
       const shareBal = await contract.methods.balanceOf(account).call();
@@ -45,6 +46,7 @@ const UserInfo = ({ contract, account, web3, network }) => {
       );
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   };
 
@@ -54,18 +56,18 @@ const UserInfo = ({ contract, account, web3, network }) => {
       const interval = setInterval(fetchInfo, 30000); // Refresh every 30 seconds
       return () => clearInterval(interval);
     }
-  }, [contract, web3, account, network]); // Added network to dependencies
+  }, [contract, web3, account, network]);
 
   return (
     <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card mt-4">
       <h2 className="text-xl font-semibold mb-4 text-purple-600">User Information</h2>
-      {loading ? (
+      {initialLoading || loading ? (
         <p className="text-gray-600">Loading...</p>
       ) : error ? (
         <div>
           <p className="text-red-400">{error}</p>
           <button
-            onClick={fetchInfo} // Simplified retry without setTimeout
+            onClick={() => setTimeout(fetchInfo, 1000)} // Small delay to avoid spamming
             className="mt-2 text-purple-300 hover:text-purple-400"
           >
             Retry
