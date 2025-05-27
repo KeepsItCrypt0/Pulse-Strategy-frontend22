@@ -1,57 +1,58 @@
 import { useState, useEffect } from "react";
-import { formatNumber } from "../utils/format";
+import { formatNumber, networks } from "../web3";
 
-const RedeemPLSTR = ({ contract, account, web3 }) => {
+const RedeemPLSTR = ({ contract, account, web3, network }) => {
   const [amount, setAmount] = useState("");
   const [displayAmount, setDisplayAmount] = useState("");
-  const [plstrBalance, setPlstrBalance] = useState("0");
-  const [estimatedVPLS, setEstimatedVPLS] = useState("0");
+  const [shareBalance, setShareBalance] = useState("0");
+  const [estimatedTokens, setEstimatedTokens] = useState("0");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { tokenName, shareName } = networks[network];
 
   const fetchBalance = async () => {
     try {
       setError("");
       const balance = await contract.methods.balanceOf(account).call();
       if (balance === undefined || balance === null) {
-        throw new Error("Invalid PLSTR balance response");
+        throw new Error(`Invalid ${shareName} balance response`);
       }
-      setPlstrBalance(web3.utils.fromWei(balance, "ether"));
-      console.log("PLSTR balance fetched:", { balance });
+      setShareBalance(web3.utils.fromWei(balance, "ether"));
+      console.log(`${shareName} balance fetched:`, { balance });
     } catch (err) {
-      console.error("Failed to fetch PLSTR balance:", err);
-      setError(`Failed to load PLSTR balance: ${err.message || "Unknown error"}`);
+      console.error(`Failed to fetch ${shareName} balance:`, err);
+      setError(`Failed to load ${shareName} balance: ${err.message || "Unknown error"}`);
     }
   };
 
   useEffect(() => {
     if (contract && account && web3) fetchBalance();
-  }, [contract, account, web3]);
+  }, [contract, account, web3, network]);
 
   useEffect(() => {
     const fetchEstimate = async () => {
       try {
         if (amount && Number(amount) > 0) {
           const amountWei = web3.utils.toWei(amount, "ether");
-          const redeemable = await contract.methods.getRedeemableStakedPLS(account, amountWei).call();
+          const redeemMethod = network === "ethereum" ? "getRedeemableStakedPLS" : "getRedeemablePLSX";
+          const redeemable = await contract.methods[redeemMethod](amountWei).call();
           if (redeemable === undefined || redeemable === null) {
-            throw new Error("Invalid redeemable vPLS response");
+            throw new Error(`Invalid redeemable ${tokenName} response`);
           }
-          setEstimatedVPLS(web3.utils.fromWei(redeemable, "ether"));
-          console.log("Estimated vPLS fetched:", { amount, redeemable });
+          setEstimatedTokens(web3.utils.fromWei(redeemable, "ether"));
+          console.log(`Estimated ${tokenName} fetched:`, { amount, redeemable });
         } else {
-          setEstimatedVPLS("0");
+          setEstimatedTokens("0");
         }
       } catch (err) {
-        console.error("Failed to fetch estimated vPLS:", err);
+        console.error(`Failed to fetch estimated ${tokenName}:`, err);
       }
     };
     if (contract && account && web3) fetchEstimate();
-  }, [contract, account, amount, web3]);
+  }, [contract, account, amount, web3, network]);
 
   const handleAmountChange = (e) => {
     const rawValue = e.target.value.replace(/,/g, "");
-    // Allow only digits, decimal point, and optional negative sign
     if (rawValue === "" || /^-?\d*\.?\d*$/.test(rawValue)) {
       setAmount(rawValue);
       if (rawValue === "" || isNaN(rawValue)) {
@@ -71,16 +72,28 @@ const RedeemPLSTR = ({ contract, account, web3 }) => {
     setLoading(true);
     setError("");
     try {
+      const amountNum = Number(amount);
+      if (amountNum <= 0) {
+        throw new Error("Amount must be greater than 0");
+      }
       const amountWei = web3.utils.toWei(amount, "ether");
       await contract.methods.redeemShares(amountWei).send({ from: account });
-      alert("PLSTR redeemed successfully!");
+      alert(`${shareName} redeemed successfully!`);
       setAmount("");
       setDisplayAmount("");
       fetchBalance();
-      console.log("PLSTR redeemed:", { amountWei });
+      console.log(`${shareName} redeemed:`, { amountWei });
     } catch (err) {
-      setError(`Error redeeming PLSTR: ${err.message || "Unknown error"}`);
-      console.error("Redeem PLSTR error:", err);
+      let errorMessage = `Error redeeming ${shareName}: ${err.message || "Unknown error"}`;
+      if (err.message.includes("InsufficientBalance")) {
+        errorMessage = `Insufficient ${shareName} balance`;
+      } else if (err.message.includes("ZeroSupply")) {
+        errorMessage = `No ${shareName} shares exist`;
+      } else if (err.message.includes("InsufficientContractBalance")) {
+        errorMessage = `Contract has insufficient ${tokenName} balance`;
+      }
+      setError(errorMessage);
+      console.error(`Redeem ${shareName} error:`, err);
     } finally {
       setLoading(false);
     }
@@ -88,18 +101,18 @@ const RedeemPLSTR = ({ contract, account, web3 }) => {
 
   return (
     <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
-      <h2 className="text-xl font-semibold mb-4 text-purple-600">Redeem PLSTR</h2>
+      <h2 className="text-xl font-semibold mb-4 text-purple-600">Redeem {shareName}</h2>
       <p className="text-gray-600 mb-2">
-        Your PLSTR Balance: {formatNumber(plstrBalance)} PLSTR
+        Your {shareName} Balance: {formatNumber(shareBalance)} {shareName}
       </p>
       <p className="text-gray-600 mb-2">
-        Estimated vPLS Receivable: {formatNumber(estimatedVPLS)} vPLS
+        Estimated {tokenName} Receivable: {formatNumber(estimatedTokens)} {tokenName}
       </p>
       <input
         type="text"
         value={displayAmount}
         onChange={handleAmountChange}
-        placeholder="Enter PLSTR amount"
+        placeholder={`Enter ${shareName} amount`}
         className="w-full p-2 border rounded-lg mb-4"
       />
       <button
@@ -107,7 +120,7 @@ const RedeemPLSTR = ({ contract, account, web3 }) => {
         disabled={loading || !amount || Number(amount) <= 0}
         className="btn-primary"
       >
-        {loading ? "Processing..." : "Redeem PLSTR"}
+        {loading ? "Processing..." : `Redeem ${shareName}`}
       </button>
       {error && <p className="text-red-400 mt-2">{error}</p>}
     </div>
