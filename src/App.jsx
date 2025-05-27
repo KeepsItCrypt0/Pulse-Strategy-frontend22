@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { getWeb3, getContract, switchNetwork, networks, formatNumber, formatDate } from "./web3";
 import AdminPanel from "./components/AdminPanel.jsx";
-import "./index.css"; // Changed from ./App.css to ./index.css
+import "./index.css";
 
 function App() {
   const [web3, setWeb3] = useState(null);
@@ -26,61 +26,79 @@ function App() {
       setNetworkError("");
       const web3Instance = await getWeb3();
       if (!web3Instance) {
-        setNetworkError("No web3 provider detected");
-        return;
+        throw new Error("No web3 provider detected");
       }
       setWeb3(web3Instance);
       const networkId = await web3Instance.eth.net.getId();
-      console.log("Current network ID:", networkId, "Expected:", selectedNetwork === "ethereum" ? 1 : 369);
       const expectedNetworkId = selectedNetwork === "ethereum" ? 1 : 369;
+      console.log("initializeWeb3:", { networkId, expectedNetworkId, selectedNetwork });
       if (Number(networkId) !== expectedNetworkId) {
-        console.log(`Attempting to switch to ${selectedNetwork} (chainId: ${networks[selectedNetwork].chainId})`);
+        console.log(`Switching to ${selectedNetwork} (chainId: ${networks[selectedNetwork].chainId})`);
         await switchNetwork(selectedNetwork);
       }
       const accounts = await web3Instance.eth.getAccounts();
+      if (!accounts[0]) {
+        throw new Error("No accounts available. Please connect MetaMask.");
+      }
       setAccount(accounts[0]);
       const contractInstance = await getContract(web3Instance);
       if (!contractInstance) {
-        setNetworkError("Failed to initialize contract: Contract not found");
-        return;
+        throw new Error("Failed to initialize contract");
       }
       setContract(contractInstance);
+      let controller = false;
       if (selectedNetwork === "ethereum") {
-        const owner = await contractInstance.methods.owner().call();
-        setIsController(accounts[0]?.toLowerCase() === owner.toLowerCase());
-      } else {
-        setIsController(false);
+        try {
+          const owner = await contractInstance.methods.owner().call();
+          controller = accounts[0]?.toLowerCase() === owner.toLowerCase();
+        } catch (error) {
+          console.error("Failed to check owner:", error);
+        }
       }
+      setIsController(controller);
       setNetwork(selectedNetwork);
-      console.log("App initialized:", { account: accounts[0], network: selectedNetwork, networkId });
+      console.log("App initialized:", { account: accounts[0], network: selectedNetwork, networkId, isController: controller });
     } catch (error) {
       console.error("Web3 initialization failed:", error);
-      setNetworkError(`Failed to initialize: ${error.message}`);
+      setNetworkError(`Failed to initialize ${selectedNetwork}: ${error.message}`);
     }
   };
 
   const fetchContractData = async () => {
-    if (!contract || !web3 || !account) return;
+    if (!contract || !web3 || !account) {
+      console.log("fetchContractData: Missing dependencies", { contract, web3, account });
+      return;
+    }
     try {
+      console.log("Fetching contract data for network:", network);
       const info = await contract.methods.getContractInfo().call();
+      console.log("getContractInfo:", info);
       const balance = await contract.methods.balanceOf(account).call();
+      console.log("balanceOf:", balance);
       const supply = await contract.methods.totalSupply().call();
+      console.log("totalSupply:", supply);
       let redeemableAmount = "0";
-      if (network === "ethereum") {
-        redeemableAmount = await contract.methods.getRedeemableStakedPLS(account, balance).call();
-      } else {
-        redeemableAmount = await contract.methods.getRedeemablePLSX(balance).call();
+      try {
+        if (network === "ethereum") {
+          redeemableAmount = await contract.methods.getRedeemableStakedPLS(account, balance).call();
+        } else {
+          redeemableAmount = await contract.methods.getRedeemablePLSX(balance).call();
+        }
+        console.log("Redeemable amount:", redeemableAmount);
+      } catch (error) {
+        console.error("Failed to fetch redeemable amount:", error);
+        redeemableAmount = "0";
       }
       setContractInfo({
-        balance: formatNumber(web3.utils.fromWei(info.contractBalance, "ether")),
+        balance: formatNumber(web3.utils.fromWei(info.contractBalance || "0", "ether")),
         issuancePeriod: info.remainingIssuancePeriod
           ? formatDate(Number(info.remainingIssuancePeriod))
           : "Ended",
       });
-      setShareBalance(formatNumber(web3.utils.fromWei(balance, "ether")));
-      setTotalSupply(formatNumber(web3.utils.fromWei(supply, "ether")));
+      setShareBalance(formatNumber(web3.utils.fromWei(balance || "0", "ether")));
+      setTotalSupply(formatNumber(web3.utils.fromWei(supply || "0", "ether")));
       setRedeemable(formatNumber(web3.utils.fromWei(redeemableAmount, "ether")));
-      console.log("Contract data fetched:", { balance, supply, redeemableAmount });
+      console.log("Contract data set:", { contractBalance: info.contractBalance, balance, supply, redeemableAmount });
     } catch (error) {
       console.error("Failed to fetch contract data:", error);
       setNetworkError(`Failed to fetch data: ${error.message}`);
@@ -97,6 +115,7 @@ function App() {
 
   const handleNetworkSwitch = async (selectedNetwork) => {
     setLoading(true);
+    setNetworkError("");
     await initializeWeb3(selectedNetwork);
     setLoading(false);
   };
@@ -120,6 +139,7 @@ function App() {
           .then((result) => {
             setSharesReceived(formatNumber(web3.utils.fromWei(result.shares, "ether")));
             setFee(formatNumber(web3.utils.fromWei(result.totalFee || result.fee, "ether")));
+            console.log("calculateSharesReceived:", result);
           })
           .catch((error) => {
             console.error("Calculate shares error:", error);
@@ -194,7 +214,7 @@ function App() {
           </button>
         </div>
         {networkError && <p className="text-red-400 mb-4">{networkError}</p>}
-        {account && contractInfo && (
+        {account && contractInfo ? (
           <>
             <div className="mb-4">
               <p>Account: {account.slice(0, 6)}...{account.slice(-4)}</p>
@@ -233,6 +253,8 @@ function App() {
               <AdminPanel web3={web3} contract={contract} account={account} network={network} />
             )}
           </>
+        ) : (
+          <p>Loading contract data...</p>
         )}
       </div>
     </div>
