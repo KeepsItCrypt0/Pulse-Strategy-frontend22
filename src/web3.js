@@ -41,7 +41,6 @@ export const networks = {
   },
 };
 
-
 export const pulseStrategyABI = [
 	{
 		"inputs": [
@@ -2384,28 +2383,16 @@ export const getWeb3 = async () => {
   }
 };
 
-export const getContract = async (web3) => {
+export const getContract = async (web3, network) => {
   if (!web3) {
     console.error("Web3 is not initialized");
     throw new Error("Web3 is not initialized");
   }
   try {
-    const networkId = await web3.eth.net.getId();
-    console.log("Detected network ID:", networkId);
-    let contractAddress, contractABI;
-    if (Number(networkId) === 1) {
-      contractAddress = pulseStrategyAddress;
-      contractABI = pulseStrategyABI;
-    } else if (Number(networkId) === 369) {
-      contractAddress = xBONDAddress;
-      contractABI = xBONDAbi;
-    } else {
-      console.error("Unsupported network ID:", networkId);
-      throw new Error(`Unsupported network ID: ${networkId}`);
-    }
-    if (!contractABI || contractABI.length === 0) {
-      console.error("ABI is empty for contract:", contractAddress);
-      throw new Error("Contract ABI is not provided");
+    const { contractAddress, contractABI } = networks[network];
+    if (!contractAddress || !contractABI || contractABI.length === 0) {
+      console.error("Invalid contract configuration for network:", network);
+      throw new Error("Invalid contract configuration");
     }
     const contract = new web3.eth.Contract(contractABI, contractAddress);
     console.log("Contract initialized:", contractAddress);
@@ -2424,7 +2411,6 @@ export const getTokenContract = async (web3, network) => {
   try {
     const tokenAddress = network === "ethereum" ? vPLSAddress : plsxAddress;
     const tokenABI = network === "ethereum" ? vPLSABI : plsxABI;
-    
     const fallbackTokenABI = [
       {
         constant: true,
