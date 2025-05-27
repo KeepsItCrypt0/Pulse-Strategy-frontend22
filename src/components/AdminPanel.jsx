@@ -12,19 +12,20 @@ const AdminPanel = ({ web3, contract, account, network }) => {
   const [displayRecoverAmount, setDisplayRecoverAmount] = useState("");
   const [newOwner, setNewOwner] = useState("");
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true); // For initial data fetch
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState("");
   const [mintCountdown, setMintCountdown] = useState("");
   const [remainingSeconds, setRemainingSeconds] = useState("0");
-  const { tokenName, shareName } = networks[network] || { tokenName: "Token", shareName: "Share" }; // Fallback values
+  const { tokenName, shareName } = networks[network] || { tokenName: "Token", shareName: "Share" };
 
-  const fetchMintInfo = async () => {
+  const fetchMintInfo = async (retryCount = 0) => {
+    const maxRetries = 3;
     try {
       setInitialLoading(true);
       setError("");
       if (!contract || !web3) throw new Error("Contract or Web3 not initialized");
 
-      const result = await contract.methods.getOwnerMintInfo().call();
+      const result = await contract.methods.getOwnerMintInfo().call({ from: account });
       const nextMintTime = result.nextMintTime || "0";
       const info = await contract.methods.getContractInfo().call();
       const issuancePeriod = info.remainingIssuancePeriod || "0";
@@ -37,10 +38,12 @@ const AdminPanel = ({ web3, contract, account, network }) => {
       } else {
         setRemainingSeconds("0");
       }
-
-      console.log("Mint info fetched:", { nextMintTime, issuancePeriod });
     } catch (err) {
       console.error("Failed to fetch mint info:", err);
+      if (err.message.includes("NotOwner") && retryCount < maxRetries) {
+        setError("Only the contract owner can fetch mint info. Retrying...");
+        return fetchMintInfo(retryCount + 1);
+      }
       setError(
         `Failed to load mint info: ${
           err.message.includes("call revert") || err.message.includes("invalid opcode")
@@ -57,10 +60,10 @@ const AdminPanel = ({ web3, contract, account, network }) => {
   useEffect(() => {
     if (contract && web3 && network === "ethereum") {
       fetchMintInfo();
-      const interval = setInterval(fetchMintInfo, 30000); // Refresh every 30 seconds
+      const interval = setInterval(() => fetchMintInfo(), 30000);
       return () => clearInterval(interval);
     }
-  }, [contract, web3, network]);
+  }, [contract, web3, network, account]);
 
   useEffect(() => {
     const updateCountdown = () => {
@@ -99,10 +102,10 @@ const AdminPanel = ({ web3, contract, account, network }) => {
 
   const handleAddressInputChange = (e, setAddress) => {
     const value = e.target.value.trim();
-    if (/^0x[a-fA-F0-9]{40}$/.test(value)) {
+    if (value === "" || /^[0x][0-9a-fA-F]{40}$/.test(value)) {
       setAddress(value);
     } else {
-      setAddress(value); // Allow partial input, but transaction will fail if invalid
+      setError("Invalid address format. Use 0x followed by 40 hex characters.");
     }
   };
 
@@ -111,13 +114,13 @@ const AdminPanel = ({ web3, contract, account, network }) => {
     setError("");
     try {
       if (!contract || !account) throw new Error("Contract or account not initialized");
+      if (Number(remainingSeconds) > 0) throw new Error("Minting period not active.");
       const amountWei = web3.utils.toWei(mintAmount, "ether");
       await contract.methods.mintShares(amountWei).send({ from: account });
       alert(`${shareName} minted successfully!`);
       setMintAmount("");
       setDisplayMintAmount("");
       await fetchMintInfo();
-      console.log(`${shareName} minted:`, { amountWei });
     } catch (err) {
       let errorMessage = `Error minting ${shareName}: ${err.message || "Unknown error"}`;
       if (err.message.includes("NotOwner")) {
@@ -126,7 +129,6 @@ const AdminPanel = ({ web3, contract, account, network }) => {
         errorMessage = "Minting period has ended.";
       }
       setError(errorMessage);
-      console.error("Mint error:", err);
     } finally {
       setLoading(false);
     }
@@ -139,23 +141,24 @@ const AdminPanel = ({ web3, contract, account, network }) => {
       if (!contract || !account) throw new Error("Contract or account not initialized");
       const amountWei = web3.utils.toWei(depositAmount, "ether");
       const tokenContract = await getTokenContract(web3, network);
+      if (!tokenContract) throw new Error("Failed to initialize token contract");
       await tokenContract.methods
-        .approve(contract.options.address, amountWei) // Use contract.options.address
+        .approve(contract.options.address, amountWei)
         .send({ from: account });
       await contract.methods.depositStakedPLS(amountWei).send({ from: account });
       alert(`${tokenName} deposited successfully!`);
       setDepositAmount("");
       setDisplayDepositAmount("");
-      console.log(`${tokenName} deposited:`, { amountWei });
     } catch (err) {
       let errorMessage = `Error depositing ${tokenName}: ${err.message || "Unknown error"}`;
       if (err.message.includes("NotOwner")) {
         errorMessage = "Only the contract owner can deposit tokens.";
       } else if (err.message.includes("InsufficientAllowance")) {
         errorMessage = "Insufficient token allowance for contract.";
+      } else if (err.message.includes("InvalidTokenContract")) {
+        errorMessage = "Invalid token contract.";
       }
       setError(errorMessage);
-      console.error("Deposit error:", err);
     } finally {
       setLoading(false);
     }
@@ -178,7 +181,6 @@ const AdminPanel = ({ web3, contract, account, network }) => {
       setRecipientAddress("");
       setRecoverAmount("");
       setDisplayRecoverAmount("");
-      console.log("Tokens recovered:", { tokenAddress, recipientAddress, amountWei });
     } catch (err) {
       let errorMessage = `Error recovering tokens: ${err.message || "Unknown error"}`;
       if (err.message.includes("NotOwner")) {
@@ -187,7 +189,6 @@ const AdminPanel = ({ web3, contract, account, network }) => {
         errorMessage = "Invalid token or recipient address.";
       }
       setError(errorMessage);
-      console.error("Recover error:", err);
     } finally {
       setLoading(false);
     }
@@ -204,7 +205,6 @@ const AdminPanel = ({ web3, contract, account, network }) => {
       await contract.methods.transferOwnership(newOwner).send({ from: account });
       alert("Ownership transferred successfully!");
       setNewOwner("");
-      console.log("Ownership transferred:", { newOwner });
     } catch (err) {
       let errorMessage = `Error transferring ownership: ${err.message || "Unknown error"}`;
       if (err.message.includes("NotOwner")) {
@@ -213,13 +213,19 @@ const AdminPanel = ({ web3, contract, account, network }) => {
         errorMessage = "Invalid new owner address.";
       }
       setError(errorMessage);
-      console.error("Transfer ownership error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  if (network !== "ethereum") return null;
+  if (network !== "ethereum") {
+    return (
+      <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card mt-4">
+        <h2 className="text-xl font-semibold mb-4 text-purple-600">Admin Panel</h2>
+        <p className="text-gray-600">Admin Panel is only available on Ethereum network.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card mt-4">
@@ -229,7 +235,7 @@ const AdminPanel = ({ web3, contract, account, network }) => {
       ) : error ? (
         <div>
           <p className="text-red-400">{error}</p>
-          <button onClick={fetchMintInfo} className="mt-2 text-purple-300 hover:text-purple-400">
+          <button onClick={() => fetchMintInfo()} className="mt-2 text-purple-300 hover:text-purple-400">
             Retry
           </button>
         </div>
@@ -247,7 +253,7 @@ const AdminPanel = ({ web3, contract, account, network }) => {
             />
             <button
               onClick={handleMint}
-              disabled={loading || !mintAmount || Number(mintAmount) <= 0}
+              disabled={loading || !mintAmount || Number(mintAmount) <= 0 || Number(remainingSeconds) > 0}
               className="btn-primary"
             >
               {loading ? "Processing..." : `Mint ${shareName}`}
@@ -320,7 +326,7 @@ const AdminPanel = ({ web3, contract, account, network }) => {
           </div>
         </>
       )}
-      {error && <p className="text-red-400 mt-4">{error}</p>}
+      {error && !initialLoading && <p className="text-red-400 mt-4">{error}</p>}
     </div>
   );
 };
