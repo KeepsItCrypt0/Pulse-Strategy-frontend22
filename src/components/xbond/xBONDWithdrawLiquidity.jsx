@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { formatDate, networks } from "../web3";
+import { formatDate, networks } from "../../utils/format";
 
 const xBONDWithdrawLiquidity = ({ web3, contract, account, network }) => {
   const [timeUntilWithdrawal, setTimeUntilWithdrawal] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true); // For initial data fetch
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState("");
-  const { shareName, tokenName } = networks[network] || { shareName: "Share", tokenName: "Token" }; // Fallback values
+  const { shareName, tokenName } = networks[network] || { shareName: "Share", tokenName: "Token" };
 
   const fetchWithdrawalTime = async () => {
     try {
@@ -39,7 +39,7 @@ const xBONDWithdrawLiquidity = ({ web3, contract, account, network }) => {
   useEffect(() => {
     if (contract && web3 && network === "pulsechain") {
       fetchWithdrawalTime();
-      const interval = setInterval(fetchWithdrawalTime, 30000); // Refresh every 30 seconds
+      const interval = setInterval(fetchWithdrawalTime, 30000);
       return () => clearInterval(interval);
     }
   }, [contract, web3, network]);
