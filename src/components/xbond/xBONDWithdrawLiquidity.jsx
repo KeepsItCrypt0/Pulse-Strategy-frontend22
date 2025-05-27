@@ -117,4 +117,4 @@ const WithdrawLiquidity = ({ web3, contract, account, network }) => {
   );
 };
 
-export default WithdrawLiquidity;
+export default xBONDWithdrawLiquidity;
