@@ -10,11 +10,9 @@ export const networks = {
     chainId: "0x1",
     chainName: "Ethereum Mainnet",
     rpcUrls: [
-      "https://cloudflare-eth.com",
-      "https://rpc.ankr.com/eth",
-      "https://eth-mainnet.public.blastapi.io",
       "https://eth-mainnet.g.alchemy.com/v2/60nF9qKWaj8FPzlhEuGUmam6bn2tIgBN",
       "https://mainnet.infura.io/v3/0c7b379c34424040826f02574f89b57d",
+      "https://cloudflare-eth.com",
     ],
     blockExplorerUrls: ["https://etherscan.io"],
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
@@ -32,7 +30,6 @@ export const networks = {
       "https://pulsechain-rpc.publicnode.com",
       "https://rpc-pulsechain.g4mm4.io",
       "https://pulse-rpc.publicnode.com",
-      "https://rpc.v4.testnet.pulsechain.com",
     ],
     blockExplorerUrls: ["https://scan.pulsechain.com"],
     nativeCurrency: { name: "Pulse", symbol: "PLS", decimals: 18 },
@@ -44,6 +41,7 @@ export const networks = {
   },
 };
 
+// ABI placeholders
 export const pulseStrategyABI = [
 	{
 		"inputs": [
@@ -791,8 +789,7 @@ export const pulseStrategyABI = [
 		"stateMutability": "view",
 		"type": "function"
 	}
-];
-
+]; // Replace with your actual PulseStrategy ABI
 export const xBONDAbi = [
 	{
 		"inputs": [],
@@ -1670,7 +1667,65 @@ export const xBONDAbi = [
 		"stateMutability": "nonpayable",
 		"type": "function"
 	}
-];
+]; // Replace with your actual xBOND ABI
+export const vPLSABI = [
+  {
+    "constant": true,
+    "inputs": [{ "name": "_owner", "type": "address" }],
+    "name": "balanceOf",
+    "outputs": [{ "name": "balance", "type": "uint256" }],
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      { "name": "_owner", "type": "address" },
+      { "name": "_spender", "type": "address" }
+    ],
+    "name": "allowance",
+    "outputs": [{ "name": "remaining", "type": "uint256" }],
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      { "name": "_spender", "type": "address" },
+      { "name": "_value", "type": "uint256" }
+    ],
+    "name": "approve",
+    "outputs": [{ "name": "success", "type": "bool" }],
+    "type": "function"
+  }
+]; // Replace with your actual vPLS ABI
+export const plsxABI = [
+  {
+    "constant": true,
+    "inputs": [{ "name": "_owner", "type": "address" }],
+    "name": "balanceOf",
+    "outputs": [{ "name": "balance", "type": "uint256" }],
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      { "name": "_owner", "type": "address" },
+      { "name": "_spender", "type": "address" }
+    ],
+    "name": "allowance",
+    "outputs": [{ "name": "remaining", "type": "uint256" }],
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      { "name": "_spender", "type": "address" },
+      { "name": "_value", "type": "uint256" }
+    ],
+    "name": "approve",
+    "outputs": [{ "name": "success", "type": "bool" }],
+    "type": "function"
+  }
+]; // Replace with your actual PLSX ABI
 
 export const getWeb3 = async () => {
   if (window.ethereum) {
@@ -1722,7 +1777,10 @@ export const getTokenContract = async (web3, network) => {
   }
   try {
     const tokenAddress = network === "ethereum" ? vPLSAddress : plsxAddress;
-    const tokenABI = [
+    const tokenABI = network === "ethereum" ? vPLSABI : plsxABI;
+    
+    // If no ABI is provided, fall back to a minimal ERC20 ABI
+    const fallbackTokenABI = [
       {
         constant: true,
         inputs: [{ name: "_owner", type: "address" }],
@@ -1741,7 +1799,11 @@ export const getTokenContract = async (web3, network) => {
         type: "function",
       },
     ];
-    const contract = new web3.eth.Contract(tokenABI, tokenAddress);
+
+    const contract = new web3.eth.Contract(
+      tokenABI.length > 0 ? tokenABI : fallbackTokenABI,
+      tokenAddress
+    );
     console.log("Token contract initialized:", tokenAddress);
     return contract;
   } catch (error) {
@@ -1804,14 +1866,9 @@ export const formatNumber = (value, isRatio = false) => {
 
 export const formatDate = (timestamp) => {
   if (!timestamp || timestamp === "0") return "Never";
-  try {
-    const date = new Date(Number(timestamp) * 1000);
-    return date.toLocaleString("en-US", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  } catch (error) {
-    console.error("Format date error:", { timestamp, error });
-    return "Invalid date";
-  }
+  const date = new Date(Number(timestamp) * 1000);
+  return date.toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 };
