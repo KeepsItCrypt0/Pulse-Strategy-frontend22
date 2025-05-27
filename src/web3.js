@@ -1,42 +1,46 @@
 import Web3 from "web3";
 
-export const pulseStrategyAddress = "0x6c1dA678A1B615f673208e74AB3510c22117090e";
+export const pulseStrategyAddress = "0x6181dA678A1B615f673208e74AB3510c22117090";
 export const xBONDAddress = "0xDb7ada7a6e8fA3f3bFEEC4376E0Ac5F54F6d1EC8";
 export const vPLSAddress = "0x0181e249c507d3b454dE2444444f0Bf5dBE72d09";
 export const plsxAddress = "0x95B303987A60C71504D99Aa1b13B4DA07b0790ab";
 
 export const networks = {
-  ethereum: {
-    chainId: "0x1",
-    chainName: "Ethereum Mainnet",
-    rpcUrls: [
-      "https://eth-mainnet.g.alchemy.com/v2/60nF9qKWaj8FPzlhEuGUmam6bn2tIgBN",
-      "https://mainnet.infura.io/v3/0c7b379c34424040826f02574f89b57d",
-    ],
-    blockExplorerUrls: ["https://etherscan.io"],
-    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-    contractAddress: pulseStrategyAddress,
-    tokenAddress: vPLSAddress,
-    contractName: "PulseStrategy",
-    tokenName: "vPLS",
-    shareName: "PLSTR",
-  },
-  pulsechain: {
-    chainId: "0x171",
-    chainName: "PulseChain",
-    rpcUrls: [
-      "https://rpc.pulsechain.com",
-      "https://pulsechain-rpc.publicnode.com",
-    ],
-    blockExplorerUrls: ["https://scan.pulsechain.com"],
-    nativeCurrency: { name: "Pulse", symbol: "PLS", decimals: 18 },
-    contractAddress: xBONDAddress,
-    tokenAddress: plsxAddress,
-    contractName: "xBOND",
-    tokenName: "PLSX",
-    shareName: "xBOND",
-  },
-};
+  {
+    ethereum: {
+      chainId: "0x1",
+      chainName: "Ethereum Mainnet",
+      rpcUrls: [
+        "https://eth-mainnet.g.alchemy.com/v2/60nF9qKWaj8FPzlhEuGUmam6bn2tIgBN",
+        "https://mainnet.infura.io/v3/0c7b379c34424040826f02574f89b57d",
+        "https://cloudflare-eth.com",
+      ],
+      blockExplorerUrls: ["https://etherscan.io"],
+      nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+      contractAddress: pulseStrategyAddress,
+      tokenAddress: vPLSAddress,
+      contractName: "PulseStrategy",
+      tokenName: "vPLS",
+      shareName: "PLSTR",
+    },
+    pulsechain: {
+      chainId: "0x171",
+      chainName: "PulseChain",
+      rpcUrls: [
+        "https://rpc.pulsechain.com",
+        "https://pulsechain-rpc.publicnode.com",
+        "https://rpc-pulsechain.g4mm4.io",
+        "https://pulse-rpc.publicnode.com",
+      ],
+      blockExplorerUrls: ["https://scan.pulsechain.com"],
+      nativeCurrency: { name: "Pulse", symbol: "PLS", decimals: 18 },
+      contractAddress: xBONDAddress,
+      tokenAddress: plsxAddress,
+      contractName: "xBOND",
+      tokenName: "PLSX",
+      shareName: "xBOND",
+    },
+  };
 
 export const pulseStrategyABI = [
 	{
@@ -785,7 +789,7 @@ export const pulseStrategyABI = [
 		"stateMutability": "view",
 		"type": "function"
 	}
-]
+];
 export const xBONDAbi = [
 	{
 		"inputs": [],
@@ -1663,7 +1667,7 @@ export const xBONDAbi = [
 		"stateMutability": "nonpayable",
 		"type": "function"
 	}
-]
+];
 
 export const getWeb3 = async () => {
   if (window.ethereum) {
@@ -1671,61 +1675,76 @@ export const getWeb3 = async () => {
     console.log("Web3 initialized:", web3);
     return web3;
   } else {
-    console.error("No web3 provider detected");
-    return null;
+    console.error("No web3 provider detected. Ensure MetaMask is installed.");
+    throw new Error("No web3 provider detected");
   }
 };
 
 export const getContract = async (web3) => {
   if (!web3) {
     console.error("Web3 is not initialized");
-    return null;
+    throw new Error("Web3 is not initialized");
   }
-  const networkId = await web3.eth.net.getId();
-  let contractAddress, contractABI;
-  if (networkId === 1) {
-    contractAddress = pulseStrategyAddress;
-    contractABI = pulseStrategyABI;
-  } else if (networkId === 369) {
-    contractAddress = xBONDAddress;
-    contractABI = xBONDAbi;
-  } else {
-    console.error("Unsupported network ID:", networkId);
-    return null;
+  try {
+    const networkId = await web3.eth.net.getId();
+    console.log("Detected network ID:", networkId);
+    let contractAddress, contractABI;
+    if (Number(networkId) === 1) {
+      contractAddress = pulseStrategyAddress;
+      contractABI = pulseStrategyABI;
+    } else if (Number(networkId) === 369) {
+      contractAddress = xBONDAddress;
+      contractABI = xBONDAbi;
+    } else {
+      console.error("Unsupported network ID:", networkId);
+      throw new Error(`Unsupported network ID: ${networkId}`);
+    }
+    if (!contractABI || contractABI.length === 0) {
+      console.error("ABI is empty for contract:", contractAddress);
+      throw new Error("Contract ABI is not provided");
+    }
+    const contract = new web3.eth.Contract(contractABI, contractAddress);
+    console.log("Contract initialized:", contractAddress);
+    return contract;
+  } catch (error) {
+    console.error("Contract initialization failed:", error);
+    throw new Error(`Failed to initialize contract: ${error.message}`);
   }
-  const contract = new web3.eth.Contract(contractABI, contractAddress);
-  console.log("Contract initialized:", contractAddress);
-  return contract;
 };
 
 export const getTokenContract = async (web3, network) => {
   if (!web3) {
     console.error("Web3 is not initialized");
-    return null;
+    throw new Error("Web3 is not initialized");
   }
-  const tokenAddress = network === "ethereum" ? vPLSAddress : plsxAddress;
-  const tokenABI = [
-    {
-      constant: true,
-      inputs: [{ name: "_owner", type: "address" }],
-      name: "balanceOf",
-      outputs: [{ name: "balance", type: "uint256" }],
-      type: "function",
-    },
-    {
-      constant: false,
-      inputs: [
-        { name: "_spender", type: "address" },
-        { name: "_value", type: "uint256" },
-      ],
-      name: "approve",
-      outputs: [{ name: "success", type: "bool" }],
-      type: "function",
-    },
-  ];
-  const contract = new web3.eth.Contract(tokenABI, tokenAddress);
-  console.log("Token contract initialized:", tokenAddress);
-  return contract;
+  try {
+    const tokenAddress = network === "ethereum" ? vPLSAddress : plsxAddress;
+    const tokenABI = [
+      {
+        constant: true,
+        inputs: [{ name: "_owner", type: "address" }],
+        name: "balanceOf",
+        outputs: [{ name: "balance", type: "uint256" }],
+        type: "function",
+      },
+      {
+        constant: false,
+        inputs: [
+          { name: "_spender", type: "address" },
+          { name: "_value", type: "uint256" },
+        ],
+        name: "approve",
+        outputs: [{ name: "success", type: "bool" }],
+        type: "function",
+      },
+    ];
+    const contract = new web3.eth.Contract(tokenABI, tokenAddress);
+    console.log("Token contract initialized:", tokenAddress);
+    return contract;
+  } catch (error) {
+    console.error("Token contract initialization failed:", error);
+    throw new Error(`Failed to initialize token contract: ${error.message}`);
+  }
 };
 
 export const switchNetwork = async (network) => {
@@ -1735,9 +1754,10 @@ export const switchNetwork = async (network) => {
       method: "wallet_switchEthereumChain",
       params: [{ chainId }],
     });
-    console.log(`Switched to ${chainName}`);
+    console.log(`Switched to ${chainName} (chainId: ${chainId})`);
   } catch (switchError) {
-    if (switchError.code === 4902) {
+    console.error(`Switch to ${chainName} failed:`, switchError);
+    if (switchError.code === 4902 || switchError.code === -32603) {
       try {
         await window.ethereum.request({
           method: "wallet_addEthereumChain",
@@ -1754,11 +1774,10 @@ export const switchNetwork = async (network) => {
         console.log(`Added and switched to ${chainName}`);
       } catch (addError) {
         console.error(`Failed to add ${chainName}:`, addError);
-        throw new Error(`Failed to add ${chainName}`);
+        throw new Error(`Failed to add ${chainName}: ${addError.message}`);
       }
     } else {
-      console.error(`Failed to switch to ${chainName}:`, switchError);
-      throw new Error(`Failed to switch to ${chainName}`);
+      throw new Error(`Failed to switch to ${chainName}: ${switchError.message}`);
     }
   }
 };
