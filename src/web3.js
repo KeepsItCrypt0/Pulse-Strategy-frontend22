@@ -1,19 +1,17 @@
 import Web3 from "web3";
 
-// Contract addresses
-export const pulseStrategyAddress = "0x6c1dA678A1B615f673208e74AB3510c22117090e"; // PulseStrategy on Ethereum
-export const xBONDAddress = "0xDb7ada7a6e8fA3f3bFEEC4376E0Ac5F54F6d1EC8"; // xBOND on PulseChain
-export const vPLSAddress = "0x0181e249c507d3b454dE2444444f0Bf5dBE72d09"; // vPLS on Ethereum
-export const plsxAddress = "0x95B303987A60C71504D99Aa1b13B4DA07b0790ab"; // PLSX on PulseChain
+export const pulseStrategyAddress = "0x6c1dA678A1B615f673208e74AB3510c22117090e";
+export const xBONDAddress = "0xDb7ada7a6e8fA3f3bFEEC4376E0Ac5F54F6d1EC8";
+export const vPLSAddress = "0x0181e249c507d3b454dE2444444f0Bf5dBE72d09";
+export const plsxAddress = "0x95B303987A60C71504D99Aa1b13B4DA07b0790ab";
 
-// Network configurations
 export const networks = {
   ethereum: {
-    chainId: "0x1", // Ethereum Mainnet
+    chainId: "0x1",
     chainName: "Ethereum Mainnet",
     rpcUrls: [
-      "https://eth-mainnet.g.alchemy.com/v2/60nF9qKWaj8FPzlhEuGUmam6bn2tIgBN", // Alchemy
-      "https://mainnet.infura.io/v3/0c7b379c34424040826f02574f89b57d", // Infura
+      "https://eth-mainnet.g.alchemy.com/v2/60nF9qKWaj8FPzlhEuGUmam6bn2tIgBN",
+      "https://mainnet.infura.io/v3/0c7b379c34424040826f02574f89b57d",
     ],
     blockExplorerUrls: ["https://etherscan.io"],
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
@@ -24,11 +22,11 @@ export const networks = {
     shareName: "PLSTR",
   },
   pulsechain: {
-    chainId: "0x171", // PulseChain (369 in hex)
+    chainId: "0x171",
     chainName: "PulseChain",
     rpcUrls: [
-      "https://rpc.pulsechain.com", // Primary
-      "https://pulsechain-rpc.publicnode.com", // Fallback
+      "https://rpc.pulsechain.com",
+      "https://pulsechain-rpc.publicnode.com",
     ],
     blockExplorerUrls: ["https://scan.pulsechain.com"],
     nativeCurrency: { name: "Pulse", symbol: "PLS", decimals: 18 },
@@ -40,8 +38,7 @@ export const networks = {
   },
 };
 
-// ABIs
-const pulseStrategyABI = [
+export const pulseStrategyABI = [
 	{
 		"inputs": [
 			{
@@ -789,7 +786,7 @@ const pulseStrategyABI = [
 		"type": "function"
 	}
 ]
-const xBONDAbi = [
+export const xBONDAbi = [
 	{
 		"inputs": [],
 		"stateMutability": "nonpayable",
