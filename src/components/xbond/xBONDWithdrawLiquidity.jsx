@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { networks } from "../../web3";
+import { getWeb3 } from "../../web3";
+import { formatNumber, formatDate } from "../../format";
 
 const xBONDWithdrawLiquidity = ({ web3, contract, account, network }) => {
   const [timeUntilWithdrawal, setTimeUntilWithdrawal] = useState(null);
