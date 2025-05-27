@@ -1,18 +1,17 @@
 import { useState, useEffect } from "react";
 import { networks } from "../web3";
 
-const ConnectWallet = ({ account, web3, network }) => {
+const ConnectWallet = ({ account, web3, network, onConnect }) => {
   const [isConnected, setIsConnected] = useState(!!account);
   const [error, setError] = useState("");
-  const { chainName } = networks[network] || { chainName: "Unknown Network" }; // Fallback value
+  const { chainName } = networks[network] || { chainName: "Unknown Network" };
 
   const connectWallet = async () => {
     try {
-      setError("");
+      setError(""); // Clear previous error
       if (!window.ethereum) {
         throw new Error("No crypto wallet found. Please install MetaMask.");
       }
-      // Request accounts
       await window.ethereum.request({ method: "eth_requestAccounts" });
       const accounts = await web3.eth.getAccounts();
       if (!accounts[0]) {
@@ -20,12 +19,35 @@ const ConnectWallet = ({ account, web3, network }) => {
       }
       setIsConnected(true);
       console.log("Wallet connected:", accounts[0]);
+      if (onConnect) onConnect(accounts[0]); // Notify parent to update web3/account
 
-      // Validate network (optional enhancement)
       const networkId = await web3.eth.net.getId();
       const expectedNetworkId = network === "ethereum" ? 1 : 369;
       if (Number(networkId) !== expectedNetworkId) {
-        setError(`Please switch to ${chainName} (chainId: ${expectedNetworkId}) in MetaMask.`);
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: `0x${expectedNetworkId.toString(16)}` }],
+          });
+          setError("");
+        } catch (switchError) {
+          if (switchError.code === 4902) {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: `0x${expectedNetworkId.toString(16)}`,
+                  chainName: chainName,
+                  rpcUrls: [networks[network].rpcUrl],
+                  nativeCurrency: networks[network].nativeCurrency,
+                  blockExplorerUrls: [networks[network].blockExplorerUrls[0]],
+                },
+              ],
+            });
+          } else {
+            setError(`Please switch to ${chainName} (chainId: ${expectedNetworkId}) in MetaMask.`);
+          }
+        }
       }
     } catch (err) {
       console.error("Wallet connection failed:", err);
@@ -69,7 +91,7 @@ const ConnectWallet = ({ account, web3, network }) => {
         window.ethereum.removeListener("chainChanged", handleChainChanged);
       };
     }
-  }, [account, network, chainName]);
+  }, [account, network, chainName, onConnect]);
 
   return (
     <div className="mt-6 text-center">
@@ -81,6 +103,9 @@ const ConnectWallet = ({ account, web3, network }) => {
               {account.slice(0, 6)}...{account.slice(-4)}
             </span>
           </p>
+          <button onClick={() => setIsConnected(false)} className="text-red-500 mt-2">
+            Disconnect
+          </button>
         </div>
       ) : (
         <button onClick={connectWallet} className="btn-primary">
