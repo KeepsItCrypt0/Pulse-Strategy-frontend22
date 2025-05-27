@@ -7,16 +7,16 @@ const RedeemPLSTR = ({ contract, account, web3, network }) => {
   const [shareBalance, setShareBalance] = useState("0");
   const [estimatedTokens, setEstimatedTokens] = useState("0");
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true); // For initial data fetch
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState("");
-  const { tokenName, shareName } = networks[network] || { tokenName: "Token", shareName: "Share" }; // Fallback values
+  const { tokenName, shareName } = networks[network] || { tokenName: "Token", shareName: "Share" };
 
   const fetchData = async () => {
     try {
       setInitialLoading(true);
       setError("");
-      if (!contract || !web3 || !account) {
-        throw new Error("Contract, Web3, or account not initialized");
+      if (!contract || !web3 || !account || !/^[0x][0-9a-fA-F]{40}$/.test(account)) {
+        throw new Error("Contract, Web3, or invalid account not initialized");
       }
 
       const balance = await contract.methods.balanceOf(account).call();
@@ -24,7 +24,6 @@ const RedeemPLSTR = ({ contract, account, web3, network }) => {
         throw new Error(`Invalid ${shareName} balance response`);
       }
       setShareBalance(formatNumber(web3.utils.fromWei(balance, "ether")));
-      console.log(`${shareName} balance fetched:`, { balance });
 
       if (amount && Number(amount) > 0) {
         const amountWei = web3.utils.toWei(amount, "ether");
@@ -37,7 +36,6 @@ const RedeemPLSTR = ({ contract, account, web3, network }) => {
           throw new Error(`Invalid redeemable ${tokenName} response`);
         }
         setEstimatedTokens(formatNumber(web3.utils.fromWei(redeemable, "ether")));
-        console.log(`Estimated ${tokenName} fetched:`, { amount, redeemable });
       } else {
         setEstimatedTokens("0");
       }
@@ -58,10 +56,10 @@ const RedeemPLSTR = ({ contract, account, web3, network }) => {
   useEffect(() => {
     if (contract && web3 && account && network) {
       fetchData();
-      const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
+      const interval = setInterval(fetchData, 30000);
       return () => clearInterval(interval);
     }
-  }, [contract, web3, account, network, amount]); // Added amount to dependencies
+  }, [contract, web3, account, network, amount]);
 
   const handleAmountChange = (e) => {
     const rawValue = e.target.value.replace(/,/g, "");
@@ -86,13 +84,24 @@ const RedeemPLSTR = ({ contract, account, web3, network }) => {
       if (amountNum <= 0) {
         throw new Error("Amount must be greater than 0");
       }
+      if (amountNum > Number(shareBalance)) {
+        throw new Error(`Amount exceeds ${shareName} balance`);
+      }
       const amountWei = web3.utils.toWei(amount, "ether");
+      const contractBalance = await web3.eth.getBalance(contract.options.address);
+      const redeemMethod = network === "ethereum" ? "getRedeemableStakedPLS" : "getRedeemablePLSX";
+      if (!contract.methods[redeemMethod]) {
+        throw new Error(`Method ${redeemMethod} not found in contract ABI`);
+      }
+      const redeemable = await contract.methods[redeemMethod](amountWei).call();
+      if (Number(web3.utils.fromWei(redeemable, "ether")) > Number(web3.utils.fromWei(contractBalance, "ether"))) {
+        throw new Error("Insufficient contract balance for redemption");
+      }
       await contract.methods.redeemShares(amountWei).send({ from: account });
       alert(`${shareName} redeemed successfully!`);
       setAmount("");
       setDisplayAmount("");
-      await fetchData(); // Refresh data after redemption
-      console.log(`${shareName} redeemed:`, { amountWei });
+      await fetchData();
     } catch (err) {
       let errorMessage = `Error redeeming ${shareName}: ${err.message || "Unknown error"}`;
       if (err.message.includes("InsufficientBalance")) {
@@ -101,6 +110,8 @@ const RedeemPLSTR = ({ contract, account, web3, network }) => {
         errorMessage = `No ${shareName} shares exist`;
       } else if (err.message.includes("InsufficientContractBalance")) {
         errorMessage = `Contract has insufficient ${tokenName} balance`;
+      } else if (err.message.includes("call revert") || err.message.includes("invalid opcode")) {
+        errorMessage = `Method not found or ABI mismatch`;
       }
       setError(errorMessage);
       console.error(`Redeem ${shareName} error:`, err);
@@ -138,7 +149,7 @@ const RedeemPLSTR = ({ contract, account, web3, network }) => {
           />
           <button
             onClick={handleRedeem}
-            disabled={loading || initialLoading || !amount || Number(amount) <= 0 || Number(amount) > Number(shareBalance)}
+            disabled={loading || !amount || Number(amount) <= 0 || Number(amount) > Number(shareBalance)}
             className="btn-primary"
           >
             {loading ? "Processing..." : `Redeem ${shareName}`}
