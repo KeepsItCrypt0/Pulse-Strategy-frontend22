@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getTokenContract, formatNumber, networks } from "./utils/format.js";
+import { getTokenContract, formatNumber, networks } from "./utils/format";
 
 const PulseStrategyIssuePLSTR = ({ web3, contract, account }) => {
   const [amount, setAmount] = useState("");
