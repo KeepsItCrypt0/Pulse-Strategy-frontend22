@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { formatDate, networks } from "../web3";
 
-const WithdrawLiquidity = ({ web3, contract, account, network }) => {
+const xBONDWithdrawLiquidity = ({ web3, contract, account, network }) => {
   const [timeUntilWithdrawal, setTimeUntilWithdrawal] = useState(null);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true); // For initial data fetch
