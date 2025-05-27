@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { getTokenContract, formatNumber, networks } from "../web3";
+import { getTokenContract, formatNumber, networks } from "../../web3";
 
-const RedeemPLSTR = ({ contract, account, web3, network }) => {
+const PulseStrategyRedeemPLSTR = ({ contract, account, web3 }) => {
   const [amount, setAmount] = useState("");
   const [displayAmount, setDisplayAmount] = useState("");
   const [shareBalance, setShareBalance] = useState("0");
@@ -9,7 +9,7 @@ const RedeemPLSTR = ({ contract, account, web3, network }) => {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState("");
-  const { tokenName, shareName } = networks[network] || { tokenName: "Token", shareName: "Share" };
+  const { tokenName, shareName } = networks["ethereum"] || { tokenName: "vPLS", shareName: "PLSTR" };
 
   const fetchData = async () => {
     try {
@@ -20,22 +20,12 @@ const RedeemPLSTR = ({ contract, account, web3, network }) => {
       }
 
       const balance = await contract.methods.balanceOf(account).call();
-      if (balance === undefined || balance === null) {
-        throw new Error(`Invalid ${shareName} balance response`);
-      }
-      setShareBalance(formatNumber(web3.utils.fromWei(balance, "ether")));
+      setShareBalance(formatNumber(web3.utils.fromWei(balance || "0", "ether")));
 
       if (amount && Number(amount) > 0) {
         const amountWei = web3.utils.toWei(amount, "ether");
-        const redeemMethod = network === "ethereum" ? "getRedeemableStakedPLS" : "getRedeemablePLSX";
-        if (!contract.methods[redeemMethod]) {
-          throw new Error(`Method ${redeemMethod} not found in contract ABI`);
-        }
-        const redeemable = await contract.methods[redeemMethod](account, amountWei).call(); // Note: Added account parameter for getRedeemableStakedPLS
-        if (redeemable === undefined || redeemable === null) {
-          throw new Error(`Invalid redeemable ${tokenName} response`);
-        }
-        setEstimatedTokens(formatNumber(web3.utils.fromWei(redeemable, "ether")));
+        const redeemable = await contract.methods.getRedeemableStakedPLS(account, amountWei).call();
+        setEstimatedTokens(formatNumber(web3.utils.fromWei(redeemable || "0", "ether")));
       } else {
         setEstimatedTokens("0");
       }
@@ -54,12 +44,12 @@ const RedeemPLSTR = ({ contract, account, web3, network }) => {
   };
 
   useEffect(() => {
-    if (contract && web3 && account && network) {
+    if (contract && web3 && account) {
       fetchData();
       const interval = setInterval(fetchData, 30000);
       return () => clearInterval(interval);
     }
-  }, [contract, web3, account, network, amount]);
+  }, [contract, web3, account, amount]);
 
   const handleAmountChange = (e) => {
     const rawValue = e.target.value.replace(/,/g, "");
@@ -81,18 +71,12 @@ const RedeemPLSTR = ({ contract, account, web3, network }) => {
       if (amountNum <= 0) throw new Error("Amount must be greater than 0");
       if (amountNum > Number(shareBalance)) throw new Error(`Amount exceeds ${shareName} balance`);
       const amountWei = web3.utils.toWei(amount, "ether");
-      const tokenContract = await getTokenContract(web3, network);
+      const tokenContract = await getTokenContract(web3, "ethereum");
       const contractTokenBalance = await tokenContract.methods.balanceOf(contract.options.address).call();
-      const redeemMethod = network === "ethereum" ? "getRedeemableStakedPLS" : "getRedeemablePLSX";
-      if (!contract.methods[redeemMethod]) throw new Error(`Method ${redeemMethod} not found in contract ABI`);
-      const redeemable = await contract.methods[redeemMethod](account, amountWei).call(); // Note: Added account parameter
-      const { remainingIssuancePeriod } = await contract.methods.getContractInfo().call();
-      if (remainingIssuancePeriod === "0") throw new Error("Redemption not available: Issuance period has ended");
-      if (Number(web3.utils.fromWei(redeemable, "ether")) > Number(web3.utils.fromWei(contractTokenBalance, "ether"))) {
+      if (Number(web3.utils.fromWei(estimatedTokens, "ether")) > Number(web3.utils.fromWei(contractTokenBalance, "ether"))) {
         throw new Error("Insufficient contract token balance for redemption");
       }
-      const tx = await contract.methods.redeemShares(amountWei).send({ from: account });
-      console.log(`Transaction hash: ${tx.transactionHash}`);
+      await contract.methods.redeemShares(amountWei).send({ from: account });
       alert(`${shareName} redeemed successfully!`);
       setAmount("");
       setDisplayAmount("");
@@ -102,9 +86,8 @@ const RedeemPLSTR = ({ contract, account, web3, network }) => {
       if (err.message.includes("InsufficientBalance")) errorMessage = `Insufficient ${shareName} balance`;
       else if (err.message.includes("ZeroSupply")) errorMessage = `No ${shareName} shares exist`;
       else if (err.message.includes("InsufficientContractBalance")) errorMessage = `Contract has insufficient ${tokenName} balance`;
-      else if (err.message.includes("call revert") || err.message.includes("invalid opcode")) errorMessage = `Method not found or ABI mismatch`;
       setError(errorMessage);
-      console.error(`Redeem ${shareName} error:`, err);
+      console.error("Redeem shares error:", err);
     } finally {
       setLoading(false);
     }
@@ -124,12 +107,8 @@ const RedeemPLSTR = ({ contract, account, web3, network }) => {
         </div>
       ) : (
         <>
-          <p className="text-gray-600 mb-2">
-            Your {shareName} Balance: {formatNumber(shareBalance)} {shareName}
-          </p>
-          <p className="text-gray-600 mb-2">
-            Estimated {tokenName} Receivable: {formatNumber(estimatedTokens)} {tokenName}
-          </p>
+          <p className="text-gray-600 mb-2">Your {shareName} Balance: {shareBalance} {shareName}</p>
+          <p className="text-gray-600 mb-2">Estimated {tokenName} Receivable: {estimatedTokens} {tokenName}</p>
           <input
             type="text"
             value={displayAmount}
@@ -151,4 +130,4 @@ const RedeemPLSTR = ({ contract, account, web3, network }) => {
   );
 };
 
-export default RedeemPLSTR;
+export default PulseStrategyRedeemPLSTR;
