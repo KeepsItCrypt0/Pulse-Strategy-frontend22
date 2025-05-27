@@ -9,7 +9,10 @@ function App() {
   const [account, setAccount] = useState(null);
   const [network, setNetwork] = useState(null);
   const [isController, setIsController] = useState(false);
-  const [contractInfo, setContractInfo] = useState(null);
+  const [contractInfo, setContractInfo] = useState({
+    balance: "0",
+    issuancePeriod: "Loading...",
+  });
   const [shareBalance, setShareBalance] = useState("0");
   const [totalSupply, setTotalSupply] = useState("0");
   const [redeemable, setRedeemable] = useState("0");
@@ -24,6 +27,7 @@ function App() {
   const initializeWeb3 = async (selectedNetwork) => {
     try {
       setNetworkError("");
+      setLoading(true);
       const web3Instance = await getWeb3();
       if (!web3Instance) {
         throw new Error("No web3 provider detected");
@@ -35,13 +39,19 @@ function App() {
       if (Number(networkId) !== expectedNetworkId) {
         console.log(`Switching to ${selectedNetwork} (chainId: ${networks[selectedNetwork].chainId})`);
         await switchNetwork(selectedNetwork);
+        // Wait for network switch to propagate
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Small delay to ensure network switch
+        const newNetworkId = await web3Instance.eth.net.getId();
+        if (Number(newNetworkId) !== expectedNetworkId) {
+          throw new Error(`Failed to switch to ${selectedNetwork} (expected ${expectedNetworkId}, got ${newNetworkId})`);
+        }
       }
       const accounts = await web3Instance.eth.getAccounts();
       if (!accounts[0]) {
         throw new Error("No accounts available. Please connect MetaMask.");
       }
       setAccount(accounts[0]);
-      const contractInstance = await getContract(web3Instance);
+      const contractInstance = await getContract(web3Instance, selectedNetwork); // Pass selectedNetwork
       if (!contractInstance) {
         throw new Error("Failed to initialize contract");
       }
@@ -61,6 +71,8 @@ function App() {
     } catch (error) {
       console.error("Web3 initialization failed:", error);
       setNetworkError(`Failed to initialize ${selectedNetwork}: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -70,6 +82,7 @@ function App() {
       return;
     }
     try {
+      setLoading(true);
       console.log("Fetching contract data for network:", network);
       const info = await contract.methods.getContractInfo().call();
       console.log("getContractInfo:", info);
@@ -102,6 +115,8 @@ function App() {
     } catch (error) {
       console.error("Failed to fetch contract data:", error);
       setNetworkError(`Failed to fetch data: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -111,7 +126,7 @@ function App() {
       const interval = setInterval(fetchContractData, 30000);
       return () => clearInterval(interval);
     }
-  }, [contract, web3, account]);
+  }, [contract, web3, account, network]); // Added network to dependencies
 
   const handleNetworkSwitch = async (selectedNetwork) => {
     setLoading(true);
