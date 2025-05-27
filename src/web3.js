@@ -1,6 +1,6 @@
 import Web3 from "web3";
 
-export const pulseStrategyAddress = "0x6c1dA678A1B615f673208e74AB3510c22117090e";
+export const pulseStrategyAddress = "0x6181dA678A1B615f673208e74AB3510c22117090";
 export const xBONDAddress = "0xDb7ada7a6e8fA3f3bFEEC4376E0Ac5F54F6d1EC8";
 export const vPLSAddress = "0x0181e249c507d3b454dE2444444f0Bf5dBE72d09";
 export const plsxAddress = "0x95B303987A60C71504D99Aa1b13B4DA07b0790ab";
@@ -41,7 +41,7 @@ export const networks = {
   },
 };
 
-// ABI placeholders - Replace with actual ABIs
+
 export const pulseStrategyABI = [
 	{
 		"inputs": [
@@ -789,7 +789,7 @@ export const pulseStrategyABI = [
 		"stateMutability": "view",
 		"type": "function"
 	}
-]; // Add PulseStrategy ABI here
+]
 export const xBONDAbi = [
 	{
 		"inputs": [],
@@ -1667,7 +1667,7 @@ export const xBONDAbi = [
 		"stateMutability": "nonpayable",
 		"type": "function"
 	}
-]; // Add xBOND ABI here
+]
 export const vPLSABI = [
   {
     "constant": true,
@@ -1696,7 +1696,7 @@ export const vPLSABI = [
     "outputs": [{ "name": "success", "type": "bool" }],
     "type": "function"
   }
-]; // Add vPLS ABI here
+]
 export const plsxABI = [
     {
         "inputs": [],
@@ -2371,7 +2371,7 @@ export const plsxABI = [
         "name": "Transfer",
         "type": "event"
     }
-]; // Add PLSX ABI here
+]
 
 export const getWeb3 = async () => {
   if (window.ethereum) {
@@ -2384,7 +2384,7 @@ export const getWeb3 = async () => {
   }
 };
 
-export const getContract = async (web3, network) => {
+export const getContract = async (web3) => {
   if (!web3) {
     console.error("Web3 is not initialized");
     throw new Error("Web3 is not initialized");
@@ -2393,30 +2393,26 @@ export const getContract = async (web3, network) => {
     const networkId = await web3.eth.net.getId();
     console.log("Detected network ID:", networkId);
     let contractAddress, contractABI;
-    
-    // Determine contract based on the network parameter, not current network ID
-    if (network === "ethereum") {
+    if (Number(networkId) === 1) {
       contractAddress = pulseStrategyAddress;
       contractABI = pulseStrategyABI;
-    } else if (network === "pulsechain") {
+    } else if (Number(networkId) === 369) {
       contractAddress = xBONDAddress;
       contractABI = xBONDAbi;
     } else {
-      console.error("Unsupported network:", network);
-      throw new Error(`Unsupported network: ${network}`);
+      console.error("Unsupported network ID:", networkId);
+      throw new Error(`Unsupported network ID: ${networkId}`);
     }
-
     if (!contractABI || contractABI.length === 0) {
       console.error("ABI is empty for contract:", contractAddress);
       throw new Error("Contract ABI is not provided");
     }
-
     const contract = new web3.eth.Contract(contractABI, contractAddress);
-    console.log(`Contract initialized for ${network}:`, contractAddress);
+    console.log("Contract initialized:", contractAddress);
     return contract;
   } catch (error) {
-    console.error(`Contract initialization failed for ${network}:`, error);
-    throw new Error(`Failed to initialize contract for ${network}: ${error.message}`);
+    console.error("Contract initialization failed:", error);
+    throw new Error(`Failed to initialize contract: ${error.message}`);
   }
 };
 
@@ -2453,11 +2449,11 @@ export const getTokenContract = async (web3, network) => {
       tokenABI.length > 0 ? tokenABI : fallbackTokenABI,
       tokenAddress
     );
-    console.log(`Token contract initialized for ${network}:`, tokenAddress);
+    console.log("Token contract initialized:", tokenAddress);
     return contract;
   } catch (error) {
-    console.error(`Token contract initialization failed for ${network}:`, error);
-    throw new Error(`Failed to initialize token contract for ${network}: ${error.message}`);
+    console.error("Token contract initialization failed:", error);
+    throw new Error(`Failed to initialize token contract: ${error.message}`);
   }
 };
 
