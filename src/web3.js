@@ -6,41 +6,40 @@ export const vPLSAddress = "0x0181e249c507d3b454dE2444444f0Bf5dBE72d09";
 export const plsxAddress = "0x95B303987A60C71504D99Aa1b13B4DA07b0790ab";
 
 export const networks = {
-  {
-    ethereum: {
-      chainId: "0x1",
-      chainName: "Ethereum Mainnet",
-      rpcUrls: [
-        "https://eth-mainnet.g.alchemy.com/v2/60nF9qKWaj8FPzlhEuGUmam6bn2tIgBN",
-        "https://mainnet.infura.io/v3/0c7b379c34424040826f02574f89b57d",
-        "https://cloudflare-eth.com",
-      ],
-      blockExplorerUrls: ["https://etherscan.io"],
-      nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-      contractAddress: pulseStrategyAddress,
-      tokenAddress: vPLSAddress,
-      contractName: "PulseStrategy",
-      tokenName: "vPLS",
-      shareName: "PLSTR",
-    },
-    pulsechain: {
-      chainId: "0x171",
-      chainName: "PulseChain",
-      rpcUrls: [
-        "https://rpc.pulsechain.com",
-        "https://pulsechain-rpc.publicnode.com",
-        "https://rpc-pulsechain.g4mm4.io",
-        "https://pulse-rpc.publicnode.com",
-      ],
-      blockExplorerUrls: ["https://scan.pulsechain.com"],
-      nativeCurrency: { name: "Pulse", symbol: "PLS", decimals: 18 },
-      contractAddress: xBONDAddress,
-      tokenAddress: plsxAddress,
-      contractName: "xBOND",
-      tokenName: "PLSX",
-      shareName: "xBOND",
-    },
-  };
+  ethereum: {
+    chainId: "0x1",
+    chainName: "Ethereum Mainnet",
+    rpcUrls: [
+      "https://eth-mainnet.g.alchemy.com/v2/60nF9qKWaj8FPzlhEuGUmam6bn2tIgBN",
+      "https://mainnet.infura.io/v3/0c7b379c34424040826f02574f89b57d",
+      "https://cloudflare-eth.com",
+    ],
+    blockExplorerUrls: ["https://etherscan.io"],
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    contractAddress: pulseStrategyAddress,
+    tokenAddress: vPLSAddress,
+    contractName: "PulseStrategy",
+    tokenName: "vPLS",
+    shareName: "PLSTR",
+  },
+  pulsechain: {
+    chainId: "0x171",
+    chainName: "PulseChain",
+    rpcUrls: [
+      "https://rpc.pulsechain.com",
+      "https://pulsechain-rpc.publicnode.com",
+      "https://rpc-pulsechain.g4mm4.io",
+      "https://pulse-rpc.publicnode.com",
+    ],
+    blockExplorerUrls: ["https://scan.pulsechain.com"],
+    nativeCurrency: { name: "Pulse", symbol: "PLS", decimals: 18 },
+    contractAddress: xBONDAddress,
+    tokenAddress: plsxAddress,
+    contractName: "xBOND",
+    tokenName: "PLSX",
+    shareName: "xBOND",
+  },
+};
 
 export const pulseStrategyABI = [
 	{
@@ -789,7 +788,7 @@ export const pulseStrategyABI = [
 		"stateMutability": "view",
 		"type": "function"
 	}
-];
+]
 export const xBONDAbi = [
 	{
 		"inputs": [],
@@ -1667,7 +1666,7 @@ export const xBONDAbi = [
 		"stateMutability": "nonpayable",
 		"type": "function"
 	}
-];
+]
 
 export const getWeb3 = async () => {
   if (window.ethereum) {
