@@ -8,9 +8,9 @@ const IssuePLSTR = ({ web3, contract, account, network }) => {
   const [estimatedShares, setEstimatedShares] = useState("0");
   const [estimatedFee, setEstimatedFee] = useState("0");
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true); // For initial data fetch
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState("");
-  const { tokenName, contractName, shareName } = networks[network] || { tokenName: "Token", contractName: "Contract", shareName: "Share" }; // Fallback values
+  const { tokenName, contractName, shareName } = networks[network] || { tokenName: "Token", contractName: "Contract", shareName: "Share" };
   const MIN_ISSUE_AMOUNT = network === "ethereum" ? 1000 : 10;
   const MIN_INITIAL_LIQUIDITY = network === "pulsechain" ? 10 : 0;
 
@@ -18,29 +18,26 @@ const IssuePLSTR = ({ web3, contract, account, network }) => {
     try {
       setInitialLoading(true);
       setError("");
-      if (!web3 || !account) {
-        throw new Error("Web3 or account not initialized");
-      }
+      if (!web3 || !account) throw new Error("Web3 or account not initialized");
       const tokenContract = await getTokenContract(web3, network);
       const balance = await tokenContract.methods.balanceOf(account).call();
-      if (balance === undefined || balance === null) {
-        throw new Error(`Invalid ${tokenName} balance response`);
-      }
+      if (balance === undefined || balance === null) throw new Error(`Invalid ${tokenName} balance response`);
       setTokenBalance(formatNumber(web3.utils.fromWei(balance, "ether")));
       console.log(`${tokenName} balance fetched:`, { balance });
 
       if (contract && amount && Number(amount) > 0) {
         const amountWei = web3.utils.toWei(amount, "ether");
-        if (!contract.methods.calculateSharesReceived) {
-          throw new Error("Method calculateSharesReceived not found in contract ABI");
-        }
+        if (!contract.methods.calculateSharesReceived) throw new Error("Method calculateSharesReceived not found in contract ABI");
         const result = await contract.methods.calculateSharesReceived(amountWei).call();
-        if (!result || !result.shares || !result.totalFee) {
-          throw new Error("Invalid shares calculation response");
-        }
+        if (!result || !result.shares || !result.totalFee) throw new Error("Invalid shares calculation response");
         setEstimatedShares(formatNumber(web3.utils.fromWei(result.shares, "ether")));
         setEstimatedFee(formatNumber(web3.utils.fromWei(result.totalFee, "ether")));
         console.log(`Estimated ${shareName} fetched:`, { amount, shares: result.shares, fee: result.totalFee });
+
+        const contractInfo = await contract.methods.getContractInfo().call();
+        if (Number(web3.utils.fromWei(contractInfo.contractBalance, "ether")) === 0) {
+          console.warn(`${contractName} contract balance is 0, issuance may fail`);
+        }
       } else {
         setEstimatedShares("0");
         setEstimatedFee("0");
@@ -62,10 +59,10 @@ const IssuePLSTR = ({ web3, contract, account, network }) => {
   useEffect(() => {
     if (web3 && account && network) {
       fetchData();
-      const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
+      const interval = setInterval(fetchData, 30000);
       return () => clearInterval(interval);
     }
-  }, [web3, account, network, amount, contract]); // Added amount and contract to dependencies
+  }, [web3, account, network, amount, contract]);
 
   const handleAmountChange = (e) => {
     const rawValue = e.target.value.replace(/,/g, "");
@@ -74,10 +71,7 @@ const IssuePLSTR = ({ web3, contract, account, network }) => {
       setDisplayAmount(
         rawValue === "" || isNaN(rawValue)
           ? ""
-          : new Intl.NumberFormat("en-US", {
-              maximumFractionDigits: 18,
-              minimumFractionDigits: 0,
-            }).format(rawValue)
+          : new Intl.NumberFormat("en-US", { maximumFractionDigits: 18, minimumFractionDigits: 0 }).format(rawValue)
       );
     }
   };
@@ -87,38 +81,32 @@ const IssuePLSTR = ({ web3, contract, account, network }) => {
     setError("");
     try {
       const amountNum = Number(amount);
-      if (amountNum < MIN_ISSUE_AMOUNT) {
-        throw new Error(`Amount must be at least ${MIN_ISSUE_AMOUNT} ${tokenName}`);
-      }
-      if (network === "pulsechain" && amountNum < MIN_INITIAL_LIQUIDITY) {
-        throw new Error(`Initial deposit must be at least ${MIN_INITIAL_LIQUIDITY} ${tokenName}`);
-      }
+      if (amountNum < MIN_ISSUE_AMOUNT) throw new Error(`Amount must be at least ${MIN_ISSUE_AMOUNT} ${tokenName}`);
+      if (network === "pulsechain" && amountNum < MIN_INITIAL_LIQUIDITY) throw new Error(`Initial deposit must be at least ${MIN_INITIAL_LIQUIDITY} ${tokenName}`);
       if (!contract || !web3) throw new Error("Contract or Web3 not initialized");
       const tokenContract = await getTokenContract(web3, network);
       const amountWei = web3.utils.toWei(amount, "ether");
-      const contractAddress = contract.options.address; // Use contract.options.address for reliability
-      await tokenContract.methods
-        .approve(contractAddress, amountWei)
-        .send({ from: account });
-      await contract.methods.issueShares(amountWei).send({ from: account });
+      const contractAddress = contract.options.address;
+
+      const approveTx = await tokenContract.methods.approve(contractAddress, amountWei).send({ from: account });
+      await web3.eth.getTransactionReceipt(approveTx.transactionHash); // Wait for approval
+      if (network === "pulsechain") {
+        const poolAddress = await contract.methods.getPoolAddress().call();
+        if (poolAddress === "0x0") throw new Error("No liquidity pool available for initial issuance");
+      }
+      const issueTx = await contract.methods.issueShares(amountWei).send({ from: account });
+      console.log(`Transaction hash: ${issueTx.transactionHash}`);
       alert(`${shareName} issued successfully!`);
       setAmount("");
       setDisplayAmount("");
-      await fetchData(); // Refresh data after issuance
-      console.log(`${shareName} issued:`, { amountWei });
+      await fetchData();
     } catch (err) {
       let errorMessage = `Error issuing ${shareName}: ${err.message || "Unknown error"}`;
-      if (err.message.includes("IssuancePeriodEnded")) {
-        errorMessage = `Issuance period has ended (ended after 120 days)`;
-      } else if (err.message.includes("InsufficientInitialLiquidity")) {
-        errorMessage = `Initial deposit must be at least ${MIN_INITIAL_LIQUIDITY} ${tokenName}`;
-      } else if (err.message.includes("BelowMinimumShareAmount")) {
-        errorMessage = `Shares received must be at least ${MIN_ISSUE_AMOUNT} ${shareName}`;
-      } else if (err.message.includes("InsufficientAllowance")) {
-        errorMessage = `Insufficient ${tokenName} allowance for contract`;
-      } else if (err.message.includes("InsufficientFee")) {
-        errorMessage = `Fee amount is too low`;
-      }
+      if (err.message.includes("IssuancePeriodEnded")) errorMessage = `Issuance period has ended (ended after 120 days)`;
+      else if (err.message.includes("InsufficientInitialLiquidity")) errorMessage = `Initial deposit must be at least ${MIN_INITIAL_LIQUIDITY} ${tokenName}`;
+      else if (err.message.includes("BelowMinimumShareAmount")) errorMessage = `Shares received must be at least ${MIN_ISSUE_AMOUNT} ${shareName}`;
+      else if (err.message.includes("InsufficientAllowance")) errorMessage = `Insufficient ${tokenName} allowance for contract`;
+      else if (err.message.includes("InsufficientFee")) errorMessage = `Fee amount is too low`;
       setError(errorMessage);
       console.error(`Issue ${shareName} error:`, err);
     } finally {
