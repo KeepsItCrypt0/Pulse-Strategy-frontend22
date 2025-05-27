@@ -1,6 +1,6 @@
 import Web3 from "web3";
 
-export const pulseStrategyAddress = "0x6181dA678A1B615f673208e74AB3510c22117090";
+export const pulseStrategyAddress = "0x6181dA678A1B615f673208e74AB3510c22117090e";
 export const xBONDAddress = "0xDb7ada7a6e8fA3f3bFEEC4376E0Ac5F54F6d1EC8";
 export const vPLSAddress = "0x0181e249c507d3b454dE2444444f0Bf5dBE72d09";
 export const plsxAddress = "0x95B303987A60C71504D99Aa1b13B4DA07b0790ab";
