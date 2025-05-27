@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { formatDate, networks } from "../../utils/format.js";
+import { networks } from "../../web3";
 
 const xBONDWithdrawLiquidity = ({ web3, contract, account, network }) => {
   const [timeUntilWithdrawal, setTimeUntilWithdrawal] = useState(null);
+  const [withdrawalCountdown, setWithdrawalCountdown] = useState("");
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState("");
@@ -43,6 +44,24 @@ const xBONDWithdrawLiquidity = ({ web3, contract, account, network }) => {
       return () => clearInterval(interval);
     }
   }, [contract, web3, network]);
+
+  useEffect(() => {
+    const updateWithdrawalCountdown = () => {
+      if (timeUntilWithdrawal === null || timeUntilWithdrawal === 0) {
+        setWithdrawalCountdown(timeUntilWithdrawal === 0 ? "Ready" : "N/A");
+        return;
+      }
+      const seconds = timeUntilWithdrawal;
+      const days = Math.floor(seconds / 86400);
+      const hours = Math.floor((seconds % 86400) / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      setWithdrawalCountdown(`${days}d ${hours}h ${minutes}m ${secs}s`);
+    };
+    updateWithdrawalCountdown();
+    const interval = setInterval(updateWithdrawalCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [timeUntilWithdrawal]);
 
   const handleWithdrawLiquidity = async () => {
     setLoading(true);
@@ -97,12 +116,7 @@ const xBONDWithdrawLiquidity = ({ web3, contract, account, network }) => {
         </div>
       ) : (
         <p className="text-gray-600 mb-4">
-          <strong>Next Withdrawal Available:</strong>{" "}
-          {timeUntilWithdrawal === null
-            ? "N/A"
-            : timeUntilWithdrawal <= 0
-            ? "Ready"
-            : formatDate(timeUntilWithdrawal)}
+          <strong>Next Withdrawal Available:</strong> {withdrawalCountdown}
         </p>
       )}
       <button
