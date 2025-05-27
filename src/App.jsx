@@ -111,7 +111,7 @@ function App() {
       setContractInfo({
         balance: formatNumber(web3.utils.fromWei(info.contractBalance || "0", "ether")),
         issuancePeriod: info.remainingIssuancePeriod
-          ? formatDate(Number(info.remainingIssuancePeriod))
+          ? formatDate(Number(info.remainingIssuancePeriod) * 1000) // Convert seconds to milliseconds
           : "Not set",
       });
       setShareBalance(formatNumber(web3.utils.fromWei(balance || "0", "ether")));
@@ -134,8 +134,6 @@ function App() {
       fetchContractData();
       const interval = setInterval(fetchContractData, 30000);
       return () => clearInterval(interval);
-    } else if (network) {
-      fetchContractData(); // Attempt to fetch if network is set but other deps are missing
     }
   }, [contract, web3, account, network]);
 
@@ -174,7 +172,12 @@ function App() {
     <div className="min-h-screen bg-gradient-to-br from-purple-900 to-blue-900 flex items-center justify-center p-4">
       <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 max-w-2xl w-full card">
         <h1 className="text-2xl font-bold mb-4 text-purple-600">{shareName} Strategy</h1>
-        <ConnectWallet account={account} web3={web3} network={network} onConnect={initializeWeb3} />
+        <ConnectWallet
+          account={account}
+          web3={web3}
+          network={network}
+          onConnect={(newAccount) => initializeWeb3(network || "ethereum")}
+        />
         <div className="mb-4">
           <button
             onClick={() => handleNetworkSwitch("ethereum")}
