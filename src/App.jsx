@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getWeb3, getContract, switchNetwork } from "./web3.jsx";
+import { getWeb3, getContract, switchNetwork } from "./web3.js";
 import { networks, formatNumber, formatDate } from "../utils/format.js"; // Updated path
 import PulseStrategyContractInfo from "./components/pulseStrategy/PulseStrategyContractInfo.jsx";
 import PulseStrategyIssuePLSTR from "./components/pulseStrategy/PulseStrategyIssuePLSTR.jsx";
