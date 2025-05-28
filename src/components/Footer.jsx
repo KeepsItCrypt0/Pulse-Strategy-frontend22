@@ -4,7 +4,7 @@ const Footer = ({ chainId }) => {
     <footer className="mt-16 w-full text-center text-gray-600 text-xs">
       <div className="mb-1">
         <a
-          href="https://github.com/KeepsItNFT/PulseStrategy"
+          href="https://github.com/KeepsItCrypt0/PulseStrategy"
           target="_blank"
           rel="noopener noreferrer"
           className="footer-link mx-1"
