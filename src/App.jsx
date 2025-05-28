@@ -57,8 +57,10 @@ function App() {
           let owner;
           if (chainId === 1) {
             owner = await contractInstance.methods.owner().call();
-          } else {
+          } else if (chainId === 369) {
             owner = await contractInstance.methods.getLPTokenHolder().call();
+          } else {
+            throw new Error("Unsupported chainId for controller check");
           }
           const isOwner = accounts?.toLowerCase() === owner?.toLowerCase();
           setIsController(isOwner);
@@ -68,9 +70,10 @@ function App() {
             isController: isOwner,
             chainId,
             contractAddress: contractInstance._address,
+            contractMethods: Object.keys(contractInstance.methods),
           });
         } catch (err) {
-          console.error("Failed to fetch owner:", err);
+          console.error("Failed to fetch controller:", err);
           setIsController(false);
           setError(`Failed to verify controller: ${err.message || "Unknown error"}`);
         }
