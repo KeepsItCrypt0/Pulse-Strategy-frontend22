@@ -41,8 +41,14 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
     const fetchEstimate = async () => {
       try {
         if (amount && Number(amount) > 0 && contract && web3) {
+          const amountNum = Number(amount);
+          if (isNaN(amountNum)) throw new Error("Invalid amount");
           const amountWei = web3.utils.toWei(amount, "ether");
-          const [shares, fee] = await contract.methods.calculateSharesReceived(amountWei).call();
+          const result = await contract.methods.calculateSharesReceived(amountWei).call();
+          if (!Array.isArray(result) || result.length !== 2) {
+            throw new Error("Invalid response from calculateSharesReceived");
+          }
+          const [shares, fee] = result;
           const sharesStr = shares.toString(); // Convert BigInt to string
           const feeStr = fee.toString(); // Convert BigInt to string
           setEstimatedShares(web3.utils.fromWei(sharesStr, "ether"));
