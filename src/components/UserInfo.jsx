@@ -26,7 +26,13 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
       // Fetch redeemable tokens
       let redeemable;
       if (chainId === 1) {
-        redeemable = await contract.methods.getRedeemableStakedPLS(account, balanceStr).call();
+        // Validate inputs
+        if (!web3.utils.isAddress(account)) {
+          throw new Error("Invalid account address");
+        }
+        const balanceNum = balanceStr === "0" ? "0" : balanceStr;
+        console.log("Calling getRedeemableStakedPLS:", { account, balanceNum });
+        redeemable = await contract.methods.getRedeemableStakedPLS(account, balanceNum).call();
       } else {
         redeemable = await contract.methods.getRedeemablePLSX(balanceStr).call();
       }
