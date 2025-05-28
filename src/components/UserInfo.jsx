@@ -25,27 +25,18 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
 
       // Fetch redeemable tokens
       let redeemable;
-      let normalizedAccount = account;
       if (chainId === 1) {
-        // PLSTR: getRedeemableStakedPLS
-        normalizedAccount = web3.utils.toChecksumAddress(account);
-        if (!web3.utils.isAddress(normalizedAccount)) {
-          throw new Error("Invalid account address");
-        }
-        const balanceNum = balanceStr === "0" ? "0" : balanceStr;
+        const normalizedAccount = web3.utils.toChecksumAddress(account);
         console.log("Calling getRedeemableStakedPLS:", {
           account: normalizedAccount,
-          balanceNum,
+          balanceStr,
           contractAddress: contract.options.address,
         });
-        // Web3.js 4.x: pass arguments explicitly
         redeemable = await contract.methods
-          .getRedeemableStakedPLS(normalizedAccount, balanceNum)
+          .getRedeemableStakedPLS(normalizedAccount, balanceStr)
           .call({ from: normalizedAccount });
       } else {
-        // xBOND: getRedeemablePLSX
         console.log("Calling getRedeemablePLSX:", {
-          account,
           balanceStr,
           contractAddress: contract.options.address,
         });
