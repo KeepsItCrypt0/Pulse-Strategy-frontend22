@@ -17,13 +17,30 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
     try {
       setLoading(true);
       setError("");
+
+      // Fetch balance
       const balance = await contract.methods.balanceOf(account).call();
-      const redeemable = await contract.methods[
-        chainId === 1 ? "getRedeemableStakedPLS" : "getRedeemablePLSX"
-      ](chainId === 1 ? [account, balance] : balance).call();
-      setShareBalance(web3.utils.fromWei(balance, "ether"));
-      setRedeemableToken(web3.utils.fromWei(redeemable, "ether"));
-      console.log("User info fetched:", { shareBalance: balance, redeemableToken: redeemable });
+      const balanceStr = balance.toString(); // Convert BigInt to string
+      const balanceEther = web3.utils.fromWei(balanceStr, "ether");
+
+      // Fetch redeemable tokens
+      let redeemable;
+      if (chainId === 1) {
+        // Adjust based on PLSTR contract's getRedeemableStakedPLS signature
+        // Assuming it takes only the account address (update if different)
+        redeemable = await contract.methods.getRedeemableStakedPLS(account).call();
+      } else {
+        redeemable = await contract.methods.getRedeemablePLSX(balance).call();
+      }
+      const redeemableStr = redeemable.toString(); // Convert BigInt to string
+      const redeemableEther = web3.utils.fromWei(redeemableStr, "ether");
+
+      setShareBalance(balanceEther);
+      setRedeemableToken(redeemableEther);
+      console.log("User info fetched:", {
+        shareBalance: balanceEther,
+        redeemableToken: redeemableEther,
+      });
     } catch (error) {
       console.error("Failed to fetch user info:", error);
       setError(`Failed to load user data: ${error.message || "Contract execution failed"}`);
