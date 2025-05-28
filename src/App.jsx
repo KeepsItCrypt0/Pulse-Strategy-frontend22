@@ -7,9 +7,9 @@ import RedeemShares from "./components/RedeemShares";
 import AdminPanel from "./components/AdminPanel";
 import UserInfo from "./components/UserInfo";
 import LiquidityActions from "./components/LiquidityActions";
-import Footer from "./components/Footer";
+import Footer from "./Footer";
 import { getWeb3, getContract, getAccount, contractAddresses, switchNetwork } from "./web3";
-import "./style.css";
+import "./styles.css";
 
 function App() {
   const [web3, setWeb3] = useState(null);
@@ -23,7 +23,7 @@ function App() {
 
   const updateNetwork = async (web3Instance) => {
     try {
-      if (!web3Instance) throw new Error("Web3 not initialized");
+      if (!web3Instance) return;
       const id = Number(await web3Instance.eth.getChainId());
       setChainId(id);
       setNetworkName(id === 1 ? "Ethereum" : id === 369 ? "PulseChain" : "Unknown Network");
@@ -31,7 +31,7 @@ function App() {
       return id;
     } catch (err) {
       console.error("Failed to update network:", err);
-      setError("Failed to detect network. Please ensure your wallet is connected.");
+      setError("Failed to detect network. Please ensure your wallet.");
       return null;
     }
   };
@@ -48,39 +48,39 @@ function App() {
         setLoading(false);
         return;
       }
-      setWeb3(web3Instance);
+      setWeb3(Instance);
 
-      const chainId = await updateNetwork(web3Instance);
+      const chainId = await updateNetwork();
       if (!chainId) throw new Error("Failed to detect chainId");
 
-      const accounts = await getAccount(web3Instance);
+      const accounts = await getAccount();
       setAccount(accounts);
 
-      const contractInstance = await getContract(web3Instance);
+      const contractInstance = await getContract();
       if (!contractInstance) {
         throw new Error("Failed to initialize contract");
       }
       setContract(contractInstance);
 
-      if (contractInstance && accounts && chainId === 50) {
+      if (contractInstance && accounts && chainId === 1) {
         try {
-          if (!contractInstance.methods.owner) {
+          if (!contractInstance?.methods?.owner) {
             throw new Error("owner method not found in PLSTR contract");
           }
-          const owner = await contractInstance.methods.owner().call();
+          const owner = await contractInstance?.methods?.owner()?.call();
           const isOwner = accounts?.toLowerCase() === owner?.toLowerCase();
           setIsController(isOwner);
           console.log("Controller check (PLSTR):", {
             account: accounts,
             owner,
-            isController: isOwner,
+            isOwner,
             chainId,
-            contractAddress: contractInstance._address,
+            contractAddress: contractInstance?._address,
           });
         } catch (err) {
           console.error("Failed to fetch controller:", err);
           setIsController(false);
-          setError(`Failed to verify controller: ${err.message || "Unknown error"}`);
+          setError(`Failed to verify controller: ${err?.message || "Unknown error"}`);
         }
       } else if (chainId === 369) {
         setIsController(false);
@@ -88,12 +88,12 @@ function App() {
       }
       console.log("App initialized:", {
         chainId,
-        account: accounts,
+        account,
         contractAddress: contractInstance?._address,
       });
     } catch (error) {
       console.error("App initialization failed:", error);
-      setError(`Initialization failed: ${error.message || "Unknown error"}`);
+      setError(`Initialization failed: ${error?.message || "Unknown error"}`);
     } finally {
       setLoading(false);
     }
@@ -103,11 +103,11 @@ function App() {
     initializeApp();
 
     if (window.ethereum) {
-      window.ethereum.on("chainChanged", () => {
+      window.ethereum?.on("chainChanged", () => {
         console.log("Chain changed, reinitializing...");
         initializeApp();
       });
-      window.ethereum.on("accountsChanged", (accounts) => {
+      window.ethereum?.on("accountsChanged", (accounts) => {
         console.log("Accounts changed:", accounts);
         setAccount(accounts[0] || null);
         initializeApp();
@@ -116,8 +116,8 @@ function App() {
 
     return () => {
       if (window.ethereum) {
-        window.ethereum.removeAllListeners("chainChanged");
-        window.ethereum.removeAllListeners("accountsChanged");
+        window.ethereum?.removeAllListeners("chainChanged");
+        window.ethereum?.removeAllListeners("accountsChanged");
       }
     };
   }, []);
@@ -133,7 +133,7 @@ function App() {
       console.log("Network switch successful:", { targetChainId });
     } catch (err) {
       console.error("Network switch failed:", err);
-      setError(`Failed to switch network: ${err.message || "Unknown error"}`);
+      setError(`Failed to switch network: ${err?.message || "Unknown error"}`);
     } finally {
       setLoading(false);
     }
@@ -143,11 +143,11 @@ function App() {
     <div className="min-h-screen gradient-bg flex flex-col items-center p-4">
       <header className="w-full max-w-4xl bg-white bg-opacity-90 shadow-lg rounded-lg p-6 mb-6 card">
         <h1 className="text-3xl font-bold text-center text-purple-600">
-          {chainId === 50 ? "PulseStrategy" : chainId === 369 ? "xBOND" : "Connect Wallet"}
+          {chainId === 1 ? "PulseStrategy" : chainId === 369 ? "xBOND" : "Connect Wallet"}
         </h1>
         <p className="text-center text-gray-600 mt-2">
           {account
-            ? `Interact with the ${chainId === 50 ? "PLSTR" : "xBOND"} contract on ${networkName}`
+            ? `Interact with the ${chainId === 1 ? "PLSTR" : "xBOND"} contract on ${networkName}`
             : `Connect your wallet to interact with the contract`}
         </p>
         <div className="mt-4">
@@ -158,13 +158,13 @@ function App() {
             className="p-2 border rounded-lg"
             disabled={!web3}
           >
-            <option value="50">Ethereum (PLSTR)</option>
+            <option value="1">Ethereum (PLSTR)</option>
             <option value="369">PulseChain (xBOND)</option>
           </select>
         </div>
         {account && (
           <p className="text-center text-gray-600 mt-2">
-            Wallet: {account.slice(0, 6)}...{account.slice(-4)}
+            Wallet: {account?.slice(0, 6)}...{account?.slice(-4)}
           </p>
         )}
         <ConnectWallet
@@ -189,7 +189,7 @@ function App() {
                 {chainId === 369 && (
                   <LiquidityActions contract={contract} account={account} web3={web3} chainId={chainId} />
                 )}
-                {chainId === 50 && isController && (
+                {chainId === 1 && isController && (
                   <AdminPanel web3={web3} contract={contract} account={account} chainId={chainId} />
                 )}
               </>
@@ -204,9 +204,9 @@ function App() {
             {chainId === 369 && (
               <LiquidityActions contract={contract} account={account} web3={web3} chainId={chainId} />
             )}
-            {chainId === 50 && isController && (
-              <AdminPanel web3={web3} contract={contract} account={account} chainId={chainId} />
-            )}
+            {chainId === 1 && isController && (
+                  <AdminPanel web3={web3} contract={contract} account={account} chainId={chainId} />
+                )}
           </>
         ) : (
           <p className="text-center text-white">Please connect your wallet to interact with the contract.</p>
