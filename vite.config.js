@@ -6,7 +6,4 @@ export default defineConfig({
   build: {
     outDir: 'dist',
   },
-  resolve: {
-    extensions: ['.js', '.jsx'], // Ensure .js files are recognized
-  },
 });
