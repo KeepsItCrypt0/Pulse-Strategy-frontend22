@@ -24,8 +24,9 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
       const tokenContract = await getTokenContract(web3);
       if (!tokenContract) throw new Error("Failed to initialize token contract");
       const balance = await tokenContract.methods.balanceOf(account).call();
-      setTokenBalance(web3.utils.fromWei(balance, "ether"));
-      console.log(`${chainId === 1 ? "vPLS" : "PLSX"} balance fetched:`, { balance });
+      const balanceStr = balance.toString(); // Convert BigInt to string
+      setTokenBalance(web3.utils.fromWei(balanceStr, "ether"));
+      console.log(`${chainId === 1 ? "vPLS" : "PLSX"} balance fetched:`, { balance: balanceStr });
     } catch (err) {
       console.error(`Failed to fetch ${chainId === 1 ? "vPLS" : "PLSX"} balance:`, err);
       setError(`Failed to load ${chainId === 1 ? "vPLS" : "PLSX"} balance: ${err.message || "Unknown error"}`);
@@ -41,16 +42,28 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
       try {
         if (amount && Number(amount) > 0 && contract && web3) {
           const amountWei = web3.utils.toWei(amount, "ether");
-          const [shares, fee] = await contract.methods.calculateSharesReceived(amountWei).call();
-          setEstimatedShares(web3.utils.fromWei(shares, "ether"));
-          setEstimatedFee(web3.utils.fromWei(fee, "ether"));
-          console.log("Estimated shares fetched:", { amount, shares, fee });
+          const result = await contract.methods.calculateSharesReceived(amountWei).call();
+          // Handle case where result might not be an array
+          let shares, fee;
+          if (Array.isArray(result)) {
+            [shares, fee] = result;
+          } else {
+            // Fallback for non-array response (adjust based on contract)
+            shares = result.shares || result[0] || "0";
+            fee = result.fee || result[1] || "0";
+          }
+          const sharesStr = shares.toString(); // Convert BigInt to string
+          const feeStr = fee.toString(); // Convert BigInt to string
+          setEstimatedShares(web3.utils.fromWei(sharesStr, "ether"));
+          setEstimatedFee(web3.utils.fromWei(feeStr, "ether"));
+          console.log("Estimated shares fetched:", { amount, shares: sharesStr, fee: feeStr });
         } else {
           setEstimatedShares("0");
           setEstimatedFee("0");
         }
       } catch (err) {
         console.error("Failed to fetch estimated shares:", err);
+        setError(`Failed to fetch estimated shares: ${err.message || "Contract execution failed"}`);
       }
     };
     if (contract && web3 && chainId) fetchEstimate();
