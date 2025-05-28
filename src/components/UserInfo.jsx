@@ -20,19 +20,19 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
 
       // Fetch balance
       const balance = await contract.methods.balanceOf(account).call();
-      const balanceStr = balance.toString(); // Convert BigInt to string
+      const balanceStr = balance.toString();
       const balanceEther = web3.utils.fromWei(balanceStr, "ether");
 
       // Fetch redeemable tokens
       let redeemable;
       if (chainId === 1) {
-        // PLSTR: getRedeemableStakedPLS takes address and share amount as separate arguments
+        // PLSTR: getRedeemableStakedPLS takes address and share amount separately
         redeemable = await contract.methods.getRedeemableStakedPLS(account, balanceStr).call();
       } else {
         // xBOND: getRedeemablePLSX takes share amount
         redeemable = await contract.methods.getRedeemablePLSX(balanceStr).call();
       }
-      const redeemableStr = redeemable.toString(); // Convert BigInt to string
+      const redeemableStr = redeemable.toString();
       const redeemableEther = web3.utils.fromWei(redeemableStr, "ether");
 
       setShareBalance(balanceEther);
