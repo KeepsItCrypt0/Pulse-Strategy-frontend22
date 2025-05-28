@@ -87,16 +87,21 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
     }
   };
 
-  const estimateGasWithRetry = async (method, options, retries = 3) => {
+  const estimateGasWithRetry = async (method, options, retries = 5) => {
     let lastError;
     for (let i = 0; i < retries; i++) {
       try {
+        console.log(`Estimating gas attempt ${i + 1}:`, {
+          method: method._method.name,
+          options,
+          paramTypes: { amountWei: typeof options.amountWei },
+        });
         const gas = await method.estimateGas(options);
-        return Math.floor(gas * 1.2); // Add 20% buffer
+        return Math.floor(gas * 1.3); // 30% buffer
       } catch (err) {
         lastError = err;
         console.warn(`Gas estimation attempt ${i + 1} failed:`, err.message);
-        if (i < retries - 1) await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1s
+        if (i < retries - 1) await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
     throw lastError;
@@ -112,28 +117,28 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
       }
       const tokenContract = await getTokenContract(web3);
       if (!tokenContract) throw new Error("Failed to initialize token contract");
-      const amountWei = web3.utils.toWei(amount, "ether");
+      const amountWei = web3.utils.toWei(amount, "ether").toString(); // Ensure string
 
-      // Approve tokens
+      // Approve PLSX
       const approveGas = await estimateGasWithRetry(
         tokenContract.methods.approve(contract.options.address, amountWei),
         { from: account }
       );
       await tokenContract.methods
         .approve(contract.options.address, amountWei)
-        .send({ from: account, gas: approveGas });
+        .send({ from: account, gas: approveGas, gasPrice: web3.utils.toWei("100", "gwei") });
 
-      // Issue shares with high gas limit for pool creation
+      // Issue shares
       const isFirstIssuance = chainId === 369 && !(await contract.methods.pair().call());
-      const gasLimit = isFirstIssuance ? 2_000_000 : 500_000; // High limit for pool creation
+      const gasLimit = isFirstIssuance ? 3_000_000 : 500_000;
       const issueGas = await estimateGasWithRetry(
         contract.methods.issueShares(amountWei),
         { from: account, gas: gasLimit },
-        5 // More retries for first issuance
+        5
       );
       await contract.methods
         .issueShares(amountWei)
-        .send({ from: account, gas: issueGas });
+        .send({ from: account, gas: issueGas, gasPrice: web3.utils.toWei("100", "gwei") });
       
       alert(`${chainId === 1 ? "PLSTR" : "xBOND"} issued successfully!`);
       setAmount("");
