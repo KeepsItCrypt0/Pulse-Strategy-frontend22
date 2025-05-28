@@ -29,8 +29,8 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
         // PLSTR: getRedeemableStakedPLS takes address and share amount
         redeemable = await contract.methods.getRedeemableStakedPLS(account, balanceStr).call();
       } else {
-        // xBOND: getRedeemablePLSX takes balance
-        redeemable = await contract.getRedeemablePLSX(balanceStr).call();
+        // xBOND: getRedeemablePLSX takes share amount
+        redeemable = await contract.methods.getRedeemablePLSX(balanceStr).call();
       }
       const redeemableStr = redeemable.toString(); // Convert BigInt to string
       const redeemableEther = web3.utils.fromWei(redeemableStr, "ether");
