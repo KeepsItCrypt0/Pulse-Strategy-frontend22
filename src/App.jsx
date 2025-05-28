@@ -67,10 +67,12 @@ function App() {
             owner,
             isController: isOwner,
             chainId,
+            contractAddress: contractInstance._address,
           });
         } catch (err) {
           console.error("Failed to fetch owner:", err);
           setIsController(false);
+          setError(`Failed to verify controller: ${err.message || "Unknown error"}`);
         }
       }
     } catch (error) {
