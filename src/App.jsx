@@ -5,7 +5,7 @@ import UserInfo from "./components/UserInfo";
 import IssueShares from "./components/IssueShares";
 import RedeemShares from "./components/RedeemShares";
 import AdminPanel from "./components/AdminPanel";
-import Footer from "./components/Footer"; // New footer component
+import Footer from "./components/Footer";
 
 const App = () => {
   const [web3, setWeb3] = useState(null);
@@ -34,7 +34,7 @@ const App = () => {
       if (!contractInstance) throw new Error("Failed to initialize contract");
       setContract(contractInstance);
 
-      console.log("App initialized:", { chainId: chainIdNum, account });
+      console.log("App initialized:", { chainId: chainIdNum, account, contractAddress: contractInstance.options.address });
     } catch (err) {
       console.error("Initialization error:", err);
       setError(`Failed to connect: ${err.message || "Unknown error"}`);
@@ -48,36 +48,53 @@ const App = () => {
   };
 
   const handleSwitchNetwork = async (targetChainId) => {
-    if (web3 && chainId !== targetChainId) {
-      try {
-        await switchNetwork(web3, targetChainId);
-        await initializeWeb3(); // Re-initialize after switching
-      } catch (err) {
-        console.error("Network switch error:", err);
-        setError(`Failed to switch network: ${err.message || "Unknown error"}`);
-      }
+    if (!web3 || chainId === targetChainId) return;
+    try {
+      setLoading(true);
+      setError("");
+      await switchNetwork(web3, targetChainId);
+      const newChainId = Number(await web3.eth.getChainId());
+      if (newChainId !== targetChainId) throw new Error("Network switch failed");
+      setChainId(newChainId);
+      const contractInstance = await getContract(web3);
+      if (!contractInstance) throw new Error("Failed to initialize contract");
+      setContract(contractInstance);
+      console.log("Network switched:", { newChainId, contractAddress: contractInstance.options.address });
+    } catch (err) {
+      console.error("Network switch error:", err);
+      setError(`Failed to switch network: ${err.message || "Unknown error"}`);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     if (window.ethereum) {
-      window.ethereum.on("accountsChanged", (accounts) => {
+      window.ethereum.on("accountsChanged", async (accounts) => {
         setAccount(accounts[0] || null);
-        if (accounts[0]) initializeWeb3();
+        if (accounts[0]) await initializeWeb3();
+        console.log("Accounts changed:", { account: accounts[0] });
       });
-      window.ethereum.on("chainChanged", () => {
-        initializeWeb3();
+      window.ethereum.on("chainChanged", async () => {
+        await initializeWeb3();
+        console.log("Chain changed, reinitialized");
       });
     }
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeAllListeners("accountsChanged");
+        window.ethereum.removeAllListeners("chainChanged");
+      }
+    };
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-100 to-pink-100 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
       <div className="max-w-4xl w-full">
         <h1 className="text-4xl font-bold text-center mb-8 text-purple-600">
           PulseStrategy
         </h1>
-        {!web3 || !account || !contract ? (
+        {!web3 || !account || !contract || !chainId ? (
           <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 text-center">
             <p className="text-gray-600 mb-4">
               Connect your wallet to interact with {chainId === 1 ? "PLSTR" : "xBOND"}.
@@ -117,7 +134,7 @@ const App = () => {
         )}
         {error && <p className="text-red-400 text-center mt-4">{error}</p>}
       </div>
-      <Footer chainId={chainId} /> {/* Add footer */}
+      <Footer chainId={chainId} />
     </div>
   );
 };
