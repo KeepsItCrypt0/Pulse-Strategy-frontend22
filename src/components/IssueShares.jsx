@@ -46,7 +46,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
             throw new Error(`Amount must be at least ${MIN_ISSUE_AMOUNT} ${chainId === 1 ? "vPLS" : "PLSX"}`);
           }
           const amountWei = web3.utils.toWei(amount, "ether");
-          const result = await contract.methods.calculateSharesReceived(amountWei).call();
+          const result = await contract.methods.calculateSharesReceived(amountWei).call({ from: account });
           console.log("calculateSharesReceived response:", {
             result,
             resultType: typeof result,
@@ -56,11 +56,9 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
           let shares, fee;
           if (chainId === 1) {
             // PLSTR: single uint256
-            if (typeof result === "object" && result !== null) {
-              shares = (result[0] || result.shares || result).toString();
-            } else {
-              shares = result.toString();
-            }
+            shares = typeof result === "object" && result !== null
+              ? (result[0] || result.shares || result).toString()
+              : result.toString();
             fee = "0";
           } else {
             // xBOND: [shares, fee]
@@ -73,7 +71,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
               throw new Error(`Invalid response from calculateSharesReceived: ${String(result)}`);
             }
           }
-          // Validate before fromWei
+          // Validate numeric format
           if (!/^\d+$/.test(shares) || !/^\d+$/.test(fee)) {
             throw new Error(`Invalid number format: shares=${shares}, fee=${fee}`);
           }
@@ -94,7 +92,6 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
 
   const handleAmountChange = (e) => {
     const rawValue = String(e.target.value).replace(/,/g, "");
-    // Strict validation
     if (rawValue === "" || /^[0-9]*\.?[0-9]*$/.test(rawValue)) {
       try {
         const numValue = rawValue === "" ? "" : Number(rawValue);
@@ -131,7 +128,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
       if (!tokenContract) throw new Error("Failed to initialize token contract");
       const amountWei = web3.utils.toWei(amount, "ether");
       await tokenContract.methods
-        .approve(contract._address, amountWei)
+        .approve(contract.options.address, amountWei)
         .send({ from: account });
       await contract.methods.issueShares(amountWei).send({ from: account });
       alert(`${chainId === 1 ? "PLSTR" : "xBOND"} issued successfully!`);
