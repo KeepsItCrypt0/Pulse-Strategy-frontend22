@@ -55,27 +55,16 @@ function App() {
       }
       setContract(contractInstance);
 
-      if (contractInstance && accounts && chainId) {
+      if (contractInstance && accounts && chainId === 1) {
+        // Only check controller for PLSTR (Ethereum)
         try {
-          let owner;
-          if (chainId === 1) {
-            if (!contractInstance.methods.owner) {
-              throw new Error("owner method not found in PLSTR contract");
-            }
-            owner = await contractInstance.methods.owner().call();
-          } else if (chainId === 369) {
-            if (!contractInstance.methods.getLPTokenHolder) {
-              throw new Error("getLPTokenHolder method not found in xBOND contract");
-            }
-            owner = await contractInstance.methods.getLPTokenHolder().call();
-          } else {
-            console.warn("Unsupported chainId, skipping controller check:", chainId);
-            setIsController(false);
-            return;
+          if (!contractInstance.methods.owner) {
+            throw new Error("owner method not found in PLSTR contract");
           }
+          const owner = await contractInstance.methods.owner().call();
           const isOwner = accounts?.toLowerCase() === owner?.toLowerCase();
           setIsController(isOwner);
-          console.log("Controller check:", {
+          console.log("Controller check (PLSTR):", {
             account: accounts,
             owner,
             isController: isOwner,
@@ -88,6 +77,10 @@ function App() {
           setIsController(false);
           setError(`Failed to verify controller: ${err.message || "Unknown error"}`);
         }
+      } else if (chainId === 369) {
+        // No controller check for xBOND
+        setIsController(false);
+        console.log("Skipped controller check for xBOND:", { chainId, account: accounts });
       }
     } catch (error) {
       console.error("App initialization failed:", error);
