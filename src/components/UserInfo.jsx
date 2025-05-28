@@ -26,8 +26,8 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
       // Fetch redeemable tokens
       let redeemable;
       if (chainId === 1) {
-        // Normalize address (lowercase to bypass checksum)
-        const normalizedAccount = account.toLowerCase();
+        // Validate address
+        const normalizedAccount = web3.utils.toChecksumAddress(account);
         if (!web3.utils.isAddress(normalizedAccount)) {
           throw new Error("Invalid account address");
         }
@@ -35,14 +35,14 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
         console.log("Calling getRedeemableStakedPLS:", {
           account: normalizedAccount,
           balanceNum,
-          contractAddress: contract._address,
+          contractAddress: contract.options.address,
         });
-        // Explicit argument passing
+        // Web3.js 4.x call syntax
         redeemable = await contract.methods
           .getRedeemableStakedPLS(normalizedAccount, balanceNum)
-          .call();
+          .call({ from: account });
       } else {
-        redeemable = await contract.methods.getRedeemablePLSX(balanceStr).call();
+        redeemable = await contract.methods.getRedeemablePLSX(balanceStr).call({ from: account });
       }
       const redeemableStr = redeemable.toString();
       const redeemableEther = web3.utils.fromWei(redeemableStr, "ether");
