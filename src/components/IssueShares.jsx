@@ -23,7 +23,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
       setError("");
       const tokenContract = await getTokenContract(web3);
       if (!tokenContract) throw new Error("Failed to initialize token contract");
-      const balance = await contract.methods.balanceOf(account).call();
+      const balance = await tokenContract.methods.balanceOf(account).call();
       const balanceStr = balance.toString();
       setTokenBalance(web3.utils.fromWei(balanceStr, "ether"));
       console.log(`${chainId === 1 ? "vPLS" : "PLSX"} balance fetched:`, { balance: balanceStr });
@@ -56,7 +56,11 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
           let shares, fee;
           if (chainId === 1) {
             // PLSTR: single uint256
-            shares = result.toString();
+            if (typeof result === "object" && result !== null) {
+              shares = (result[0] || result.shares || result).toString();
+            } else {
+              shares = result.toString();
+            }
             fee = "0";
           } else {
             // xBOND: [shares, fee]
@@ -68,6 +72,10 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
             } else {
               throw new Error(`Invalid response from calculateSharesReceived: ${String(result)}`);
             }
+          }
+          // Validate before fromWei
+          if (!/^\d+$/.test(shares) || !/^\d+$/.test(fee)) {
+            throw new Error(`Invalid number format: shares=${shares}, fee=${fee}`);
           }
           setEstimatedShares(web3.utils.fromWei(shares, "ether"));
           setEstimatedFee(web3.utils.fromWei(fee, "ether"));
@@ -85,13 +93,14 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
   }, [contract, web3, amount, chainId]);
 
   const handleAmountChange = (e) => {
-    const rawValue = e.target.value.replace(/,/g, "");
-    // Strict validation to prevent [object Object]
+    const rawValue = String(e.target.value).replace(/,/g, "");
+    // Strict validation
     if (rawValue === "" || /^[0-9]*\.?[0-9]*$/.test(rawValue)) {
       try {
         const numValue = rawValue === "" ? "" : Number(rawValue);
         if (rawValue !== "" && (isNaN(numValue) || numValue < 0)) {
-          return; // Ignore invalid numbers
+          console.warn("Invalid input ignored:", rawValue);
+          return;
         }
         setAmount(rawValue);
         setDisplayAmount(
@@ -103,8 +112,10 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
               }).format(numValue)
         );
       } catch (err) {
-        console.error("Invalid input:", err);
+        console.error("Input processing error:", err);
       }
+    } else {
+      console.warn("Invalid input format:", rawValue);
     }
   };
 
