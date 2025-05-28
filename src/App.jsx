@@ -8,7 +8,7 @@ import AdminPanel from "./components/AdminPanel";
 import UserInfo from "./components/UserInfo";
 import LiquidityActions from "./components/LiquidityActions";
 import { getWeb3, getContract, getAccount, contractAddresses, switchNetwork } from "./web3";
-import "./style.css";
+import "./index.css";
 
 function App() {
   const [web3, setWeb3] = useState(null);
