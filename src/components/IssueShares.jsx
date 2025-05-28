@@ -16,6 +16,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
 
   const fetchBalance = async () => {
     if (!web3 || !account || !chainId) {
+      console.error("Missing dependencies for fetching balance:", { web3, account, chainId });
       setError("Please ensure your wallet is connected and network is selected.");
       return;
     }
@@ -24,11 +25,12 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
       const tokenContract = await getTokenContract(web3);
       if (!tokenContract) throw new Error("Failed to initialize token contract");
       const balance = await tokenContract.methods.balanceOf(account).call();
-      setTokenBalance(web3.utils.fromWei(balance.toString(), "ether"));
-      console.log(`${chainId === 1 ? "vPLS" : "PLSX"} balance fetched:`, balance.toString());
+      const balanceStr = balance.toString();
+      setTokenBalance(web3.utils.fromWei(balanceStr, "ether"));
+      console.log(`${chainId === 1 ? "vPLS" : "PLSX"} balance fetched:`, { balance: balanceStr });
     } catch (err) {
       console.error(`Failed to fetch ${chainId === 1 ? "vPLS" : "PLSX"} balance:`, err);
-      setError(`Failed to load balance: ${err.message || "Unknown error"}`);
+      setError(`Failed to load ${chainId === 1 ? "vPLS" : "PLSX"} balance: ${err.message || "Unknown error"}`);
     }
   };
 
@@ -47,20 +49,32 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
           const amountWei = web3.utils.toWei(amount, "ether");
           let shares, fee;
           if (chainId === 1) {
+            // PLSTR: calculate shares and fee client-side
             const result = await contract.methods.calculateSharesReceived(amountWei).call({ from: account });
-            shares = (typeof result === "object" ? (result[0] || result.shares || result) : result).toString();
+            shares = (typeof result === "object" && result !== null
+              ? (result[0] || result.shares || result)
+              : result
+            ).toString();
+            // Calculate 0.5% fee
             fee = (amountNum * FEE_PERCENTAGE).toString();
             fee = web3.utils.toWei(fee, "ether");
           } else {
+            // xBOND: [shares, fee]
             const result = await contract.methods.calculateSharesReceived(amountWei).call({ from: account });
-            [shares, fee] = Array.isArray(result) ? result : [result.shares || result[0], result.fee || null];
-            if (!/^\d+$/.test(shares)) {
-              throw new Error(`Invalid shares format: ${shares}`);
+            if (Array.isArray(result) && result.length === 2) {
+              [shares, fee] = result;
+            } else if (result && typeof result === "object") {
+              shares = (result.shares || result[0] || "0").toString();
+              fee = (result.fee || result[1] || "0").toString();
+            } else {
+              throw new Error(`Invalid response from calculateSharesReceived: ${String(result)}`);
             }
-            fee = fee && /^\d+$/.test(fee) ? fee : "0";
+          }
+          if (!/^\d+$/.test(shares) || !/^\d+$/.test(fee)) {
+            throw new Error(`Invalid number format: shares=${shares}, fee=${fee}`);
           }
           setEstimatedShares(web3.utils.fromWei(shares, "ether"));
-          setEstimatedFee(web3.utils.fromWei(fee.toString(), "ether"));
+          setEstimatedFee(web3.utils.fromWei(fee, "ether"));
           console.log("Estimated shares fetched:", { amount, shares, fee, chainId });
         } else {
           setEstimatedShares("0");
@@ -79,33 +93,25 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
     if (rawValue === "" || /^[0-9]*\.?[0-9]*$/.test(rawValue)) {
       try {
         const numValue = rawValue === "" ? "" : Number(rawValue);
-        if (rawValue !== "" && (isNaN(numValue) || numValue < 0)) return;
+        if (rawValue !== "" && (isNaN(numValue) || numValue < 0)) {
+          console.warn("Invalid input ignored:", rawValue);
+          return;
+        }
         setAmount(rawValue);
-        setDisplayAmount(rawValue === "" ? "" : new Intl.NumberFormat("en-US", { maximumFractionDigits: 18 }).format(numValue));
+        setDisplayAmount(
+          rawValue === ""
+            ? ""
+            : new Intl.NumberFormat("en-US", {
+                maximumFractionDigits: 18,
+                minimumFractionDigits: 0,
+              }).format(numValue)
+        );
       } catch (err) {
         console.error("Input processing error:", err);
       }
+    } else {
+      console.warn("Invalid input format:", rawValue);
     }
-  };
-
-  const estimateGasWithRetry = async (method, options, retries = 5) => {
-    let lastError;
-    for (let i = 0; i < retries; i++) {
-      try {
-        console.log(`Estimating gas attempt ${i + 1}:`, {
-          methodName: method?._method?.name || "undefined",
-          options,
-          paramTypes: { amountWei: typeof options.amountWei },
-        });
-        const gas = await method.estimateGas(options);
-        return Math.floor(gas * 1.3); // 30% buffer
-      } catch (err) {
-        lastError = err;
-        console.warn(`Gas estimation attempt ${i + 1} failed:`, err.message);
-        if (i < retries - 1) await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-    }
-    throw lastError;
   };
 
   const handleIssue = async () => {
@@ -116,42 +122,21 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
       if (amountNum < MIN_ISSUE_AMOUNT) {
         throw new Error(`Amount must be at least ${MIN_ISSUE_AMOUNT} ${chainId === 1 ? "vPLS" : "PLSX"}`);
       }
-      if (!contract || !contract.methods || !contract.methods.issueShares) {
-        throw new Error("Contract or issueShares method is not initialized");
-      }
       const tokenContract = await getTokenContract(web3);
       if (!tokenContract) throw new Error("Failed to initialize token contract");
-      const amountWei = web3.utils.toWei(amount, "ether").toString(); // Ensure string
-
-      // Approve PLSX
-      const approveGas = await estimateGasWithRetry(
-        tokenContract.methods.approve(contract.options.address, amountWei),
-        { from: account }
-      );
+      const amountWei = web3.utils.toWei(amount, "ether");
       await tokenContract.methods
         .approve(contract.options.address, amountWei)
-        .send({ from: account, gas: approveGas, gasPrice: web3.utils.toWei("100", "gwei") });
-
-      // Issue shares
-      const isFirstIssuance = chainId === 369 && !(await contract.methods.pair().call());
-      const gasLimit = isFirstIssuance ? 3_000_000 : 500_000;
-      const issueGas = await estimateGasWithRetry(
-        contract.methods.issueShares(amountWei),
-        { from: account, gas: gasLimit },
-        5
-      );
-      await contract.methods
-        .issueShares(amountWei)
-        .send({ from: account, gas: issueGas, gasPrice: web3.utils.toWei("100", "gwei") });
-      
+        .send({ from: account });
+      await contract.methods.issueShares(amountWei).send({ from: account });
       alert(`${chainId === 1 ? "PLSTR" : "xBOND"} issued successfully!`);
       setAmount("");
       setDisplayAmount("");
       fetchBalance();
       console.log(`${chainId === 1 ? "PLSTR" : "xBOND"} issued:`, { amountWei });
     } catch (err) {
-      console.error("Issue shares error:", err);
       setError(`Error issuing ${chainId === 1 ? "PLSTR" : "xBOND"}: ${err.message || "Unknown error"}`);
+      console.error("Issue shares error:", err);
     } finally {
       setLoading(false);
     }
@@ -168,7 +153,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
           {chainId === 1 && <span className="text-sm text-gray-500 ml-2">(0.5% fee applied)</span>}
         </p>
         <p className="text-gray-600 mb-2">
-          Estimated {chainId === 1 ? "PLSTR" : "xBOND"} Receivable: <span className="text-purple-600">{formatNumber(estimatedShares)}</span>
+          Estimated {chainId === 1 ? "PLSTR" : "xBOND"} Receivable: <span className="text-purple-600">{formatNumber(estimatedShares)} {chainId === 1 ? "PLSTR" : "xBOND"}</span>
         </p>
         <input
           type="text"
@@ -181,7 +166,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
           Minimum <span className="text-purple-600 font-medium">{MIN_ISSUE_AMOUNT} {chainId === 1 ? "vPLS" : "PLSX"}</span>
         </p>
         <p className="text-gray-600 mt-1">
-          User {chainId === 1 ? "vPLS" : "PLSX"} Balance: <span className="text-purple-600">{formatNumber(tokenBalance)}</span>
+          User {chainId === 1 ? "vPLS" : "PLSX"} Balance: <span className="text-purple-600">{formatNumber(tokenBalance)} {chainId === 1 ? "vPLS" : "PLSX"}</span>
         </p>
       </div>
       <button
