@@ -14,9 +14,9 @@ function App() {
   const [contract, setContract] = useState(null);
   const [account, setAccount] = useState(null);
   const [isController, setIsController] = useState(false);
-  const [chainId, setChainId] = useState(null);
-  const [networkName, setNetworkName] = useState("Unknown");
-  const [loading, setLoading] = useState(true);
+  const [chainId, setChainId] = useState(369); // Default to PulseChain
+  const [networkName, setNetworkName] = useState("PulseChain"); // Default to PulseChain
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const updateNetwork = async (web3Instance) => {
@@ -25,7 +25,7 @@ function App() {
       const id = Number(await web3Instance.eth.getChainId());
       setChainId(id);
       setNetworkName(id === 1 ? "Ethereum" : id === 369 ? "PulseChain" : "Unknown Network");
-      console.log("Network updated:", { chainId: id });
+      console.log("Network updated:", { chainId: id, networkName });
     } catch (err) {
       console.error("Failed to update network:", err);
       setError("Failed to detect network. Please ensure your wallet is connected.");
@@ -37,7 +37,10 @@ function App() {
     setError("");
     try {
       const web3Instance = await getWeb3();
-      if (!web3Instance) throw new Error("No Web3 provider detected");
+      if (!web3Instance) {
+        setLoading(false);
+        return; // Allow default PulseChain display
+      }
       setWeb3(web3Instance);
 
       await updateNetwork(web3Instance);
@@ -50,11 +53,22 @@ function App() {
       setContract(contractInstance);
 
       if (contractInstance && accounts && chainId) {
-        const owner = await contractInstance.methods[
-          chainId === 1 ? "owner" : "getLPTokenHolder"
-        ]().call();
-        setIsController(accounts?.toLowerCase() === owner.toLowerCase());
-        console.log("App initialized:", { account: accounts, owner, chainId });
+        try {
+          const owner = await contractInstance.methods[
+            chainId === 1 ? "owner" : "getLPTokenHolder"
+          ]().call();
+          const isOwner = accounts?.toLowerCase() === owner?.toLowerCase();
+          setIsController(isOwner);
+          console.log("Controller check:", {
+            account: accounts,
+            owner,
+            isController: isOwner,
+            chainId,
+          });
+        } catch (err) {
+          console.error("Failed to fetch owner:", err);
+          setIsController(false);
+        }
       }
     } catch (error) {
       console.error("App initialization failed:", error);
@@ -67,7 +81,6 @@ function App() {
   useEffect(() => {
     initializeApp();
 
-    // Listen for network and account changes
     if (window.ethereum) {
       window.ethereum.on("chainChanged", () => {
         console.log("Chain changed, reinitializing...");
@@ -92,7 +105,6 @@ function App() {
     if (web3) {
       try {
         await switchNetwork(web3, Number(e.target.value));
-        await updateNetwork(web3);
         await initializeApp();
       } catch (err) {
         console.error("Network switch failed:", err);
@@ -108,7 +120,9 @@ function App() {
           {chainId === 1 ? "PulseStrategy" : "xBOND"}
         </h1>
         <p className="text-center text-gray-600 mt-2">
-          Interact with the {chainId === 1 ? "PLSTR" : "xBOND"} contract on {networkName}
+          {account
+            ? `Interact with the ${chainId === 1 ? "PLSTR" : "xBOND"} contract on ${networkName}`
+            : `Connect your wallet to interact with the ${chainId === 1 ? "PLSTR" : "xBOND"} contract`}
         </p>
         <div className="mt-4">
           <label className="text-gray-600 mr-2">Select Network:</label>
@@ -122,12 +136,22 @@ function App() {
             <option value="369">PulseChain (xBOND)</option>
           </select>
         </div>
+        {account && (
+          <p className="text-center text-gray-600 mt-2">
+            Wallet: {account.slice(0, 6)}...{account.slice(-4)}
+          </p>
+        )}
         <ConnectWallet
           account={account}
           web3={web3}
           contractAddress={contractAddresses[chainId] || ""}
           chainId={chainId}
         />
+        {!account && (
+          <p className="text-center text-gray-600 mt-4">
+            Recommended: Use MetaMask for the best experience. OneKey may have compatibility issues.
+          </p>
+        )}
       </header>
       <main className="w-full max-w-4xl space-y-6">
         {loading ? (
