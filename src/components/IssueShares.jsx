@@ -53,13 +53,14 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
             fee = web3.utils.toWei(fee, "ether");
           } else {
             const result = await contract.methods.calculateSharesReceived(amountWei).call({ from: account });
-            [shares, fee] = Array.isArray(result) ? result : [result.shares || result[0], result.fee || result[1]];
-            if (!/^\d+$/.test(shares) || !/^\d+$/.test(fee)) {
-              throw new Error(`Invalid number format: shares=${shares}, fee=${fee}`);
+            [shares, fee] = Array.isArray(result) ? result : [result.shares || result[0], result.fee || null];
+            if (!/^\d+$/.test(shares)) {
+              throw new Error(`Invalid shares format: ${shares}`);
             }
+            fee = fee && /^\d+$/.test(fee) ? fee : "0";
           }
           setEstimatedShares(web3.utils.fromWei(shares, "ether"));
-          setEstimatedFee(web3.utils.fromWei(fee, "ether"));
+          setEstimatedFee(web3.utils.fromWei(fee.toString(), "ether"));
           console.log("Estimated shares fetched:", { amount, shares, fee, chainId });
         } else {
           setEstimatedShares("0");
@@ -92,7 +93,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
     for (let i = 0; i < retries; i++) {
       try {
         console.log(`Estimating gas attempt ${i + 1}:`, {
-          method: method._method.name,
+          methodName: method?._method?.name || "undefined",
           options,
           paramTypes: { amountWei: typeof options.amountWei },
         });
@@ -114,6 +115,9 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
       const amountNum = Number(amount);
       if (amountNum < MIN_ISSUE_AMOUNT) {
         throw new Error(`Amount must be at least ${MIN_ISSUE_AMOUNT} ${chainId === 1 ? "vPLS" : "PLSX"}`);
+      }
+      if (!contract || !contract.methods || !contract.methods.issueShares) {
+        throw new Error("Contract or issueShares method is not initialized");
       }
       const tokenContract = await getTokenContract(web3);
       if (!tokenContract) throw new Error("Failed to initialize token contract");
