@@ -26,11 +26,11 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
       // Fetch redeemable tokens
       let redeemable;
       if (chainId === 1) {
-        // PLSTR: getRedeemableStakedPLS likely takes only the account address
-        redeemable = await contract.methods.getRedeemableStakedPLS(account).call();
+        // PLSTR: getRedeemableStakedPLS takes address and share amount
+        redeemable = await contract.methods.getRedeemableStakedPLS(account, balanceStr).call();
       } else {
         // xBOND: getRedeemablePLSX takes balance
-        redeemable = await contract.methods.getRedeemablePLSX(balanceStr).call();
+        redeemable = await contract.getRedeemablePLSX(balanceStr).call();
       }
       const redeemableStr = redeemable.toString(); // Convert BigInt to string
       const redeemableEther = web3.utils.fromWei(redeemableStr, "ether");
@@ -41,6 +41,7 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
         shareBalance: balanceEther,
         redeemableToken: redeemableEther,
         chainId,
+        account,
       });
     } catch (error) {
       console.error("Failed to fetch user info:", error);
