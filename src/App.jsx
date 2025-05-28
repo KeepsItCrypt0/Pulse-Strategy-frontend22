@@ -54,9 +54,12 @@ function App() {
 
       if (contractInstance && accounts && chainId) {
         try {
-          const owner = await contractInstance.methods[
-            chainId === 1 ? "owner" : "getLPTokenHolder"
-          ]().call();
+          let owner;
+          if (chainId === 1) {
+            owner = await contractInstance.methods.owner().call();
+          } else {
+            owner = await contractInstance.methods.getLPTokenHolder().call();
+          }
           const isOwner = accounts?.toLowerCase() === owner?.toLowerCase();
           setIsController(isOwner);
           console.log("Controller check:", {
