@@ -42,16 +42,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
       try {
         if (amount && Number(amount) > 0 && contract && web3) {
           const amountWei = web3.utils.toWei(amount, "ether");
-          const result = await contract.methods.calculateSharesReceived(amountWei).call();
-          // Handle case where result might not be an array
-          let shares, fee;
-          if (Array.isArray(result)) {
-            [shares, fee] = result;
-          } else {
-            // Fallback for non-array response (adjust based on contract)
-            shares = result.shares || result[0] || "0";
-            fee = result.fee || result[1] || "0";
-          }
+          const [shares, fee] = await contract.methods.calculateSharesReceived(amountWei).call();
           const sharesStr = shares.toString(); // Convert BigInt to string
           const feeStr = fee.toString(); // Convert BigInt to string
           setEstimatedShares(web3.utils.fromWei(sharesStr, "ether"));
