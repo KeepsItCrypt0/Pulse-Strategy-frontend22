@@ -25,9 +25,10 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
 
       // Fetch redeemable tokens
       let redeemable;
+      let normalizedAccount = account;
       if (chainId === 1) {
-        // Validate address
-        const normalizedAccount = web3.utils.toChecksumAddress(account);
+        // PLSTR: getRedeemableStakedPLS
+        normalizedAccount = web3.utils.toChecksumAddress(account);
         if (!web3.utils.isAddress(normalizedAccount)) {
           throw new Error("Invalid account address");
         }
@@ -37,12 +38,20 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
           balanceNum,
           contractAddress: contract.options.address,
         });
-        // Web3.js 4.x call syntax
+        // Web3.js 4.x: explicit arguments
         redeemable = await contract.methods
           .getRedeemableStakedPLS(normalizedAccount, balanceNum)
-          .call({ from: account });
+          .call({ from: normalizedAccount });
       } else {
-        redeemable = await contract.methods.getRedeemablePLSX(balanceStr).call({ from: account });
+        // xBOND: getRedeemablePLSX
+        console.log("Calling getRedeemablePLSX:", {
+          account,
+          balanceStr,
+          contractAddress: contract.options.address,
+        });
+        redeemable = await contract.methods
+          .getRedeemablePLSX(balanceStr)
+          .call({ from: account });
       }
       const redeemableStr = redeemable.toString();
       const redeemableEther = web3.utils.fromWei(redeemableStr, "ether");
@@ -53,7 +62,7 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
         shareBalance: balanceEther,
         redeemableToken: redeemableEther,
         chainId,
-        account: normalizedAccount,
+        account,
         balanceStr,
         redeemableStr,
       });
