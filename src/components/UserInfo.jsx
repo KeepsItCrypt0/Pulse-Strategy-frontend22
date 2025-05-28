@@ -26,10 +26,8 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
       // Fetch redeemable tokens
       let redeemable;
       if (chainId === 1) {
-        // PLSTR: getRedeemableStakedPLS takes address and share amount separately
         redeemable = await contract.methods.getRedeemableStakedPLS(account, balanceStr).call();
       } else {
-        // xBOND: getRedeemablePLSX takes share amount
         redeemable = await contract.methods.getRedeemablePLSX(balanceStr).call();
       }
       const redeemableStr = redeemable.toString();
@@ -43,6 +41,7 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
         chainId,
         account,
         balanceStr,
+        redeemableStr,
       });
     } catch (error) {
       console.error("Failed to fetch user info:", error);
