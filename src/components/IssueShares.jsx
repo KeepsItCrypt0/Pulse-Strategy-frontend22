@@ -56,10 +56,11 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
           let shares, fee;
           if (chainId === 1) {
             // PLSTR: single uint256
-            shares = typeof result === "object" && result !== null
-              ? (result[0] || result.shares || result).toString()
-              : result.toString();
-            fee = "0";
+            shares = (typeof result === "object" && result !== null
+              ? (result[0] || result.shares || result)
+              : result
+            ).toString();
+            fee = "0"; // PLSTR has no fee
           } else {
             // xBOND: [shares, fee]
             if (Array.isArray(result) && result.length === 2) {
@@ -71,13 +72,12 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
               throw new Error(`Invalid response from calculateSharesReceived: ${String(result)}`);
             }
           }
-          // Validate numeric format
           if (!/^\d+$/.test(shares) || !/^\d+$/.test(fee)) {
             throw new Error(`Invalid number format: shares=${shares}, fee=${fee}`);
           }
           setEstimatedShares(web3.utils.fromWei(shares, "ether"));
           setEstimatedFee(web3.utils.fromWei(fee, "ether"));
-          console.log("Estimated shares fetched:", { amount, shares, fee });
+          console.log("Estimated shares fetched:", { amount, shares, fee, chainId });
         } else {
           setEstimatedShares("0");
           setEstimatedFee("0");
@@ -88,7 +88,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
       }
     };
     if (contract && web3 && chainId) fetchEstimate();
-  }, [contract, web3, amount, chainId]);
+  }, [contract, web3, amount, chainId, account]);
 
   const handleAmountChange = (e) => {
     const rawValue = String(e.target.value).replace(/,/g, "");
