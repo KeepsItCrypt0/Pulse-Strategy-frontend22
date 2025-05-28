@@ -29,18 +29,40 @@ const RedeemShares = ({ contract, account, web3, chainId }) => {
   useEffect(() => {
     const fetchEstimate = async () => {
       try {
-        if (amount && Number(amount) > 0) {
+        if (amount && Number(amount) > 0 && contract && web3 && account) {
           const amountWei = web3.utils.toWei(amount, "ether");
-          const redeemable = await contract.methods[
-            chainId === 1 ? "getRedeemableStakedPLS" : "getRedeemablePLSX"
-          ](chainId === 1 ? [account, amountWei] : amountWei).call();
-          setEstimatedToken(web3.utils.fromWei(redeemable, "ether"));
-          console.log(`Estimated ${chainId === 1 ? "vPLS" : "PLSX"} fetched:`, { amount, redeemable });
+          let redeemable;
+          if (chainId === 1) {
+            const normalizedAccount = web3.utils.toChecksumAddress(account);
+            console.log("Calling getRedeemableStakedPLS:", {
+              account: normalizedAccount,
+              amountWei,
+              contractAddress: contract.options.address,
+            });
+            redeemable = await contract.methods
+              .getRedeemableStakedPLS(normalizedAccount, amountWei)
+              .call({ from: normalizedAccount });
+          } else {
+            console.log("Calling getRedeemablePLSX:", {
+              amountWei,
+              contractAddress: contract.options.address,
+            });
+            redeemable = await contract.methods
+              .getRedeemablePLSX(amountWei)
+              .call({ from: account });
+          }
+          const redeemableStr = redeemable ? redeemable.toString() : "0";
+          setEstimatedToken(web3.utils.fromWei(redeemableStr, "ether"));
+          console.log(`Estimated ${chainId === 1 ? "vPLS" : "PLSX"} fetched:`, {
+            amount,
+            redeemable: redeemableStr,
+          });
         } else {
           setEstimatedToken("0");
         }
       } catch (err) {
         console.error(`Failed to fetch estimated ${chainId === 1 ? "vPLS" : "PLSX"}:`, err);
+        setError(`Failed to fetch estimated ${chainId === 1 ? "vPLS" : "PLSX"}: ${err.message || "Contract execution failed"}`);
       }
     };
     if (contract && account && web3 && chainId) fetchEstimate();
@@ -48,18 +70,16 @@ const RedeemShares = ({ contract, account, web3, chainId }) => {
 
   const handleAmountChange = (e) => {
     const rawValue = e.target.value.replace(/,/g, "");
-    if (rawValue === "" || /^-?\d*\.?\d*$/.test(rawValue)) {
+    if (rawValue === "" || /^[0-9]*\.?[0-9]*$/.test(rawValue)) {
       setAmount(rawValue);
-      if (rawValue === "" || isNaN(rawValue)) {
-        setDisplayAmount("");
-      } else {
-        setDisplayAmount(
-          new Intl.NumberFormat("en-US", {
-            maximumFractionDigits: 18,
-            minimumFractionDigits: 0,
-          }).format(rawValue)
-        );
-      }
+      setDisplayAmount(
+        rawValue === ""
+          ? ""
+          : new Intl.NumberFormat("en-US", {
+              maximumFractionDigits: 18,
+              minimumFractionDigits: 0,
+            }).format(Number(rawValue))
+      );
     }
   };
 
