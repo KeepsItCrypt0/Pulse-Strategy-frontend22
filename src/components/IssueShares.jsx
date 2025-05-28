@@ -11,7 +11,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
   const [estimatedFee, setEstimatedFee] = useState("0");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const MIN_ISSUE_AMOUNT = chainId === 1 ? 1005 : 10;
+  const MIN_ISSUE_AMOUNT = chainId === 1 ? 1005 : 1; // Lowered to 1 PLSX for PulseChain
 
   const fetchBalance = async () => {
     if (!web3 || !account || !chainId) {
@@ -24,7 +24,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
       const tokenContract = await getTokenContract(web3);
       if (!tokenContract) throw new Error("Failed to initialize token contract");
       const balance = await tokenContract.methods.balanceOf(account).call();
-      const balanceStr = balance.toString(); // Convert BigInt to string
+      const balanceStr = balance.toString();
       setTokenBalance(web3.utils.fromWei(balanceStr, "ether"));
       console.log(`${chainId === 1 ? "vPLS" : "PLSX"} balance fetched:`, { balance: balanceStr });
     } catch (err) {
@@ -47,13 +47,18 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
           }
           const amountWei = web3.utils.toWei(amount, "ether");
           const result = await contract.methods.calculateSharesReceived(amountWei).call();
-          console.log("calculateSharesReceived response:", { result, amountWei });
+          console.log("calculateSharesReceived response:", {
+            result,
+            resultShares: result[0]?.toString(),
+            resultFee: result[1]?.toString(),
+            amountWei,
+          });
           if (!Array.isArray(result) || result.length !== 2) {
-            throw new Error(`Invalid response from calculateSharesReceived: ${JSON.stringify(result)}`);
+            throw new Error(`Invalid response from calculateSharesReceived: ${String(result)}`);
           }
           const [shares, fee] = result;
-          const sharesStr = shares.toString(); // Convert BigInt to string
-          const feeStr = fee.toString(); // Convert BigInt to string
+          const sharesStr = shares.toString();
+          const feeStr = fee.toString();
           setEstimatedShares(web3.utils.fromWei(sharesStr, "ether"));
           setEstimatedFee(web3.utils.fromWei(feeStr, "ether"));
           console.log("Estimated shares fetched:", { amount, shares: sharesStr, fee: feeStr });
@@ -122,7 +127,8 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
           Estimated Fee: <span className="text-purple-600">{formatNumber(estimatedFee)} {chainId === 1 ? "vPLS" : "PLSX"}</span>
         </p>
         <p className="text-gray-600 mb-2">
-          Estimated {chainId === 1 ? "PLSTR" : "xBOND"} Receivable: <span className="text-purple-600">{formatNumber(estimatedShares)} {chainId === 1 ? "PLSTR" : "xBOND"}</span>
+          Estimated {chainId === 1 ? "PLSTR" : "xBOND"} Receivable: <span className="text-blue-600">{formatNumber(estimatedShares)} {chainId === 1 ? " PLSTR" : "xBOND"}
+ </span>
         </p>
         <input
           type="text"
