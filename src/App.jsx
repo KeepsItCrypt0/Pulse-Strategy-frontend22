@@ -16,44 +16,88 @@ function App() {
   const [isController, setIsController] = useState(false);
   const [chainId, setChainId] = useState(null);
   const [networkName, setNetworkName] = useState("Unknown");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const updateNetwork = async (web3Instance) => {
-    const id = await web3Instance.eth.getChainId();
-    setChainId(id);
-    setNetworkName(id === 1 ? "Ethereum" : id === 369 ? "PulseChain" : "Unknown");
+    try {
+      if (!web3Instance) throw new Error("Web3 not initialized");
+      const id = Number(await web3Instance.eth.getChainId());
+      setChainId(id);
+      setNetworkName(id === 1 ? "Ethereum" : id === 369 ? "PulseChain" : "Unknown Network");
+      console.log("Network updated:", { chainId: id });
+    } catch (err) {
+      console.error("Failed to update network:", err);
+      setError("Failed to detect network. Please ensure your wallet is connected.");
+    }
+  };
+
+  const initializeApp = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const web3Instance = await getWeb3();
+      if (!web3Instance) throw new Error("No Web3 provider detected");
+      setWeb3(web3Instance);
+
+      await updateNetwork(web3Instance);
+
+      const accounts = await getAccount(web3Instance);
+      setAccount(accounts);
+
+      const contractInstance = await getContract(web3Instance);
+      if (!contractInstance) throw new Error("Failed to initialize contract");
+      setContract(contractInstance);
+
+      if (contractInstance && accounts && chainId) {
+        const owner = await contractInstance.methods[
+          chainId === 1 ? "owner" : "getLPTokenHolder"
+        ]().call();
+        setIsController(accounts?.toLowerCase() === owner.toLowerCase());
+        console.log("App initialized:", { account: accounts, owner, chainId });
+      }
+    } catch (error) {
+      console.error("App initialization failed:", error);
+      setError(`Initialization failed: ${error.message || "Unknown error"}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        const web3Instance = await getWeb3();
-        setWeb3(web3Instance);
-        if (web3Instance) {
-          const accounts = await getAccount(web3Instance);
-          setAccount(accounts);
-          const contractInstance = await getContract(web3Instance);
-          setContract(contractInstance);
-          await updateNetwork(web3Instance);
-          if (contractInstance && accounts) {
-            const owner = await contractInstance.methods[
-              chainId === 1 ? "owner" : "getLPTokenHolder"
-            ]().call();
-            setIsController(accounts?.toLowerCase() === owner.toLowerCase());
-            console.log("App initialized:", { account: accounts, owner, chainId });
-          }
-        }
-      } catch (error) {
-        console.error("Web3 initialization failed:", error);
+    initializeApp();
+
+    // Listen for network and account changes
+    if (window.ethereum) {
+      window.ethereum.on("chainChanged", () => {
+        console.log("Chain changed, reinitializing...");
+        initializeApp();
+      });
+      window.ethereum.on("accountsChanged", (accounts) => {
+        console.log("Accounts changed:", accounts);
+        setAccount(accounts[0] || null);
+        initializeApp();
+      });
+    }
+
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeAllListeners("chainChanged");
+        window.ethereum.removeAllListeners("accountsChanged");
       }
     };
-    init();
-  }, [chainId]);
+  }, []);
 
   const handleNetworkChange = async (e) => {
     if (web3) {
-      await switchNetwork(web3, Number(e.target.value));
-      await updateNetwork(web3);
-      window.location.reload();
+      try {
+        await switchNetwork(web3, Number(e.target.value));
+        await updateNetwork(web3);
+        await initializeApp();
+      } catch (err) {
+        console.error("Network switch failed:", err);
+        setError(`Failed to switch network: ${err.message || "Unknown error"}`);
+      }
     }
   };
 
@@ -72,6 +116,7 @@ function App() {
             value={chainId || ""}
             onChange={handleNetworkChange}
             className="p-2 border rounded-lg"
+            disabled={!web3}
           >
             <option value="1">Ethereum (PLSTR)</option>
             <option value="369">PulseChain (xBOND)</option>
@@ -85,27 +130,21 @@ function App() {
         />
       </header>
       <main className="w-full max-w-4xl space-y-6">
-        {account && contract && chainId ? (
+        {loading ? (
+          <p className="text-center text-white">Loading...</p>
+        ) : error ? (
+          <p className="text-center text-red-400">{error}</p>
+        ) : account && contract && chainId ? (
           <>
             <ContractInfo contract={contract} web3={web3} chainId={chainId} />
             <UserInfo contract={contract} account={account} web3={web3} chainId={chainId} />
-            <IssueShares web3={contract} contract={contract} account={account} chainId={chainId} />
+            <IssueShares web3={web3} contract={contract} account={account} chainId={chainId} />
             <RedeemShares contract={contract} account={account} web3={web3} chainId={chainId} />
             {chainId === 369 && (
-              <LiquidityActions
-                contract={contract}
-                account={account}
-                web3={web3}
-                chainId={chainId}
-              />
+              <LiquidityActions contract={contract} account={account} web3={web3} chainId={chainId} />
             )}
             {chainId === 1 && isController && (
-              <AdminPanel
-                web3={web3}
-                contract={contract}
-                account={account}
-                chainId={chainId}
-              />
+              <AdminPanel web3={web3} contract={contract} account={account} chainId={chainId} />
             )}
           </>
         ) : (
