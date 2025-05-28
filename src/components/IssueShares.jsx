@@ -12,6 +12,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const MIN_ISSUE_AMOUNT = 1;
+  const FEE_PERCENTAGE = 0.005; // 0.5% fee for PLSTR
 
   const fetchBalance = async () => {
     if (!web3 || !account || !chainId) {
@@ -46,23 +47,20 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
             throw new Error(`Amount must be at least ${MIN_ISSUE_AMOUNT} ${chainId === 1 ? "vPLS" : "PLSX"}`);
           }
           const amountWei = web3.utils.toWei(amount, "ether");
-          const result = await contract.methods.calculateSharesReceived(amountWei).call({ from: account });
-          console.log("calculateSharesReceived response:", {
-            result,
-            resultType: typeof result,
-            resultKeys: result && typeof result === "object" ? Object.keys(result) : [],
-            amountWei,
-          });
           let shares, fee;
           if (chainId === 1) {
-            // PLSTR: single uint256
+            // PLSTR: calculate shares and fee client-side
+            const result = await contract.methods.calculateSharesReceived(amountWei).call({ from: account });
             shares = (typeof result === "object" && result !== null
               ? (result[0] || result.shares || result)
               : result
             ).toString();
-            fee = "0"; // PLSTR has no fee
+            // Calculate 0.5% fee
+            fee = (amountNum * FEE_PERCENTAGE).toString();
+            fee = web3.utils.toWei(fee, "ether");
           } else {
             // xBOND: [shares, fee]
+            const result = await contract.methods.calculateSharesReceived(amountWei).call({ from: account });
             if (Array.isArray(result) && result.length === 2) {
               [shares, fee] = result;
             } else if (result && typeof result === "object") {
@@ -87,7 +85,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
         setError(`Failed to fetch estimated shares: ${err.message || "Contract execution failed"}`);
       }
     };
-    if (contract && web3 && chainId) fetchEstimate();
+    if (contract && web3 && chainId && account) fetchEstimate();
   }, [contract, web3, amount, chainId, account]);
 
   const handleAmountChange = (e) => {
@@ -152,6 +150,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
       <div className="mb-4">
         <p className="text-gray-600 mb-2">
           Estimated Fee: <span className="text-purple-600">{formatNumber(estimatedFee)} {chainId === 1 ? "vPLS" : "PLSX"}</span>
+          {chainId === 1 && <span className="text-sm text-gray-500 ml-2">(0.5% fee applied)</span>}
         </p>
         <p className="text-gray-600 mb-2">
           Estimated {chainId === 1 ? "PLSTR" : "xBOND"} Receivable: <span className="text-purple-600">{formatNumber(estimatedShares)} {chainId === 1 ? "PLSTR" : "xBOND"}</span>
