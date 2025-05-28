@@ -38,7 +38,7 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
           balanceNum,
           contractAddress: contract.options.address,
         });
-        // Web3.js 4.x: explicit arguments
+        // Web3.js 4.x: pass arguments explicitly
         redeemable = await contract.methods
           .getRedeemableStakedPLS(normalizedAccount, balanceNum)
           .call({ from: normalizedAccount });
@@ -53,7 +53,7 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
           .getRedeemablePLSX(balanceStr)
           .call({ from: account });
       }
-      const redeemableStr = redeemable.toString();
+      const redeemableStr = redeemable ? redeemable.toString() : "0";
       const redeemableEther = web3.utils.fromWei(redeemableStr, "ether");
 
       setShareBalance(balanceEther);
