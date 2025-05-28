@@ -1,7 +1,7 @@
 // src/components/IssueShares.jsx
 import { useState, useEffect } from "react";
 import { getTokenContract } from "../web3";
-import { formatNumber } from "../utils";
+import { formatNumber } from "../utils/format";
 
 const IssueShares = ({ web3, contract, account, chainId }) => {
   const [amount, setAmount] = useState("");
