@@ -26,13 +26,21 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
       // Fetch redeemable tokens
       let redeemable;
       if (chainId === 1) {
-        // Validate inputs
-        if (!web3.utils.isAddress(account)) {
+        // Normalize address (lowercase to bypass checksum)
+        const normalizedAccount = account.toLowerCase();
+        if (!web3.utils.isAddress(normalizedAccount)) {
           throw new Error("Invalid account address");
         }
         const balanceNum = balanceStr === "0" ? "0" : balanceStr;
-        console.log("Calling getRedeemableStakedPLS:", { account, balanceNum });
-        redeemable = await contract.methods.getRedeemableStakedPLS(account, balanceNum).call();
+        console.log("Calling getRedeemableStakedPLS:", {
+          account: normalizedAccount,
+          balanceNum,
+          contractAddress: contract._address,
+        });
+        // Explicit argument passing
+        redeemable = await contract.methods
+          .getRedeemableStakedPLS(normalizedAccount, balanceNum)
+          .call();
       } else {
         redeemable = await contract.methods.getRedeemablePLSX(balanceStr).call();
       }
@@ -45,7 +53,7 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
         shareBalance: balanceEther,
         redeemableToken: redeemableEther,
         chainId,
-        account,
+        account: normalizedAccount,
         balanceStr,
         redeemableStr,
       });
