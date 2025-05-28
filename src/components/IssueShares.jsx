@@ -11,28 +11,13 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
   const [estimatedFee, setEstimatedFee] = useState("0");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isFirstIssuance, setIsFirstIssuance] = useState(false);
   const MIN_ISSUE_AMOUNT = 1;
   const FEE_PERCENTAGE = 0.005; // 0.5% fee for PLSTR
-  const FALLBACK_GAS_LIMIT = chainId === 369 && isFirstIssuance ? 5000000 : 3500000; // Higher for first xBOND issuance
-
-  const checkPoolExists = async () => {
-    if (!contract || !chainId) return;
-    try {
-      const poolAddress = await contract.methods.getPoolAddress().call();
-      setIsFirstIssuance(poolAddress === "0x0000000000000000000000000000000000000000");
-      console.log("Pool check:", { poolAddress, isFirstIssuance: poolAddress === "0x0000000000000000000000000000000000000000" });
-    } catch (err) {
-      console.error("Failed to check pool:", err);
-      setError("Failed to verify pool status. Assuming first issuance for safety.");
-      setIsFirstIssuance(true);
-    }
-  };
 
   const fetchBalance = async () => {
     if (!web3 || !account || !chainId) {
-      console.error("Missing dependencies:", { web3, account, chainId });
-      setError("Please ensure your wallet is connected and network selected.");
+      console.error("Missing dependencies for fetching balance:", { web3, account, chainId });
+      setError("Please ensure your wallet is connected and network is selected.");
       return;
     }
     try {
@@ -40,19 +25,17 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
       const tokenContract = await getTokenContract(web3);
       if (!tokenContract) throw new Error("Failed to initialize token contract");
       const balance = await tokenContract.methods.balanceOf(account).call();
-      setTokenBalance(web3.utils.fromWei(balance, "ether"));
-      console.log(`${chainId === 1 ? "vPLS" : "PLSX"} balance:`, balance.toString());
+      const balanceStr = balance.toString();
+      setTokenBalance(web3.utils.fromWei(balanceStr, "ether"));
+      console.log(`${chainId === 1 ? "vPLS" : "PLSX"} balance fetched:`, { balance: balanceStr });
     } catch (err) {
       console.error(`Failed to fetch ${chainId === 1 ? "vPLS" : "PLSX"} balance:`, err);
-      setError(`Failed to load balance: ${err.message || "Unknown error"}`);
+      setError(`Failed to load ${chainId === 1 ? "vPLS" : "PLSX"} balance: ${err.message || "Unknown error"}`);
     }
   };
 
   useEffect(() => {
-    if (web3 && account && chainId) {
-      fetchBalance();
-      checkPoolExists();
-    }
+    if (web3 && account && chainId) fetchBalance();
   }, [web3, account, chainId]);
 
   useEffect(() => {
@@ -66,34 +49,68 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
           const amountWei = web3.utils.toWei(amount, "ether");
           let shares, fee;
           if (chainId === 1) {
+            // PLSTR: calculate shares and fee client-side
             const result = await contract.methods.calculateSharesReceived(amountWei).call({ from: account });
-            shares = (typeof result === "object" ? result[0] : result).toString();
-            fee = (amountNum * FEE_PERCENTAGE).toWei("ether");
+            shares = (typeof result === "object" && result !== null
+              ? (result[0] || result.shares || result)
+              : result
+            ).toString();
+            // Calculate 0.5% fee
+            fee = (amountNum * FEE_PERCENTAGE).toString();
+            fee = web3.utils.toWei(fee, "ether");
           } else {
+            // xBOND: [shares, fee]
             const result = await contract.methods.calculateSharesReceived(amountWei).call({ from: account });
-            [shares, fee] = result;
+            if (Array.isArray(result) && result.length === 2) {
+              [shares, fee] = result;
+            } else if (result && typeof result === "object") {
+              shares = (result.shares || result[0] || "0").toString();
+              fee = (result.fee || result[1] || "0").toString();
+            } else {
+              throw new Error(`Invalid response from calculateSharesReceived: ${String(result)}`);
+            }
+          }
+          if (!/^\d+$/.test(shares) || !/^\d+$/.test(fee)) {
+            throw new Error(`Invalid number format: shares=${shares}, fee=${fee}`);
           }
           setEstimatedShares(web3.utils.fromWei(shares, "ether"));
           setEstimatedFee(web3.utils.fromWei(fee, "ether"));
-          console.log("Estimated shares:", { amount, shares, fee, chainId });
+          console.log("Estimated shares fetched:", { amount, shares, fee, chainId });
         } else {
           setEstimatedShares("0");
           setEstimatedFee("0");
         }
       } catch (err) {
-        console.error("Failed to fetch estimate:", err);
-        setError(`Failed to estimate shares: ${err.message || "Contract error"}`);
+        console.error("Failed to fetch estimated shares:", err);
+        setError(`Failed to fetch estimated shares: ${err.message || "Contract execution failed"}`);
       }
     };
     if (contract && web3 && chainId && account) fetchEstimate();
   }, [contract, web3, amount, chainId, account]);
 
   const handleAmountChange = (e) => {
-    const rawValue = e.target.value.replace(/,/g, "");
+    const rawValue = String(e.target.value).replace(/,/g, "");
     if (rawValue === "" || /^[0-9]*\.?[0-9]*$/.test(rawValue)) {
-      const numValue = rawValue === "" ? "" : Number(rawValue);
-      setAmount(rawValue);
-      setDisplayAmount(rawValue ? new Intl.NumberFormat("en-US", { maximumFractionDigits: 18 }).format(numValue) : "");
+      try {
+        const numValue = rawValue === "" ? "" : Number(rawValue);
+        if (rawValue !== "" && (isNaN(numValue) || numValue < 0)) {
+          console.warn("Invalid input ignored:", rawValue);
+          return;
+        }
+        setAmount(rawValue);
+        setDisplayAmount(
+          rawValue === ""
+            ? ""
+            : new Intl.NumberFormat("en-US", {
+                maximumFractionDigits: 18,
+                minimumFractionDigits: 0,
+              }).format(numValue)
+        );
+      } catch (err) {
+        console.error("Input processing error:", err);
+      }
+    } else {
+      console.warn("Invalid input format:", rawValue);
     }
   };
 
@@ -108,55 +125,18 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
       const tokenContract = await getTokenContract(web3);
       if (!tokenContract) throw new Error("Failed to initialize token contract");
       const amountWei = web3.utils.toWei(amount, "ether");
-
-      // Approve token
-      console.log("Approving:", { amountWei, contractAddress: contract.options.address });
       await tokenContract.methods
         .approve(contract.options.address, amountWei)
-        .send({ from: account })
-        .on("transactionHash", (hash) => console.log("Approval tx:", hash));
-
-      // Estimate gas
-      let gasLimit = FALLBACK_GAS_LIMIT;
-      try {
-        gasLimit = await contract.methods.issueShares(amountWei).estimateGas({ from: account });
-        gasLimit = Math.floor(gasLimit * 1.2); // 20% buffer
-        console.log("Gas estimated:", { gasLimit });
-      } catch (gasErr) {
-        console.warn("Gas estimation failed, using fallback:", { error: gasErr.message, fallback: gasLimit });
-        setError(
-          `Gas estimation failed. Using ${gasLimit.toLocaleString()} gas limit. ${
-            isFirstIssuance ? "First issuance requires high gas for pool creation." : ""
-          } Please confirm the transaction.`
-        );
-      }
-
-      // Issue shares
-      console.log("Issuing shares:", { amountWei, gasLimit });
-      await contract.methods
-        .issueShares(amountWei)
-        .send({ from: account, gas: gasLimit })
-        .on("transactionHash", (hash) => console.log("Issue tx:", hash));
-
+        .send({ from: account });
+      await contract.methods.issueShares(amountWei).send({ from: account });
       alert(`${chainId === 1 ? "PLSTR" : "xBOND"} issued successfully!`);
       setAmount("");
       setDisplayAmount("");
       fetchBalance();
-      checkPoolExists();
+      console.log(`${chainId === 1 ? "PLSTR" : "xBOND"} issued:`, { amountWei });
     } catch (err) {
-      console.error("Issue error:", err);
-      let errorMsg = `Error issuing ${chainId === 1 ? "PLSTR" : "xBOND"}: ${err.message || "Unknown error"}`;
-      if (err.code === 4001) errorMsg = "Transaction rejected by user";
-      else if (err.message.includes("revert")) {
-        try {
-          const tx = await web3.eth.getTransaction(err.transactionHash);
-          const code = await web3.eth.call(tx, tx.blockNumber);
-          errorMsg += ` Revert reason: ${web3.utils.hexToAscii(code).replace(/[^\x20-\x7E]/g, '')}`;
-        } catch (revertErr) {
-          console.error("Failed to fetch revert reason:", revertErr);
-        }
-      }
-      setError(errorMsg);
+      setError(`Error issuing ${chainId === 1 ? "PLSTR" : "xBOND"}: ${err.message || "Unknown error"}`);
+      console.error("Issue shares error:", err);
     } finally {
       setLoading(false);
     }
@@ -188,11 +168,6 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
         <p className="text-gray-600 mt-1">
           User {chainId === 1 ? "vPLS" : "PLSX"} Balance: <span className="text-purple-600">{formatNumber(tokenBalance)} {chainId === 1 ? "vPLS" : "PLSX"}</span>
         </p>
-        {isFirstIssuance && (
-          <p className="text-yellow-600 mt-2 text-sm">
-            Warning: First issuance creates a liquidity pool, requiring higher gas (up to 5,000,000).
-          </p>
-        )}
       </div>
       <button
         onClick={handleIssue}
