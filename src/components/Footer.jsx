@@ -1,13 +1,13 @@
 // src/components/Footer.jsx
 const Footer = ({ chainId }) => {
   return (
-    <footer className="mt-12 w-full text-center text-gray-600 text-xs">
-      <div className="mb-2">
+    <footer className="mt-16 w-full text-center text-gray-600 text-xs">
+      <div className="mb-1">
         <a
-          href="https://github.com/KeepsItCrypt0/PulseStrategy"
+          href="https://github.com/KeepsItNFT/PulseStrategy"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-purple-600 hover:text-pink-400 mx-2"
+          className="footer-link mx-1"
         >
           View Contracts on GitHub
         </a>
@@ -16,12 +16,12 @@ const Footer = ({ chainId }) => {
           href="https://x.com/PulseStrategy"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-purple-600 hover:text-pink-400 mx-2"
+          className="footer-link mx-1"
         >
           Follow @PulseStrategy on X
         </a>
       </div>
-      <p className="max-w-xl mx-auto">
+      <p className="max-w-lg mx-auto">
         <strong>Disclaimer:</strong> PulseStrategy is a decentralized finance (DeFi) platform. 
         Investing in DeFi involves significant risks, including the potential loss of all invested funds. 
         Cryptocurrencies and smart contracts are volatile and may be subject to hacks, bugs, or market fluctuations. 
