@@ -10,10 +10,14 @@ const ContractInfo = ({ contract, web3, chainId }) => {
   const [error, setError] = useState("");
 
   const fetchInfo = async () => {
+    if (!contract || !web3 || !chainId) {
+      setError("Contract or Web3 not initialized");
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError("");
-      if (!contract || !web3) throw new Error("Contract or Web3 not initialized");
 
       const result = await contract.methods.getContractInfo().call();
       const totalIssued = await contract.methods.totalSupply().call();
@@ -22,36 +26,32 @@ const ContractInfo = ({ contract, web3, chainId }) => {
       ]().call();
       const ratioDecimal = web3.utils.fromWei(ratio || "0", "ether");
 
-      setInfo({
+      const newInfo = {
         balance: web3.utils.fromWei(result.contractBalance || "0", "ether"),
         issuancePeriod: result.remainingIssuancePeriod || "0",
         totalIssued: web3.utils.fromWei(totalIssued || "0", "ether"),
-      });
-      setBackingRatio(formatNumber(ratioDecimal, true));
+      };
 
       if (chainId === 369) {
-        const poolAddress = await contract.methods.getPoolAddress().call();
-        const poolLiquidity = await contract.methods.getPoolLiquidity().call();
-        const poolDepthRatio = await contract.methods.getPoolDepthRatio().call();
-        setInfo((prev) => ({
-          ...prev,
-          poolAddress,
-          xBONDAmount: web3.utils.fromWei(poolLiquidity.xBONDAmount || "0", "ether"),
-          plsxAmount: web3.utils.fromWei(poolLiquidity.plsxAmount || "0", "ether"),
-          poolDepthRatio: web3.utils.fromWei(poolDepthRatio || "0", "ether"),
-        }));
+        try {
+          const poolAddress = await contract.methods.getPoolAddress().call();
+          const poolLiquidity = await contract.methods.getPoolLiquidity().call();
+          const poolDepthRatio = await contract.methods.getPoolDepthRatio().call();
+          newInfo.poolAddress = poolAddress;
+          newInfo.xBONDAmount = web3.utils.fromWei(poolLiquidity.xBONDAmount || "0", "ether");
+          newInfo.plsxAmount = web3.utils.fromWei(poolLiquidity.plsxAmount || "0", "ether");
+          newInfo.poolDepthRatio = web3.utils.fromWei(poolDepthRatio || "0", "ether");
+        } catch (poolError) {
+          console.warn("Failed to fetch pool info:", poolError);
+        }
       }
 
-      console.log("Contract info fetched:", {
-        balance: result.contractBalance,
-        period: result.remainingIssuancePeriod,
-        totalIssued,
-        ratioRaw: ratio,
-        ratioDecimal,
-      });
+      setInfo(newInfo);
+      setBackingRatio(formatNumber(ratioDecimal, true));
+      console.log("Contract info fetched:", newInfo);
     } catch (error) {
       console.error("Failed to fetch contract info:", error);
-      setError(`Failed to load contract data: ${error.message || "Unknown error"}`);
+      setError(`Failed to load contract data: ${error.message || "Contract execution failed"}`);
     } finally {
       setLoading(false);
     }
@@ -88,7 +88,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
         <div>
           <p className="text-red-400">{error}</p>
           <button
-            onClick={() => setTimeout(fetchInfo, 2000)}
+            onClick={fetchInfo}
             className="mt-2 text-purple-300 hover:text-purple-400"
           >
             Retry
@@ -110,7 +110,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           <p>
             <strong>{chainId === 1 ? "vPLS" : "PLSX"} Backing Ratio:</strong> {backingRatio}
           </p>
-          {chainId === 369 && (
+          {chainId === 369 && info.poolAddress && (
             <>
               <p>
                 <strong>Pool Address:</strong>{" "}
