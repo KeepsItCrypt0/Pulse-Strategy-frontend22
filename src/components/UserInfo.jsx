@@ -9,6 +9,11 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
   const [error, setError] = useState("");
 
   const fetchInfo = async () => {
+    if (!contract || !account || !web3 || !chainId) {
+      setError("Contract, account, or Web3 not initialized");
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError("");
@@ -21,7 +26,7 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
       console.log("User info fetched:", { shareBalance: balance, redeemableToken: redeemable });
     } catch (error) {
       console.error("Failed to fetch user info:", error);
-      setError(`Failed to load user data: ${error.message || "Unknown error"}`);
+      setError(`Failed to load user data: ${error.message || "Contract execution failed"}`);
     } finally {
       setLoading(false);
     }
@@ -40,7 +45,7 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
         <div>
           <p className="text-red-400">{error}</p>
           <button
-            onClick={() => setTimeout(fetchInfo, 2000)}
+            onClick={fetchInfo}
             className="mt-2 text-purple-300 hover:text-pink-400"
           >
             Retry
