@@ -13,7 +13,7 @@ export const tokenAddresses = {
   369: "0x95B303987A60C71504D99Aa1b13B4DA07b0790ab", // PLSX on PulseChain
 };
 
-// ABIs (placeholders - add your ABIs here)
+// ABIs (unchanged, placeholders for reference)
 const xBONDABI = [
 	{
 		"inputs": [],
@@ -891,7 +891,7 @@ const xBONDABI = [
 		"stateMutability": "nonpayable",
 		"type": "function"
 	}
-]; // Paste xBOND ABI here
+]; // Your provided xBOND ABI
 const plstrABI = [
 	{
 		"inputs": [
@@ -1639,7 +1639,7 @@ const plstrABI = [
 		"stateMutability": "view",
 		"type": "function"
 	}
-]; // Paste PLSTR ABI here
+]; // Your provided PLSTR ABI
 const vPLSABI = [
   {
     "constant": true,
@@ -1668,7 +1668,7 @@ const vPLSABI = [
     "outputs": [{ "name": "success", "type": "bool" }],
     "type": "function"
   }
-]; // Paste vPLS ABI here
+]; // Your provided vPLS ABI
 const plsxABI = [
     {
         "inputs": [],
@@ -2343,14 +2343,14 @@ const plsxABI = [
         "name": "Transfer",
         "type": "event"
     }
-]; // Paste PLSX ABI here
+]; // Your provided PLSX ABI
 
 // Network configurations
 export const networkConfigs = {
   1: {
     chainId: "0x1",
     chainName: "Ethereum Mainnet",
-    rpcUrls: ["https://mainnet.infura.io/v3/0c7b379c34424040826f02574f89b57d"], // Replace with your Infura key
+    rpcUrls: ["https://mainnet.infura.io/v3/0c7b379c34424040826f02574f89b57d"],
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
     blockExplorerUrls: ["https://etherscan.io"],
   },
@@ -2367,9 +2367,11 @@ export const getWeb3 = async () => {
   if (window.ethereum) {
     try {
       const web3 = new Web3(window.ethereum);
-      // Request accounts to ensure wallet is active
       await window.ethereum.request({ method: "eth_requestAccounts" });
-      console.log("Web3 initialized:", web3);
+      console.log("Web3 initialized:", {
+        provider: "window.ethereum",
+        version: web3.version,
+      });
       return web3;
     } catch (error) {
       console.error("Failed to initialize Web3 with provider:", error);
@@ -2377,7 +2379,10 @@ export const getWeb3 = async () => {
     }
   } else if (window.web3) {
     const web3 = new Web3(window.web3.currentProvider);
-    console.log("Web3 initialized with legacy provider:", web3);
+    console.log("Web3 initialized with legacy provider:", {
+      provider: "window.web3",
+      version: web3.version,
+    });
     return web3;
   } else {
     console.error("No Web3 provider detected");
@@ -2392,14 +2397,18 @@ export const getContract = async (web3) => {
   }
   try {
     const chainId = Number(await web3.eth.getChainId());
-    const contractAddress = contractAddresses[chainId];
-    const abi = chainId === 1 ? plstrABI : xBONDABI;
-    if (!contractAddress) {
-      console.error("No contract address for chainId:", chainId);
+    if (!contractAddresses[chainId]) {
+      console.error("Unsupported chainId:", chainId);
       return null;
     }
+    const contractAddress = contractAddresses[chainId];
+    const abi = chainId === 1 ? plstrABI : xBONDABI;
     const contract = new web3.eth.Contract(abi, contractAddress);
-    console.log("Contract initialized:", contractAddress);
+    console.log("Contract initialized:", {
+      chainId,
+      contractAddress,
+      abi: abi.slice(0, 2), // Log partial ABI for brevity
+    });
     return contract;
   } catch (error) {
     console.error("Failed to initialize contract:", error);
@@ -2414,14 +2423,18 @@ export const getTokenContract = async (web3) => {
   }
   try {
     const chainId = Number(await web3.eth.getChainId());
-    const tokenAddress = tokenAddresses[chainId];
-    const abi = chainId === 1 ? vPLSABI : plsxABI;
-    if (!tokenAddress) {
-      console.error("No token address for chainId:", chainId);
+    if (!tokenAddresses[chainId]) {
+      console.error("Unsupported chainId:", chainId);
       return null;
     }
+    const tokenAddress = tokenAddresses[chainId];
+    const abi = chainId === 1 ? vPLSABI : plsxABI;
     const tokenContract = new web3.eth.Contract(abi, tokenAddress);
-    console.log("Token contract initialized:", tokenAddress);
+    console.log("Token contract initialized:", {
+      chainId,
+      tokenAddress,
+      abi: abi.slice(0, 2),
+    });
     return tokenContract;
   } catch (error) {
     console.error("Failed to initialize token contract:", error);
@@ -2436,8 +2449,12 @@ export const getAccount = async (web3) => {
   }
   try {
     const accounts = await web3.eth.getAccounts();
-    console.log("Account fetched:", accounts[0] || "None");
-    return accounts[0] || null;
+    if (!accounts || accounts.length === 0) {
+      console.warn("No accounts available");
+      return null;
+    }
+    console.log("Account fetched:", accounts[0]);
+    return accounts[0];
   } catch (error) {
     console.error("Failed to fetch account:", error);
     return null;
@@ -2449,12 +2466,18 @@ export const switchNetwork = async (web3, chainId) => {
     console.error("Web3 is not initialized");
     return;
   }
+  if (!networkConfigs[chainId]) {
+    console.error("Unsupported chainId for network switch:", chainId);
+    return;
+  }
   try {
     await window.ethereum.request({
       method: "wallet_switchEthereumChain",
       params: [{ chainId: networkConfigs[chainId].chainId }],
     });
-    console.log(`Switched to chainId ${chainId}`);
+    console.log(`Switched to chainId ${chainId}`, {
+      chainName: networkConfigs[chainId].chainName,
+    });
   } catch (switchError) {
     if (switchError.code === 4902) {
       try {
@@ -2462,7 +2485,9 @@ export const switchNetwork = async (web3, chainId) => {
           method: "wallet_addEthereumChain",
           params: [networkConfigs[chainId]],
         });
-        console.log(`Added and switched to chainId ${chainId}`);
+        console.log(`Added and switched to chainId ${chainId}`, {
+          chainName: networkConfigs[chainId].chainName,
+        });
       } catch (addError) {
         console.error("Failed to add network:", addError);
       }
