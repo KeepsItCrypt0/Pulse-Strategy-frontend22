@@ -2357,7 +2357,7 @@ export const networkConfigs = {
   369: {
     chainId: "0x171",
     chainName: "PulseChain",
-    rpcUrls: ["https://rpc.pulsechain.com"],
+    rpcUrls: ["https://site1.moralis-nodes.com/pulse/77d6399519a34366b730e102444979a3"],
     nativeCurrency: { name: "Pulse", symbol: "PLS", decimals: 18 },
     blockExplorerUrls: ["https://scan.pulsechain.com"],
   },
