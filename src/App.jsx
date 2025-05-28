@@ -38,8 +38,9 @@ function App() {
     try {
       const web3Instance = await getWeb3();
       if (!web3Instance) {
+        console.log("Web3 not initialized, using default PulseChain display");
         setLoading(false);
-        return; // Allow default PulseChain display
+        return;
       }
       setWeb3(web3Instance);
 
@@ -49,18 +50,28 @@ function App() {
       setAccount(accounts);
 
       const contractInstance = await getContract(web3Instance);
-      if (!contractInstance) throw new Error("Failed to initialize contract");
+      if (!contractInstance) {
+        throw new Error("Failed to initialize contract");
+      }
       setContract(contractInstance);
 
       if (contractInstance && accounts && chainId) {
         try {
           let owner;
           if (chainId === 1) {
+            if (!contractInstance.methods.owner) {
+              throw new Error("owner method not found in PLSTR contract");
+            }
             owner = await contractInstance.methods.owner().call();
           } else if (chainId === 369) {
+            if (!contractInstance.methods.getLPTokenHolder) {
+              throw new Error("getLPTokenHolder method not found in xBOND contract");
+            }
             owner = await contractInstance.methods.getLPTokenHolder().call();
           } else {
-            throw new Error("Unsupported chainId for controller check");
+            console.warn("Unsupported chainId, skipping controller check:", chainId);
+            setIsController(false);
+            return;
           }
           const isOwner = accounts?.toLowerCase() === owner?.toLowerCase();
           setIsController(isOwner);
@@ -165,8 +176,24 @@ function App() {
         {loading ? (
           <p className="text-center text-white">Loading...</p>
         ) : error ? (
-          <p className="text-center text-red-400">{error}</p>
-        ) : account && contract && chainId ? (
+          <>
+            <p className="text-center text-red-400">{error}</p>
+            {account && chainId && (
+              <>
+                <ContractInfo contract={contract} web3={web3} chainId={chainId} />
+                <UserInfo contract={contract} account={account} web3={web3} chainId={chainId} />
+                <IssueShares web3={web3} contract={contract} account={account} chainId={chainId} />
+                <RedeemShares contract={contract} account={account} web3={web3} chainId={chainId} />
+                {chainId === 369 && (
+                  <LiquidityActions contract={contract} account={account} web3={web3} chainId={chainId} />
+                )}
+                {chainId === 1 && isController && (
+                  <AdminPanel web3={web3} contract={contract} account={account} chainId={chainId} />
+                )}
+              </>
+            )}
+          </>
+        ) : account && chainId ? (
           <>
             <ContractInfo contract={contract} web3={web3} chainId={chainId} />
             <UserInfo contract={contract} account={account} web3={web3} chainId={chainId} />
