@@ -42,11 +42,14 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
       try {
         if (amount && Number(amount) > 0 && contract && web3) {
           const amountNum = Number(amount);
-          if (isNaN(amountNum)) throw new Error("Invalid amount");
+          if (isNaN(amountNum) || amountNum < MIN_ISSUE_AMOUNT) {
+            throw new Error(`Amount must be at least ${MIN_ISSUE_AMOUNT} ${chainId === 1 ? "vPLS" : "PLSX"}`);
+          }
           const amountWei = web3.utils.toWei(amount, "ether");
           const result = await contract.methods.calculateSharesReceived(amountWei).call();
+          console.log("calculateSharesReceived response:", { result, amountWei });
           if (!Array.isArray(result) || result.length !== 2) {
-            throw new Error("Invalid response from calculateSharesReceived");
+            throw new Error(`Invalid response from calculateSharesReceived: ${JSON.stringify(result)}`);
           }
           const [shares, fee] = result;
           const sharesStr = shares.toString(); // Convert BigInt to string
