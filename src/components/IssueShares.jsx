@@ -11,12 +11,18 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
   const [estimatedFee, setEstimatedFee] = useState("0");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const MIN_ISSUE_AMOUNT = chainId === 1 ? 1005 : 10; // 1005 vPLS for PLSTR, 10 PLSX for xBOND
+  const MIN_ISSUE_AMOUNT = chainId === 1 ? 1005 : 10;
 
   const fetchBalance = async () => {
+    if (!web3 || !account || !chainId) {
+      console.error("Missing dependencies for fetching balance:", { web3, account, chainId });
+      setError("Please ensure your wallet is connected and network is selected.");
+      return;
+    }
     try {
       setError("");
       const tokenContract = await getTokenContract(web3);
+      if (!tokenContract) throw new Error("Failed to initialize token contract");
       const balance = await tokenContract.methods.balanceOf(account).call();
       setTokenBalance(web3.utils.fromWei(balance, "ether"));
       console.log(`${chainId === 1 ? "vPLS" : "PLSX"} balance fetched:`, { balance });
@@ -33,7 +39,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
   useEffect(() => {
     const fetchEstimate = async () => {
       try {
-        if (amount && Number(amount) > 0) {
+        if (amount && Number(amount) > 0 && contract && web3) {
           const amountWei = web3.utils.toWei(amount, "ether");
           const [shares, fee] = await contract.methods.calculateSharesReceived(amountWei).call();
           setEstimatedShares(web3.utils.fromWei(shares, "ether"));
@@ -54,16 +60,14 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
     const rawValue = e.target.value.replace(/,/g, "");
     if (rawValue === "" || /^-?\d*\.?\d*$/.test(rawValue)) {
       setAmount(rawValue);
-      if (rawValue === "" || isNaN(rawValue)) {
-        setDisplayAmount("");
-      } else {
-        setDisplayAmount(
-          new Intl.NumberFormat("en-US", {
-            maximumFractionDigits: 18,
-            minimumFractionDigits: 0,
-          }).format(rawValue)
-        );
-      }
+      setDisplayAmount(
+        rawValue === "" || isNaN(rawValue)
+          ? ""
+          : new Intl.NumberFormat("en-US", {
+              maximumFractionDigits: 18,
+              minimumFractionDigits: 0,
+            }).format(rawValue)
+      );
     }
   };
 
@@ -76,6 +80,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
         throw new Error(`Amount must be at least ${MIN_ISSUE_AMOUNT} ${chainId === 1 ? "vPLS" : "PLSX"}`);
       }
       const tokenContract = await getTokenContract(web3);
+      if (!tokenContract) throw new Error("Failed to initialize token contract");
       const amountWei = web3.utils.toWei(amount, "ether");
       await tokenContract.methods
         .approve(contract._address, amountWei)
@@ -114,7 +119,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
           className="w-full p-2 border rounded-lg"
         />
         <p className="text-sm text-gray-600 mt-1">
-          minimum <span className="text-purple-600 font-medium">{MIN_ISSUE_AMOUNT} {chainId === 1 ? "vPLS" : "PLSX"}</span>
+          Minimum <span className="text-purple-600 font-medium">{MIN_ISSUE_AMOUNT} {chainId === 1 ? "vPLS" : "PLSX"}</span>
         </p>
         <p className="text-gray-600 mt-1">
           User {chainId === 1 ? "vPLS" : "PLSX"} Balance: <span className="text-purple-600">{formatNumber(tokenBalance)} {chainId === 1 ? "vPLS" : "PLSX"}</span>
