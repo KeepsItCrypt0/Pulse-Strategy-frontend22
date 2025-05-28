@@ -13,6 +13,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
   const [error, setError] = useState("");
   const MIN_ISSUE_AMOUNT = 1;
   const FEE_PERCENTAGE = 0.005; // 0.5% fee for PLSTR
+  const FALLBACK_GAS_LIMIT = 3500000; // Fallback for xBOND
 
   const fetchBalance = async () => {
     if (!web3 || !account || !chainId) {
@@ -49,17 +50,14 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
           const amountWei = web3.utils.toWei(amount, "ether");
           let shares, fee;
           if (chainId === 1) {
-            // PLSTR: calculate shares and fee client-side
             const result = await contract.methods.calculateSharesReceived(amountWei).call({ from: account });
             shares = (typeof result === "object" && result !== null
               ? (result[0] || result.shares || result)
               : result
             ).toString();
-            // Calculate 0.5% fee
             fee = (amountNum * FEE_PERCENTAGE).toString();
             fee = web3.utils.toWei(fee, "ether");
           } else {
-            // xBOND: [shares, fee]
             const result = await contract.methods.calculateSharesReceived(amountWei).call({ from: account });
             if (Array.isArray(result) && result.length === 2) {
               [shares, fee] = result;
@@ -125,18 +123,51 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
       const tokenContract = await getTokenContract(web3);
       if (!tokenContract) throw new Error("Failed to initialize token contract");
       const amountWei = web3.utils.toWei(amount, "ether");
+
+      // Approve token
+      console.log("Approving:", { amountWei, contractAddress: contract.options.address });
       await tokenContract.methods
         .approve(contract.options.address, amountWei)
-        .send({ from: account });
-      await contract.methods.issueShares(amountWei).send({ from: account });
+        .send({ from: account })
+        .on("transactionHash", (hash) => console.log("Approval tx:", hash));
+
+      // Estimate gas for issueShares
+      let gasLimit = FALLBACK_GAS_LIMIT;
+      try {
+        gasLimit = await contract.methods.issueShares(amountWei).estimateGas({ from: account });
+        gasLimit = Math.floor(gasLimit * 1.2); // 20% buffer
+        console.log("Gas estimated:", { gasLimit });
+      } catch (gasErr) {
+        console.warn("Gas estimation failed, using fallback:", { error: gasErr.message, fallback: FALLBACK_GAS_LIMIT });
+        setError("Gas estimation failed. Using a fallback gas limit of 3,500,000. Please confirm the transaction.");
+      }
+
+      // Issue shares
+      console.log("Issuing shares:", { amountWei, gasLimit });
+      await contract.methods
+        .issueShares(amountWei)
+        .send({ from: account, gas: gasLimit })
+        .on("transactionHash", (hash) => console.log("Issue tx:", hash));
+
       alert(`${chainId === 1 ? "PLSTR" : "xBOND"} issued successfully!`);
       setAmount("");
       setDisplayAmount("");
       fetchBalance();
-      console.log(`${chainId === 1 ? "PLSTR" : "xBOND"} issued:`, { amountWei });
     } catch (err) {
-      setError(`Error issuing ${chainId === 1 ? "PLSTR" : "xBOND"}: ${err.message || "Unknown error"}`);
-      console.error("Issue shares error:", err);
+      console.error("Issue error:", err);
+      let errorMsg = `Error issuing ${chainId === 1 ? "PLSTR" : "xBOND"}: ${err.message || "Unknown error"}`;
+      if (err.code === 4001) {
+        errorMsg = "Transaction rejected by user";
+      } else if (err.message.includes("revert")) {
+        try {
+          const tx = await web3.eth.getTransaction(err.transactionHash);
+          const code = await web3.eth.call(tx, tx.blockNumber);
+          errorMsg += ` Revert reason: ${web3.utils.hexToAscii(code).replace(/[^\x20-\x7E]/g, '')}`;
+        } catch (revertErr) {
+          console.error("Failed to fetch revert reason:", revertErr);
+        }
+      }
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
