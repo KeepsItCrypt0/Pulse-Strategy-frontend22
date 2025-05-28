@@ -11,7 +11,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
   const [estimatedFee, setEstimatedFee] = useState("0");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const MIN_ISSUE_AMOUNT = chainId === 1 ? 1 : 1; // Lowered to 1 for vPLS and PLSX
+  const MIN_ISSUE_AMOUNT = 1; // Unified for vPLS and PLSX
 
   const fetchBalance = async () => {
     if (!web3 || !account || !chainId) {
@@ -54,13 +54,20 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
             amountWei,
           });
           let shares, fee;
-          if (Array.isArray(result) && result.length === 2) {
-            [shares, fee] = result;
-          } else if (result && typeof result === "object") {
-            shares = result.shares || result[0] || "0";
-            fee = result.fee || result[1] || "0";
+          if (chainId === 1) {
+            // PLSTR returns only shares
+            shares = result;
+            fee = "0"; // No fee for PLSTR
           } else {
-            throw new Error(`Invalid response from calculateSharesReceived: ${String(result)}`);
+            // xBOND returns [shares, fee]
+            if (Array.isArray(result) && result.length === 2) {
+              [shares, fee] = result;
+            } else if (result && typeof result === "object") {
+              shares = result.shares || result[0] || "0";
+              fee = result.fee || result[1] || "0";
+            } else {
+              throw new Error(`Invalid response from calculateSharesReceived: ${String(result)}`);
+            }
           }
           const sharesStr = shares.toString();
           const feeStr = fee.toString();
