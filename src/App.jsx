@@ -14,8 +14,8 @@ function App() {
   const [contract, setContract] = useState(null);
   const [account, setAccount] = useState(null);
   const [isController, setIsController] = useState(false);
-  const [chainId, setChainId] = useState(369); // Default to PulseChain
-  const [networkName, setNetworkName] = useState("PulseChain"); // Default to PulseChain
+  const [chainId, setChainId] = useState(null); // Initialize as null
+  const [networkName, setNetworkName] = useState("Unknown Network");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -26,9 +26,11 @@ function App() {
       setChainId(id);
       setNetworkName(id === 1 ? "Ethereum" : id === 369 ? "PulseChain" : "Unknown Network");
       console.log("Network updated:", { chainId: id, networkName });
+      return id;
     } catch (err) {
       console.error("Failed to update network:", err);
       setError("Failed to detect network. Please ensure your wallet is connected.");
+      return null;
     }
   };
 
@@ -38,13 +40,16 @@ function App() {
     try {
       const web3Instance = await getWeb3();
       if (!web3Instance) {
-        console.log("Web3 not initialized, using default PulseChain display");
+        console.log("Web3 not initialized, defaulting to disconnected state");
+        setChainId(null);
+        setNetworkName("Disconnected");
         setLoading(false);
         return;
       }
       setWeb3(web3Instance);
 
-      await updateNetwork(web3Instance);
+      const chainId = await updateNetwork(web3Instance);
+      if (!chainId) throw new Error("Failed to detect chainId");
 
       const accounts = await getAccount(web3Instance);
       setAccount(accounts);
@@ -56,7 +61,7 @@ function App() {
       setContract(contractInstance);
 
       if (contractInstance && accounts && chainId === 1) {
-        // Only check controller for PLSTR (Ethereum)
+        // PLSTR owner check
         try {
           if (!contractInstance.methods.owner) {
             throw new Error("owner method not found in PLSTR contract");
@@ -78,7 +83,6 @@ function App() {
           setError(`Failed to verify controller: ${err.message || "Unknown error"}`);
         }
       } else if (chainId === 369) {
-        // No controller check for xBOND
         setIsController(false);
         console.log("Skipped controller check for xBOND:", { chainId, account: accounts });
       }
@@ -129,12 +133,12 @@ function App() {
     <div className="min-h-screen gradient-bg flex flex-col items-center p-4">
       <header className="w-full max-w-4xl bg-white bg-opacity-90 shadow-lg rounded-lg p-6 mb-6 card">
         <h1 className="text-3xl font-bold text-center text-purple-600">
-          {chainId === 1 ? "PulseStrategy" : "xBOND"}
+          {chainId === 1 ? "PulseStrategy" : chainId === 369 ? "xBOND" : "Connect Wallet"}
         </h1>
         <p className="text-center text-gray-600 mt-2">
           {account
             ? `Interact with the ${chainId === 1 ? "PLSTR" : "xBOND"} contract on ${networkName}`
-            : `Connect your wallet to interact with the ${chainId === 1 ? "PLSTR" : "xBOND"} contract`}
+            : `Connect your wallet to interact with the contract`}
         </p>
         <div className="mt-4">
           <label className="text-gray-600 mr-2">Select Network:</label>
