@@ -11,7 +11,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
   const [estimatedFee, setEstimatedFee] = useState("0");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const MIN_ISSUE_AMOUNT = chainId === 1 ? 1005 : 1; // 1 PLSX for PulseChain
+  const MIN_ISSUE_AMOUNT = chainId === 1 ? 1 : 1; // Lowered to 1 for vPLS and PLSX
 
   const fetchBalance = async () => {
     if (!web3 || !account || !chainId) {
