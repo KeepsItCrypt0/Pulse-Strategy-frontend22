@@ -11,7 +11,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
   const [estimatedFee, setEstimatedFee] = useState("0");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const MIN_ISSUE_AMOUNT = chainId === 1 ? 1005 : 1; // Lowered to 1 PLSX for PulseChain
+  const MIN_ISSUE_AMOUNT = chainId === 1 ? 1005 : 1; // 1 PLSX for PulseChain
 
   const fetchBalance = async () => {
     if (!web3 || !account || !chainId) {
@@ -49,14 +49,19 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
           const result = await contract.methods.calculateSharesReceived(amountWei).call();
           console.log("calculateSharesReceived response:", {
             result,
-            resultShares: result[0]?.toString(),
-            resultFee: result[1]?.toString(),
+            resultType: typeof result,
+            resultKeys: result ? Object.keys(result) : [],
             amountWei,
           });
-          if (!Array.isArray(result) || result.length !== 2) {
+          let shares, fee;
+          if (Array.isArray(result) && result.length === 2) {
+            [shares, fee] = result;
+          } else if (result && typeof result === "object") {
+            shares = result.shares || result[0] || "0";
+            fee = result.fee || result[1] || "0";
+          } else {
             throw new Error(`Invalid response from calculateSharesReceived: ${String(result)}`);
           }
-          const [shares, fee] = result;
           const sharesStr = shares.toString();
           const feeStr = fee.toString();
           setEstimatedShares(web3.utils.fromWei(sharesStr, "ether"));
@@ -127,8 +132,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
           Estimated Fee: <span className="text-purple-600">{formatNumber(estimatedFee)} {chainId === 1 ? "vPLS" : "PLSX"}</span>
         </p>
         <p className="text-gray-600 mb-2">
-          Estimated {chainId === 1 ? "PLSTR" : "xBOND"} Receivable: <span className="text-blue-600">{formatNumber(estimatedShares)} {chainId === 1 ? " PLSTR" : "xBOND"}
- </span>
+          Estimated {chainId === 1 ? "PLSTR" : "xBOND"} Receivable: <span className="text-purple-600">{formatNumber(estimatedShares)} {chainId === 1 ? "PLSTR" : "xBOND"}</span>
         </p>
         <input
           type="text"
