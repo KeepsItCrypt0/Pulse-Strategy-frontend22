@@ -7,9 +7,8 @@ import RedeemShares from "./components/RedeemShares";
 import AdminPanel from "./components/AdminPanel";
 import UserInfo from "./components/UserInfo";
 import LiquidityActions from "./components/LiquidityActions";
-import Footer from "./Footer";
 import { getWeb3, getContract, getAccount, contractAddresses, switchNetwork } from "./web3";
-import "./styles.css";
+import "./style.css";
 
 function App() {
   const [web3, setWeb3] = useState(null);
@@ -23,7 +22,7 @@ function App() {
 
   const updateNetwork = async (web3Instance) => {
     try {
-      if (!web3Instance) return;
+      if (!web3Instance) throw new Error("Web3 not initialized");
       const id = Number(await web3Instance.eth.getChainId());
       setChainId(id);
       setNetworkName(id === 1 ? "Ethereum" : id === 369 ? "PulseChain" : "Unknown Network");
@@ -31,7 +30,7 @@ function App() {
       return id;
     } catch (err) {
       console.error("Failed to update network:", err);
-      setError("Failed to detect network. Please ensure your wallet.");
+      setError("Failed to detect network. Please ensure your wallet is connected.");
       return null;
     }
   };
@@ -48,15 +47,15 @@ function App() {
         setLoading(false);
         return;
       }
-      setWeb3(Instance);
+      setWeb3(web3Instance);
 
-      const chainId = await updateNetwork();
+      const chainId = await updateNetwork(web3Instance);
       if (!chainId) throw new Error("Failed to detect chainId");
 
-      const accounts = await getAccount();
+      const accounts = await getAccount(web3Instance);
       setAccount(accounts);
 
-      const contractInstance = await getContract();
+      const contractInstance = await getContract(web3Instance);
       if (!contractInstance) {
         throw new Error("Failed to initialize contract");
       }
@@ -64,23 +63,23 @@ function App() {
 
       if (contractInstance && accounts && chainId === 1) {
         try {
-          if (!contractInstance?.methods?.owner) {
+          if (!contractInstance.methods.owner) {
             throw new Error("owner method not found in PLSTR contract");
           }
-          const owner = await contractInstance?.methods?.owner()?.call();
+          const owner = await contractInstance.methods.owner().call();
           const isOwner = accounts?.toLowerCase() === owner?.toLowerCase();
           setIsController(isOwner);
           console.log("Controller check (PLSTR):", {
             account: accounts,
             owner,
-            isOwner,
+            isController: isOwner,
             chainId,
-            contractAddress: contractInstance?._address,
+            contractAddress: contractInstance._address,
           });
         } catch (err) {
           console.error("Failed to fetch controller:", err);
           setIsController(false);
-          setError(`Failed to verify controller: ${err?.message || "Unknown error"}`);
+          setError(`Failed to verify controller: ${err.message || "Unknown error"}`);
         }
       } else if (chainId === 369) {
         setIsController(false);
@@ -88,12 +87,12 @@ function App() {
       }
       console.log("App initialized:", {
         chainId,
-        account,
+        account: accounts,
         contractAddress: contractInstance?._address,
       });
     } catch (error) {
       console.error("App initialization failed:", error);
-      setError(`Initialization failed: ${error?.message || "Unknown error"}`);
+      setError(`Initialization failed: ${error.message || "Unknown error"}`);
     } finally {
       setLoading(false);
     }
@@ -103,11 +102,11 @@ function App() {
     initializeApp();
 
     if (window.ethereum) {
-      window.ethereum?.on("chainChanged", () => {
+      window.ethereum.on("chainChanged", () => {
         console.log("Chain changed, reinitializing...");
         initializeApp();
       });
-      window.ethereum?.on("accountsChanged", (accounts) => {
+      window.ethereum.on("accountsChanged", (accounts) => {
         console.log("Accounts changed:", accounts);
         setAccount(accounts[0] || null);
         initializeApp();
@@ -116,8 +115,8 @@ function App() {
 
     return () => {
       if (window.ethereum) {
-        window.ethereum?.removeAllListeners("chainChanged");
-        window.ethereum?.removeAllListeners("accountsChanged");
+        window.ethereum.removeAllListeners("chainChanged");
+        window.ethereum.removeAllListeners("accountsChanged");
       }
     };
   }, []);
@@ -133,7 +132,7 @@ function App() {
       console.log("Network switch successful:", { targetChainId });
     } catch (err) {
       console.error("Network switch failed:", err);
-      setError(`Failed to switch network: ${err?.message || "Unknown error"}`);
+      setError(`Failed to switch network: ${err.message || "Unknown error"}`);
     } finally {
       setLoading(false);
     }
@@ -164,7 +163,7 @@ function App() {
         </div>
         {account && (
           <p className="text-center text-gray-600 mt-2">
-            Wallet: {account?.slice(0, 6)}...{account?.slice(-4)}
+            Wallet: {account.slice(0, 6)}...{account.slice(-4)}
           </p>
         )}
         <ConnectWallet
@@ -205,14 +204,41 @@ function App() {
               <LiquidityActions contract={contract} account={account} web3={web3} chainId={chainId} />
             )}
             {chainId === 1 && isController && (
-                  <AdminPanel web3={web3} contract={contract} account={account} chainId={chainId} />
-                )}
+              <AdminPanel web3={web3} contract={contract} account={account} chainId={chainId} />
+            )}
           </>
         ) : (
           <p className="text-center text-white">Please connect your wallet to interact with the contract.</p>
         )}
       </main>
-      <Footer chainId={chainId} />
+      <footer className="mt-16 w-full text-center text-gray-600 text-xs">
+        <div className="mb-1">
+          <a
+            href="https://github.com/KeepsItCrypt0/PulseStrategy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="footer-link mx-1"
+          >
+            View Contracts on GitHub
+          </a>
+          <span>|</span>
+          <a
+            href="https://x.com/PulseStrategy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="footer-link mx-1"
+          >
+            Follow @PulseStrategy on X
+          </a>
+        </div>
+        <p className="max-w-lg mx-auto">
+          <strong>Disclaimer:</strong> PulseStrategy is a decentralized finance (DeFi) platform. 
+          Investing in DeFi involves significant risks, including the potential loss of all invested funds. 
+          Cryptocurrencies and smart contracts are volatile and may be subject to hacks, bugs, or market fluctuations. 
+          Always conduct your own research and consult with a financial advisor before participating. 
+          By using this platform, you acknowledge these risks and agree that PulseStrategy and its developers are not liable for any losses.
+        </p>
+      </footer>
     </div>
   );
 }
