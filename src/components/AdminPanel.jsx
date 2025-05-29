@@ -218,12 +218,12 @@ const AdminPanel = ({ web3, contract, account, chainId }) => {
               value={displayMintAmount}
               onChange={(e) => handleNumericInputChange(e, setMintAmount, setDisplayMintAmount)}
               placeholder="Amount to mint"
-              className="w-full p-2 border rounded-lg mb-2"
+              className="w-full p-2 border rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-purple-600"
             />
             <button
               onClick={handleMint}
               disabled={loading || !mintAmount}
-              className="btn-primary"
+              className="btn-primary w-full"
             >
               {loading ? "Processing..." : "Mint PLSTR"}
             </button>
@@ -235,12 +235,12 @@ const AdminPanel = ({ web3, contract, account, chainId }) => {
               value={displayDepositAmount}
               onChange={(e) => handleNumericInputChange(e, setDepositAmount, setDisplayDepositAmount)}
               placeholder="Amount to deposit"
-              className="w-full p-2 border rounded-lg mb-2"
+              className="w-full p-2 border rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-purple-600"
             />
             <button
               onClick={handleDeposit}
               disabled={loading || !depositAmount}
-              className="btn-primary"
+              className="btn-primary w-full"
             >
               {loading ? "Processing..." : "Deposit vPLS"}
             </button>
@@ -252,26 +252,26 @@ const AdminPanel = ({ web3, contract, account, chainId }) => {
               value={tokenAddress}
               onChange={(e) => setTokenAddress(e.target.value)}
               placeholder="Token address"
-              className="w-full p-2 border rounded-lg mb-2"
+              className="w-full p-2 border rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-purple-600"
             />
             <input
               type="text"
               value={recipientAddress}
               onChange={(e) => setRecipientAddress(e.target.value)}
               placeholder="Recipient address"
-              className="w-full p-2 border rounded-lg mb-2"
+              className="w-full p-2 border rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-purple-600"
             />
             <input
               type="text"
               value={displayRecoverAmount}
               onChange={(e) => handleNumericInputChange(e, setRecoverAmount, setDisplayRecoverAmount)}
               placeholder="Amount to recover"
-              className="w-full p-2 border rounded-lg mb-2"
+              className="w-full p-2 border rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-purple-600"
             />
             <button
               onClick={handleRecover}
               disabled={loading || !tokenAddress || !recipientAddress || !recoverAmount}
-              className="btn-primary"
+              className="btn-primary w-full"
             >
               {loading ? "Processing..." : "Recover Tokens"}
             </button>
@@ -283,12 +283,12 @@ const AdminPanel = ({ web3, contract, account, chainId }) => {
               value={newOwner}
               onChange={(e) => setNewOwner(e.target.value)}
               placeholder="New owner address"
-              className="w-full p-2 border rounded-lg mb-2"
+              className="w-full p-2 border rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-purple-600"
             />
             <button
               onClick={handleTransferOwnership}
               disabled={loading || !newOwner}
-              className="btn-primary"
+              className="btn-primary w-full"
             >
               {loading ? "Processing..." : "Transfer Ownership"}
             </button>
@@ -303,12 +303,12 @@ const AdminPanel = ({ web3, contract, account, chainId }) => {
             value={displayPlsxAmount}
             onChange={(e) => handleNumericInputChange(e, setPlsxAmount, setDisplayPlsxAmount)}
             placeholder="PLSX amount (min 10)"
-            className="w-full p-2 border rounded-lg mb-2"
+            className="w-full p-2 border rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-purple-600"
           />
           <button
             onClick={handleInitializePool}
             disabled={loading || !plsxAmount || Number(plsxAmount) < 10}
-            className="btn-primary"
+            className="btn-primary w-full"
           >
             {loading ? "Processing..." : "Initialize Pool"}
           </button>
