@@ -37,10 +37,14 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           const poolAddress = await contract.methods.getPoolAddress().call();
           const poolLiquidity = await contract.methods.getPoolLiquidity().call();
           const poolDepthRatio = await contract.methods.getPoolDepthRatio().call();
+          const totalBurned = await contract.methods.getTotalBurned().call();
+          const totalPLSXTaxed = await contract.methods.getTotalPLSXTaxed().call();
           newInfo.poolAddress = poolAddress;
           newInfo.xBONDAmount = web3.utils.fromWei(poolLiquidity.xBONDAmount || "0", "ether");
           newInfo.plsxAmount = web3.utils.fromWei(poolLiquidity.plsxAmount || "0", "ether");
           newInfo.poolDepthRatio = web3.utils.fromWei(poolDepthRatio || "0", "ether");
+          newInfo.totalBurned = web3.utils.fromWei(totalBurned || "0", "ether");
+          newInfo.totalPLSXTaxed = web3.utils.fromWei(totalPLSXTaxed || "0", "ether");
         } catch (poolError) {
           console.warn("Failed to fetch pool info:", poolError);
         }
@@ -118,19 +122,25 @@ const ContractInfo = ({ contract, web3, chainId }) => {
                   href={`https://scan.pulsechain.com/address/${info.poolAddress}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-purple-300 hover:text-red-300"
+                  className="text-purple-300 hover:underline"
                 >
                   {info.poolAddress.slice(0, 6)}...{info.poolAddress.slice(-4)}
                 </a>
               </p>
               <p>
-                <strong>Pool xBOND Amount:</strong> {formatNumber(info.xBONDAmount)} xBOND
+                <strong>Pool xBOND Amount:</strong> {formatNumber(info.xBONDAmount)} xBOND}
               </p>
               <p>
                 <strong>Pool PLSX Amount:</strong> {formatNumber(info.plsxAmount)} PLSX
               </p>
               <p>
                 <strong>Pool Depth Ratio:</strong> {formatNumber(info.poolDepthRatio)} PLSX per LP
+              </p>
+              <p>
+                <strong>Total Burned:</strong> {formatNumber(info.totalBurned)} xBOND
+              </p>
+              <p>
+                <strong>Total PLSX Taxed:</strong> {formatNumber(info.totalPLSXTaxed)} PLSX
               </p>
             </>
           )}
