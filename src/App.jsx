@@ -188,7 +188,7 @@ function App() {
                 {chainId === 369 && (
                   <LiquidityActions contract={contract} account={account} web3={web3} chainId={chainId} />
                 )}
-                {((chainId === 1 && isController) || chainId === 369) && (
+                {chainId === 1 && isController && (
                   <AdminPanel web3={web3} contract={contract} account={account} chainId={chainId} />
                 )}
               </>
@@ -203,7 +203,7 @@ function App() {
             {chainId === 369 && (
               <LiquidityActions contract={contract} account={account} web3={web3} chainId={chainId} />
             )}
-            {((chainId === 1 && isController) || chainId === 369) && (
+            {chainId === 1 && isController && (
               <AdminPanel web3={web3} contract={contract} account={account} chainId={chainId} />
             )}
           </>
