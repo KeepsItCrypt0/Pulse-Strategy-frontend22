@@ -154,7 +154,7 @@ function App() {
           <select
             value={chainId || ""}
             onChange={handleNetworkChange}
-            className="p-2 border rounded-lg"
+            className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600"
             disabled={!web3}
           >
             <option value="1">Ethereum (PLSTR)</option>
@@ -178,7 +178,7 @@ function App() {
           <p className="text-center text-white">Loading...</p>
         ) : error ? (
           <>
-            <p className="text-center text-red-400">{error}</p>
+            <p className="text-center text-red-700">{error}</p>
             {account && chainId && (
               <>
                 <ContractInfo contract={contract} web3={web3} chainId={chainId} />
@@ -188,7 +188,7 @@ function App() {
                 {chainId === 369 && (
                   <LiquidityActions contract={contract} account={account} web3={web3} chainId={chainId} />
                 )}
-                {chainId === 1 && isController && (
+                {((chainId === 1 && isController) || chainId === 369) && (
                   <AdminPanel web3={web3} contract={contract} account={account} chainId={chainId} />
                 )}
               </>
@@ -203,7 +203,7 @@ function App() {
             {chainId === 369 && (
               <LiquidityActions contract={contract} account={account} web3={web3} chainId={chainId} />
             )}
-            {chainId === 1 && isController && (
+            {((chainId === 1 && isController) || chainId === 369) && (
               <AdminPanel web3={web3} contract={contract} account={account} chainId={chainId} />
             )}
           </>
