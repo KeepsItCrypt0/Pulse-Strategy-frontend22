@@ -1,61 +1,105 @@
 // src/components/LiquidityActions.jsx
 import { useState, useEffect } from "react";
-import { formatDate } from "../utils/format";
 
-const LiquidityActions = ({ contract, account, web3, chainId }) => {
-  const [nextWithdrawal, setNextWithdrawal] = useState("0");
-  const [loading, setLoading] = useState(false);
+const LiquidityActions = ({ web3, contract, account, chainId }) => {
+  const [timeUntilNextWithdrawal, setTimeUntilNextWithdrawal] = useState(0);
   const [error, setError] = useState("");
-
-  const fetchWithdrawalInfo = async () => {
-    try {
-      setError("");
-      if (!contract) throw new Error("Contract not initialized");
-      const timeUntilNext = await contract.methods.getTimeUntilNextWithdrawal().call();
-      setNextWithdrawal(timeUntilNext);
-      console.log("Next withdrawal time fetched:", timeUntilNext);
-    } catch (err) {
-      console.error("Failed to fetch withdrawal info:", err);
-      setError(`Failed to load withdrawal info: ${err.message || "Unknown error"}`);
-    }
-  };
+  const [loadingWithdraw, setLoadingWithdraw] = useState(false);
+  const [loadingSwap, setLoadingSwap] = useState(false);
 
   useEffect(() => {
-    if (contract && account && web3 && chainId === 369) {
-      fetchWithdrawalInfo();
-    }
-  }, [contract, account, web3, chainId]);
+    const fetchTimeUntil = async () => {
+      if (!web3 || !contract || chainId !== 369) return;
+      try {
+        const time = await contract?.methods?.getTimeUntilNextWithdrawal()?.call();
+        setTimeUntilNextWithdrawal(Number(time));
+      } catch (err) {
+        console.error("Error fetching withdrawal time:", err);
+      }
+    };
+    fetchTimeUntil();
+    const interval = setInterval(fetchTimeUntil, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, [web3, contract, chainId]);
 
   const handleWithdrawLiquidity = async () => {
-    setLoading(true);
+    if (!web3 || !contract || !account || chainId !== 369) return;
     setError("");
+    setLoadingWithdraw(true);
     try {
-      await contract.methods.withdrawLiquidityAndReinvest().send({ from: account });
-      alert("Liquidity withdrawn and reinvested successfully!");
-      fetchWithdrawalInfo();
-      console.log("Liquidity withdrawn and reinvested");
+      await contract?.methods?.withdrawLiquidityAndReinvest()?.send({ from: account });
     } catch (err) {
-      setError(`Error withdrawing liquidity: ${err.message || "Unknown error"}`);
       console.error("Withdraw liquidity error:", err);
+      let errorMessage = "Failed to withdraw and reinvest liquidity.";
+      if (err?.message?.includes("PoolNotInitialized")) {
+        errorMessage = "Pool not initialized.";
+      } else if (err?.message?.includes("WithdrawalPeriodNotElapsed")) {
+        errorMessage = `Withdrawal not available for ${Math?.ceil(timeUntilNextWithdrawal / 86400)} days.`;
+      } else if (err?.message?.includes("InsufficientLiquidity")) {
+        errorMessage = "Insufficient liquidity to withdraw.";
+      } else if (err?.message?.includes("ZeroAddress")) {
+        errorMessage = "Invalid pool address.";
+      }
+      setError(errorMessage);
     } finally {
-      setLoading(false);
+      setLoadingWithdraw(false);
     }
   };
 
-  if (chainId !== 369) return null; // Only show on PulseChain
+  const handleSwapXBONDToPLSX = async () => {
+    if (!web3 || !contract || !account || chainId !== 369) return;
+    setError("");
+    setLoadingSwap(true);
+    try {
+      await contract?.methods?.swapAccumulatedXBONDToPLSX()?.send({ from: account });
+    } catch (err) {
+      console.error("Swap error:", err);
+      let errorMessage = "Failed to swap xBOND to PLSX.";
+      if (err?.message?.includes("PoolNotInitialized")) {
+        errorMessage = "Pool not initialized.";
+      } else if (err?.message?.includes("ZeroAmount")) {
+        errorMessage = "No xBOND available to swap.";
+      } else if (err?.message?.includes("SwapFailed")) {
+        errorMessage = "Swap failed. Try again later.";
+      } else if (err?.message?.includes("InsufficientSwapOutput")) {
+        errorMessage = "Swap output too low.";
+      } else if (err?.message?.includes("ZeroAddress")) {
+        errorMessage = "Invalid pool address.";
+      }
+      setError(errorMessage);
+    } finally {
+      setLoadingSwap(false);
+    }
+  };
+
+  const formatTime = (seconds) => {
+    if (seconds === 0) return "Available now";
+    const days = Math?.floor(seconds / 86400);
+    const hours = Math?.floor((seconds % 86400) / 3600);
+    return `${days}d ${hours}h`;
+  };
 
   return (
     <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
-      <h2 className="text-xl font-semibold mb-4 text-purple-600">Liquidity Actions</h2>
-      <p className="text-gray-600 mb-4">
-        Next Withdrawal Available: {formatDate(Number(nextWithdrawal) + Math.floor(Date.now() / 1000))}
-      </p>
+      <h2 className="text-xl font-semibold mb-4">Liquidity Actions (xBOND)</h2>
+      <div className="mb-4">
+        <p className="text-gray-600">
+          Next Withdrawal: {formatTime(timeUntilNextWithdrawal)}
+        </p>
+      </div>
       <button
         onClick={handleWithdrawLiquidity}
-        disabled={loading || Number(nextWithdrawal) > 0}
-        className="btn-primary"
+        disabled={loadingWithdraw || chainId !== 369 || timeUntilNextWithdrawal > 0}
+        className="btn-primary w-full mb-4"
       >
-        {loading ? "Processing..." : "Withdraw Liquidity & Reinvest"}
+        {loadingWithdraw ? "Processing..." : "Withdraw & Reinvest Liquidity"}
+      </button>
+      <button
+        onClick={handleSwapXBONDToPLSX}
+        disabled={loadingSwap || chainId !== 369}
+        className="btn-primary w-full"
+      >
+        {loadingSwap ? "Processing..." : "Swap xBOND to PLSX"}
       </button>
       {error && <p className="text-red-400 mt-4">{error}</p>}
     </div>
