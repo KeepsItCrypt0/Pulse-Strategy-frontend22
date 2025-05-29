@@ -128,7 +128,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
                 </a>
               </p>
               <p>
-                <strong>Pool xBOND Amount:</strong> {formatNumber(info.xBONDAmount)} xBOND}
+                <strong>Pool xBOND Amount:</strong> {formatNumber(info.xBONDAmount)} xBOND
               </p>
               <p>
                 <strong>Pool PLSX Amount:</strong> {formatNumber(info.plsxAmount)} PLSX
