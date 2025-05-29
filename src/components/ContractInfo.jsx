@@ -93,53 +93,53 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           <p className="text-red-400">{error}</p>
           <button
             onClick={fetchInfo}
-            className="mt-2 text-purple-300 hover:text-purple-400"
+            className="mt-2 text-purple-300 hover:text-red-300 transition-colors"
           >
             Retry
           </button>
         </div>
       ) : (
         <>
-          <p>
+          <p className="text-gray-600">
             <strong>Contract Balance:</strong>{" "}
             {formatNumber(info.balance)} {chainId === 1 ? "vPLS" : "PLSX"}
           </p>
-          <p>
+          <p className="text-gray-600">
             <strong>Total {chainId === 1 ? "PLSTR" : "xBOND"} Issued:</strong>{" "}
             {formatNumber(info.totalIssued)} {chainId === 1 ? "PLSTR" : "xBOND"}
           </p>
-          <p>
+          <p className="text-gray-600">
             <strong>Issuance Period Countdown:</strong> {countdown}
           </p>
-          <p>
+          <p className="text-gray-600">
             <strong>{chainId === 1 ? "vPLS" : "PLSX"} Backing Ratio:</strong> {backingRatio}
           </p>
           {chainId === 369 && info.poolAddress && (
             <>
-              <p>
+              <p className="text-gray-600">
                 <strong>Pool Address:</strong>{" "}
                 <a
                   href={`https://scan.pulsechain.com/address/${info.poolAddress}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-purple-300 hover:underline"
+                  className="footer-link"
                 >
                   {info.poolAddress.slice(0, 6)}...{info.poolAddress.slice(-4)}
                 </a>
               </p>
-              <p>
+              <p className="text-gray-600">
                 <strong>Pool xBOND Amount:</strong> {formatNumber(info.xBONDAmount)} xBOND
               </p>
-              <p>
+              <p className="text-gray-600">
                 <strong>Pool PLSX Amount:</strong> {formatNumber(info.plsxAmount)} PLSX
               </p>
-              <p>
+              <p className="text-gray-600">
                 <strong>Pool Depth Ratio:</strong> {formatNumber(info.poolDepthRatio)} PLSX per LP
               </p>
-              <p>
+              <p className="text-gray-600">
                 <strong>Total Burned:</strong> {formatNumber(info.totalBurned)} xBOND
               </p>
-              <p>
+              <p className="text-gray-600">
                 <strong>Total PLSX Taxed:</strong> {formatNumber(info.totalPLSXTaxed)} PLSX
               </p>
             </>
