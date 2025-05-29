@@ -37,19 +37,34 @@ const AdminPanel = ({ web3, contract, account, chainId }) => {
 
   const checkXBONDCreator = async () => {
     try {
-      if (!contract || !account || chainId !== 369) return;
-      const creator = await contract.methods._creator().call();
-      setIsXBONDCreator(account?.toLowerCase() === creator?.toLowerCase());
-      console.log("xBOND creator check:", { account, creator, isCreator: isXBONDCreator });
+      console.log("Checking xBOND creator:", { chainId, account, contract: !!contract });
+      if (!contract || !account || chainId !== 369) {
+        console.log("Creator check skipped:", { contract: !!contract, account, chainId });
+        setIsXBONDCreator(false);
+        return;
+      }
+      let creator;
+      try {
+        creator = await contract.methods._creator().call();
+        console.log("Fetched _creator:", creator);
+      } catch (err) {
+        console.warn("_creator() call failed, trying owner():", err);
+        creator = await contract.methods.owner().call();
+        console.log("Fetched owner:", creator);
+      }
+      const isCreator = account.toLowerCase() === creator?.toLowerCase();
+      setIsXBONDCreator(isCreator);
+      console.log("xBOND creator check:", { account, creator, isCreator });
     } catch (err) {
       console.error("Failed to check xBOND creator:", err);
       setIsXBONDCreator(false);
+      setError(`Failed to verify creator: ${err.message || "Unknown error"}`);
     }
   };
 
   useEffect(() => {
     if (contract && web3 && chainId === 1) fetchMintInfo();
-    if (contract && web3 && chainId === 369) checkXBONDCreator();
+    if (contract && web3 && chainId === 369 && account) checkXBONDCreator();
   }, [contract, web3, chainId, account]);
 
   useEffect(() => {
@@ -201,7 +216,10 @@ const AdminPanel = ({ web3, contract, account, chainId }) => {
     }
   };
 
-  if (chainId !== 1 && (chainId !== 369 || !isXBONDCreator)) return null;
+  if (chainId !== 1 && (chainId !== 369 || !isXBONDCreator)) {
+    console.log("Admin panel not rendered:", { chainId, isXBONDCreator });
+    return null;
+  }
 
   return (
     <div className="bg-white bg-opacity-90 rounded-lg p-6 card">
@@ -309,12 +327,13 @@ const AdminPanel = ({ web3, contract, account, chainId }) => {
             onClick={handleInitializePool}
             disabled={loading || !plsxAmount || Number(plsxAmount) < 10}
             className="btn-primary w-full"
+            title={Number(plsxAmount) < 10 ? "Minimum 10 PLSX required" : ""}
           >
             {loading ? "Processing..." : "Initialize Pool"}
           </button>
         </div>
       )}
-      {error && <p className="text-red-400 mt-4">{error}</p>}
+      {error && <p className="text-red-700 mt-4">{error}</p>}
     </div>
   );
 };
