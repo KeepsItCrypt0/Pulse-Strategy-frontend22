@@ -22,6 +22,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
   const CONTROLLER_ADDRESS = "0x6aaE8556C69b795b561CB75ca83aF6187d2F0AF5";
   const MIN_INIT_AMOUNT = 10;
   const WITHDRAWAL_PERIOD = 90 * 24 * 60 * 60; // 90 days in seconds
+  const BLOCK_RANGE = 1_000_000; // Last 1M blocks for event fetching
 
   const plsxContract = new web3.eth.Contract(
     [
@@ -114,11 +115,13 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         setPoolDepthRatio(formatNumber(ratio));
       }
 
-      // Fetch latest LiquidityWithdrawn event
+      // Fetch latest LiquidityWithdrawn event (last 1M blocks)
+      const latestBlock = await web3.eth.getBlockNumber();
+      const fromBlock = Math.max(0, latestBlock - BLOCK_RANGE);
       const filter = contract.filters.LiquidityWithdrawn(account);
       const events = await contract.getPastEvents("LiquidityWithdrawn", {
         filter,
-        fromBlock: 0,
+        fromBlock,
         toBlock: "latest",
       });
       const lastEvent = events[events.length - 1];
@@ -133,6 +136,8 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         poolPlsxAmount,
         poolDepthRatio,
         nextWithdrawalTime,
+        fromBlock,
+        latestBlock,
       });
     } catch (err) {
       console.error("Failed to fetch info:", err);
@@ -191,7 +196,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
   };
 
   const handleInitAmountChange = (e) => {
-    const rawValue = e.target.value.replace(/,/g, "");
+    const rawValue = e.target.value.replace(/[^0-9.]/g, "");
     if (rawValue === "" || /^[0-9]*\.?[0-9]*$/.test(rawValue)) {
       setInitAmount(rawValue);
       setDisplayInitAmount(
