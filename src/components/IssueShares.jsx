@@ -11,7 +11,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
   const [estimatedFee, setEstimatedFee] = useState("0");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const MIN_ISSUE_AMOUNT = 10; // Matches _MIN_INITIAL_LIQUIDITY
+  const MIN_ISSUE_AMOUNT = 10;
 
   const fetchBalance = async () => {
     if (!web3 || !account || !chainId) {
@@ -36,8 +36,10 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
   }, [web3, account, chainId]);
 
   useEffect(() => {
+    let timeout;
     const fetchEstimate = async () => {
       try {
+        setError(""); // Clear error on new fetch
         if (amount && Number(amount) > 0 && contract && web3) {
           const amountNum = Number(amount);
           if (amountNum < MIN_ISSUE_AMOUNT) {
@@ -46,8 +48,9 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
           const amountWei = web3.utils.toWei(amount, "ether");
           let shares, fee;
           if (chainId === 1) {
+            // PLSTR: Use calculateSharesReceived
             const result = await contract.methods.calculateSharesReceived(amountWei).call({ from: account });
-            shares = (typeof result === "object" ? result[0] || result.shares : result).toString();
+            shares = (typeof result === "object" ? result.shares || result[0] : result).toString();
             fee = (amountNum * 0.005).toString(); // 0.5% fee
             fee = web3.utils.toWei(fee, "ether");
           } else {
@@ -69,12 +72,18 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
         setError(`Failed to fetch estimated shares: ${err.message || "Contract execution failed"}`);
       }
     };
-    if (contract && web3 && chainId && account) fetchEstimate();
+
+    // Debounce fetchEstimate
+    if (contract && web3 && chainId && account) {
+      timeout = setTimeout(fetchEstimate, 500);
+    }
+    return () => clearTimeout(timeout);
   }, [contract, web3, amount, chainId, account]);
 
   const handleAmountChange = (e) => {
-    const rawValue = e.target.value.replace(/,/g, "");
+    const rawValue = e.target.value.replace(/[^0-9.]/g, ""); // Allow only numbers and decimal
     if (rawValue === "" || /^[0-9]*\.?[0-9]*$/.test(rawValue)) {
+      const numValue = rawValue === "" ? 0 : Number(rawValue);
       setAmount(rawValue);
       setDisplayAmount(
         rawValue === ""
@@ -82,8 +91,11 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
           : new Intl.NumberFormat("en-US", {
               maximumFractionDigits: 18,
               minimumFractionDigits: 0,
-            }).format(Number(rawValue))
+            }).format(numValue)
       );
+      if (numValue >= MIN_ISSUE_AMOUNT) {
+        setError(""); // Clear error for valid input
+      }
     }
   };
 
