@@ -28,14 +28,9 @@ const ContractInfo = ({ contract, web3, chainId }) => {
 
       if (chainId === 1) {
         // PLSTR: Use getContractInfo
-        try {
-          const result = await contract.methods.getContractInfo().call();
-          newInfo.balance = web3.utils.fromWei(result.contractBalance || "0", "ether");
-          newInfo.issuancePeriod = result.remainingIssuancePeriod || "0";
-        } catch (err) {
-          console.warn("Failed to fetch PLSTR contract info:", err);
-          setError("Failed to fetch vPLS balance or issuance period. Contract may not support getContractInfo.");
-        }
+        const { contractBalance, remainingIssuancePeriod } = await contract.methods.getContractInfo().call();
+        newInfo.balance = web3.utils.fromWei(contractBalance || "0", "ether");
+        newInfo.issuancePeriod = remainingIssuancePeriod || "0";
       } else if (chainId === 369) {
         // xBOND: Use getContractBalances and getIssuanceStatus
         const balances = await contract.methods.getContractBalances().call();
