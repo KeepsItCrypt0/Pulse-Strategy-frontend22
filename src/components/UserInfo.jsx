@@ -18,34 +18,21 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
       setLoading(true);
       setError("");
 
-      // Fetch balance
       const balance = await contract.methods.balanceOf(account).call();
-      const balanceStr = balance.toString();
-      const balanceEther = web3.utils.fromWei(balanceStr, "ether");
+      const balanceEther = web3.utils.fromWei(balance, "ether");
 
-      // Fetch redeemable tokens
       let redeemable;
       if (chainId === 1) {
         const normalizedAccount = web3.utils.toChecksumAddress(account);
-        console.log("Calling getRedeemableStakedPLS:", {
-          account: normalizedAccount,
-          balanceStr,
-          contractAddress: contract.options.address,
-        });
         redeemable = await contract.methods
-          .getRedeemableStakedPLS(normalizedAccount, balanceStr)
+          .getRedeemableStakedPLS(normalizedAccount, balance)
           .call({ from: normalizedAccount });
       } else {
-        console.log("Calling getRedeemablePLSX:", {
-          balanceStr,
-          contractAddress: contract.options.address,
-        });
         redeemable = await contract.methods
-          .getRedeemablePLSX(balanceStr)
+          .getRedeemablePLSX(balance)
           .call({ from: account });
       }
-      const redeemableStr = redeemable ? redeemable.toString() : "0";
-      const redeemableEther = web3.utils.fromWei(redeemableStr, "ether");
+      const redeemableEther = web3.utils.fromWei(redeemable || "0", "ether");
 
       setShareBalance(balanceEther);
       setRedeemableToken(redeemableEther);
@@ -54,8 +41,6 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
         redeemableToken: redeemableEther,
         chainId,
         account,
-        balanceStr,
-        redeemableStr,
       });
     } catch (error) {
       console.error("Failed to fetch user info:", error);
@@ -76,7 +61,7 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
         <p className="text-gray-600">Loading...</p>
       ) : error ? (
         <div>
-          <p className="text-red-400">{error}</p>
+          <p className="text-red-700">{error}</p>
           <button
             onClick={fetchInfo}
             className="mt-2 text-purple-300 hover:text-pink-400"
