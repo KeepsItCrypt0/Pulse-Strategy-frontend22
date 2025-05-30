@@ -3,8 +3,7 @@ import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
 
 const ContractInfo = ({ contract, web3, chainId }) => {
-  const [info, setInfo] = useState({ balance: "0", issuancePeriod: "0", totalIssued: "0" });
-  const [backingRatio, setBackingRatio] = useState("1 to 1");
+  const [info, setInfo] = useState({ plsxBalance: "0", issuancePeriod: "0", totalIssued: "0", totalBurned: "0" });
   const [countdown, setCountdown] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -19,39 +18,27 @@ const ContractInfo = ({ contract, web3, chainId }) => {
       setLoading(true);
       setError("");
 
-      const result = await contract.methods.getContractInfo().call();
       const totalIssued = await contract.methods.totalSupply().call();
-      const ratio = await contract.methods[
-        chainId === 1 ? "getVPLSBackingRatio" : "getPLSXBackingRatio"
-      ]().call();
-      const ratioDecimal = web3.utils.fromWei(ratio || "0", "ether");
-
-      const newInfo = {
-        balance: web3.utils.fromWei(result.contractBalance || "0", "ether"),
-        issuancePeriod: result.remainingIssuancePeriod || "0",
+      let newInfo = {
+        plsxBalance: "0",
+        issuancePeriod: "0",
         totalIssued: web3.utils.fromWei(totalIssued || "0", "ether"),
+        totalBurned: "0",
       };
 
       if (chainId === 369) {
-        try {
-          const poolAddress = await contract.methods.getPoolAddress().call();
-          const poolLiquidity = await contract.methods.getPoolLiquidity().call();
-          const poolDepthRatio = await contract.methods.getPoolDepthRatio().call();
-          const totalBurned = await contract.methods.getTotalBurned().call();
-          const totalPLSXTaxed = await contract.methods.getTotalPLSXTaxed().call();
-          newInfo.poolAddress = poolAddress;
-          newInfo.xBONDAmount = web3.utils.fromWei(poolLiquidity.xBONDAmount || "0", "ether");
-          newInfo.plsxAmount = web3.utils.fromWei(poolLiquidity.plsxAmount || "0", "ether");
-          newInfo.poolDepthRatio = web3.utils.fromWei(poolDepthRatio || "0", "ether");
-          newInfo.totalBurned = web3.utils.fromWei(totalBurned || "0", "ether");
-          newInfo.totalPLSXTaxed = web3.utils.fromWei(totalPLSXTaxed || "0", "ether");
-        } catch (poolError) {
-          console.warn("Failed to fetch pool info:", poolError);
-        }
+        const balances = await contract.methods.getContractBalances().call();
+        const issuanceStatus = await contract.methods.getIssuanceStatus().call();
+        const totalBurned = await contract.methods.getTotalBurned().call();
+        newInfo = {
+          ...newInfo,
+          plsxBalance: web3.utils.fromWei(balances.plsxBalance || "0", "ether"),
+          issuancePeriod: issuanceStatus.timeRemaining || "0",
+          totalBurned: web3.utils.fromWei(totalBurned || "0", "ether"),
+        };
       }
 
       setInfo(newInfo);
-      setBackingRatio(formatNumber(ratioDecimal, true));
       console.log("Contract info fetched:", newInfo);
     } catch (error) {
       console.error("Failed to fetch contract info:", error);
@@ -90,7 +77,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
         <p className="text-gray-600">Loading...</p>
       ) : error ? (
         <div>
-          <p className="text-red-400">{error}</p>
+          <p className="text-red-700">{error}</p>
           <button
             onClick={fetchInfo}
             className="mt-2 text-purple-300 hover:text-red-300 transition-colors"
@@ -102,7 +89,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
         <>
           <p className="text-gray-600">
             <strong>Contract Balance:</strong>{" "}
-            {formatNumber(info.balance)} {chainId === 1 ? "vPLS" : "PLSX"}
+            {formatNumber(info.plsxBalance)} {chainId === 1 ? "vPLS" : "PLSX"}
           </p>
           <p className="text-gray-600">
             <strong>Total {chainId === 1 ? "PLSTR" : "xBOND"} Issued:</strong>{" "}
@@ -111,38 +98,10 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           <p className="text-gray-600">
             <strong>Issuance Period Countdown:</strong> {countdown}
           </p>
-          <p className="text-gray-600">
-            <strong>{chainId === 1 ? "vPLS" : "PLSX"} Backing Ratio:</strong> {backingRatio}
-          </p>
-          {chainId === 369 && info.poolAddress && (
-            <>
-              <p className="text-gray-600">
-                <strong>Pool Address:</strong>{" "}
-                <a
-                  href={`https://scan.pulsechain.com/address/${info.poolAddress}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="footer-link"
-                >
-                  {info.poolAddress.slice(0, 6)}...{info.poolAddress.slice(-4)}
-                </a>
-              </p>
-              <p className="text-gray-600">
-                <strong>Pool xBOND Amount:</strong> {formatNumber(info.xBONDAmount)} xBOND
-              </p>
-              <p className="text-gray-600">
-                <strong>Pool PLSX Amount:</strong> {formatNumber(info.plsxAmount)} PLSX
-              </p>
-              <p className="text-gray-600">
-                <strong>Pool Depth Ratio:</strong> {formatNumber(info.poolDepthRatio)} PLSX per LP
-              </p>
-              <p className="text-gray-600">
-                <strong>Total Burned:</strong> {formatNumber(info.totalBurned)} xBOND
-              </p>
-              <p className="text-gray-600">
-                <strong>Total PLSX Taxed:</strong> {formatNumber(info.totalPLSXTaxed)} PLSX
-              </p>
-            </>
+          {chainId === 369 && (
+            <p className="text-gray-600">
+              <strong>Total Burned:</strong> {formatNumber(info.totalBurned)} xBOND
+            </p>
           )}
         </>
       )}
