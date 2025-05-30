@@ -53,91 +53,114 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
       if (!contract || !web3 || !account) throw new Error("Contract, Web3, or account not initialized");
 
       // Fetch contract balances
-      const balances = await contract.methods.getContractBalances().call();
-      setXBONDAmount(web3.utils.fromWei(balances.xBONDBalance || "0", "ether"));
-      setLpTokenAmount(web3.utils.fromWei(balances.lpBalance || "0", "ether"));
+      let balances;
+      try {
+        balances = await contract.methods.getContractBalances().call();
+        setXBONDAmount(web3.utils.fromWei(balances.xBONDBalance?.toString() || "0", "ether"));
+        setLpTokenAmount(web3.utils.fromWei(balances.lpBalance?.toString() || "0", "ether"));
+      } catch (err) {
+        console.error("Failed to fetch contract balances:", err);
+        setError("Failed to fetch contract balances");
+      }
 
       // Fetch pool address via PulseX Factory
-      const factoryContract = new web3.eth.Contract(
-        [
-          {
-            inputs: [
-              { internalType: "address", name: "tokenA", type: "address" },
-              { internalType: "address", name: "tokenB", type: "address" },
-            ],
-            name: "getPair",
-            outputs: [{ internalType: "address", name: "pair", type: "address" }],
-            stateMutability: "view",
-            type: "function",
-          },
-        ],
-        PULSEX_FACTORY
-      );
-      const xBOND = contract._address;
-      const token0 = xBOND < PLSX_ADDRESS ? xBOND : PLSX_ADDRESS;
-      const token1 = xBOND < PLSX_ADDRESS ? PLSX_ADDRESS : xBOND;
-      const pairAddr = await factoryContract.methods.getPair(token0, token1).call();
-      setPoolAddress(pairAddr);
-
-      // Fetch pool reserves
-      if (pairAddr !== "0x0000000000000000000000000000000000000000") {
-        const pairContract = new web3.eth.Contract(
+      let pairAddr = "0x0000000000000000000000000000000000000000";
+      try {
+        const factoryContract = new web3.eth.Contract(
           [
             {
-              inputs: [],
-              name: "getReserves",
-              outputs: [
-                { internalType: "uint112", name: "reserve0", type: "uint112" },
-                { internalType: "uint112", name: "reserve1", type: "uint112" },
-                { internalType: "uint32", name: "blockTimestampLast", type: "uint32" },
+              inputs: [
+                { internalType: "address", name: "tokenA", type: "address" },
+                { internalType: "address", name: "tokenB", type: "address" },
               ],
-              stateMutability: "view",
-              type: "function",
-            },
-            {
-              inputs: [],
-              name: "token0",
-              outputs: [{ internalType: "address", name: "", type: "address" }],
+              name: "getPair",
+              outputs: [{ internalType: "address", name: "pair", type: "address" }],
               stateMutability: "view",
               type: "function",
             },
           ],
-          pairAddr
+          PULSEX_FACTORY
         );
-        const { reserve0, reserve1 } = await pairContract.methods.getReserves().call();
-        const token0Addr = await pairContract.methods.token0().call();
-        const isXBONDToken0 = token0Addr.toLowerCase() === xBOND.toLowerCase();
-        const xBONDAmt = isXBONDToken0 ? reserve0 : reserve1;
-        const plsxAmt = isXBONDToken0 ? reserve1 : reserve0;
-        setPoolXBONDAmount(web3.utils.fromWei(xBONDAmt || "0", "ether"));
-        setPoolPlsxAmount(web3.utils.fromWei(plsxAmt || "0", "ether"));
-        const ratio = Number(plsxAmt) && Number(xBONDAmt) ? Number(plsxAmt) / Number(xBONDAmt) : 0;
-        setPoolDepthRatio(formatNumber(ratio));
+        const xBOND = contract._address;
+        const token0 = xBOND < PLSX_ADDRESS ? xBOND : PLSX_ADDRESS;
+        const token1 = xBOND < PLSX_ADDRESS ? PLSX_ADDRESS : xBOND;
+        pairAddr = await factoryContract.methods.getPair(token0, token1).call();
+        setPoolAddress(pairAddr);
+      } catch (err) {
+        console.error("Failed to fetch pool address:", err);
+        setError("Failed to fetch pool address");
+      }
+
+      // Fetch pool reserves
+      if (pairAddr !== "0x0000000000000000000000000000000000000000") {
+        try {
+          const pairContract = new web3.eth.Contract(
+            [
+              {
+                inputs: [],
+                name: "getReserves",
+                outputs: [
+                  { internalType: "uint112", name: "reserve0", type: "uint112" },
+                  { internalType: "uint112", name: "reserve1", type: "uint112" },
+                  { internalType: "uint32", name: "blockTimestampLast", type: "uint32" },
+                ],
+                stateMutability: "view",
+                type: "function",
+              },
+              {
+                inputs: [],
+                name: "token0",
+                outputs: [{ internalType: "address", name: "", type: "address" }],
+                stateMutability: "view",
+                type: "function",
+              },
+            ],
+            pairAddr
+          );
+          const { reserve0, reserve1 } = await pairContract.methods.getReserves().call();
+          const token0Addr = await pairContract.methods.token0().call();
+          const isXBONDToken0 = token0Addr.toLowerCase() === xBOND.toLowerCase();
+          const xBONDAmt = isXBONDToken0 ? reserve0 : reserve1;
+          const plsxAmt = isXBONDToken0 ? reserve1 : reserve0;
+          setPoolXBONDAmount(web3.utils.fromWei(xBONDAmt?.toString() || "0", "ether"));
+          setPoolPlsxAmount(web3.utils.fromWei(plsxAmt?.toString() || "0", "ether"));
+          // Calculate ratio safely
+          const xBONDAmtNum = parseFloat(web3.utils.fromWei(xBONDAmt?.toString() || "0", "ether"));
+          const plsxAmtNum = parseFloat(web3.utils.fromWei(plsxAmt?.toString() || "0", "ether"));
+          const ratio = xBONDAmtNum > 0 ? plsxAmtNum / xBONDAmtNum : 0;
+          setPoolDepthRatio(formatNumber(ratio));
+        } catch (err) {
+          console.error("Failed to fetch pool reserves:", err);
+          setError("Failed to fetch pool reserves");
+        }
       }
 
       // Fetch latest LiquidityWithdrawn event (last 1M blocks)
-      const latestBlock = await web3.eth.getBlockNumber();
-      const fromBlock = Math.max(0, latestBlock - BLOCK_RANGE);
-      const filter = contract.filters.LiquidityWithdrawn(account);
-      const events = await contract.getPastEvents("LiquidityWithdrawn", {
-        filter,
-        fromBlock,
-        toBlock: "latest",
-      });
-      const lastEvent = events[events.length - 1];
-      const lastTimestamp = lastEvent ? Number(lastEvent.returnValues.timestamp) : 0;
-      setNextWithdrawalTime(lastTimestamp ? lastTimestamp + WITHDRAWAL_PERIOD : 0);
+      try {
+        const latestBlock = await web3.eth.getBlockNumber();
+        const fromBlock = Math.max(0, Number(latestBlock.toString()) - BLOCK_RANGE);
+        const filter = contract.filters.LiquidityWithdrawn(account);
+        const events = await contract.getPastEvents("LiquidityWithdrawn", {
+          filter,
+          fromBlock,
+          toBlock: "latest",
+        });
+        const lastEvent = events[events.length - 1];
+        const lastTimestamp = lastEvent ? Number(lastEvent.returnValues.timestamp?.toString()) : 0;
+        setNextWithdrawalTime(lastTimestamp ? lastTimestamp + WITHDRAWAL_PERIOD : 0);
+      } catch (err) {
+        console.error("Failed to fetch LiquidityWithdrawn events:", err);
+        setError("Failed to fetch withdrawal events");
+      }
 
       console.log("Fetched info:", {
-        xBONDAmount: balances.xBONDBalance,
-        lpTokenAmount: balances.lpBalance,
+        xBONDAmount,
+        lpTokenAmount,
         poolAddress: pairAddr,
         poolXBONDAmount,
         poolPlsxAmount,
         poolDepthRatio,
         nextWithdrawalTime,
-        fromBlock,
-        latestBlock,
       });
     } catch (err) {
       console.error("Failed to fetch info:", err);
@@ -157,7 +180,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     try {
       await contract.methods.withdrawLiquidity().send({ from: account });
       alert("Liquidity withdrawn successfully!");
-      fetchInfo(); // Refresh to update timestamp
+      fetchInfo();
       console.log("Liquidity withdrawn");
     } catch (err) {
       let errorMessage = `Error withdrawing liquidity: ${err.message || "Unknown error"}`;
@@ -302,26 +325,24 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
           )}
         </p>
         <p className="text-gray-600 mb-1">
-          <strong>Pool xBOND Amount:</strong> {formatNumber(poolXBONDAmount)} xBOND
+          <strong>Pool xBOND Amount:</strong> {formatNumber(xBONDAmount)} xBOND}
         </p>
-        <p className="text-gray-600 mb-1">
-          <strong>Pool PLSX Amount:</strong> {formatNumber(poolPlsxAmount)} PLSX
+        <p className="mb-1">
+          <strong>Pool PLSX Amount:</strong> {formatNumber(plsxAmount)} xBOND
         </p>
-        <p className="text-gray-600 mb-1">
-          <strong>Pool Depth Ratio:</strong> {poolDepthRatio} PLSX/xBOND
+        <p className="text-gray-600 mb- <strong>Pool Depth Ratio:</strong> {poolDepthRatio} PLSX/xBOND}
         </p>
-        <p className="text-gray-600 mb-2">
-          <strong>Held LP Tokens:</strong> {formatNumber(lpTokenAmount)} LP
+        <p className="mb-2">
+          <strong>Held LP Tokens:</strong> {formatNumber(lpedAmount)} LP Tokens
         </p>
         <button
           onClick={handleWithdrawLiquidity}
-          disabled={loadingWithdraw || (nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime)}
-          className="btn-primary w-full"
-          title={nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime ? "Withdrawal not yet available" : ""}
+            disabled={loadingWithdraw || (nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime)}
+            className="btn-primary w-full"
+            title={nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime ? "Withdrawal not available yet" : ""}
         >
-          {loadingWithdraw ? "Processing..." : "Withdraw Liquidity"}
+            {loadingWithdraw ? "Processing..." : "Withdraw Liquidity"}
         </button>
-      </div>
       <div className="flex items-center gap-4">
         <button
           onClick={handleSwapXBONDToPLSX}
@@ -331,11 +352,9 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         >
           {loadingSwap ? "Processing..." : "Swap xBOND to PLSX"}
         </button>
-        <p className="text-gray-600">
-          <strong>Available:</strong> {formatNumber(xBONDAmount)} xBOND
+        <p className="text-gray- <strong>600</strong> {formatNumber(xBONDAmount)} xBOND}
         </p>
-      </div>
-      {error && <p className="text-red-700 mt-4">{error}</p>}
+      {error && <p className="text-red-500">{error}</p>}
     </div>
   );
 };
