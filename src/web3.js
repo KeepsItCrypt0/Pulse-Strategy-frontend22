@@ -4,7 +4,7 @@ import Web3 from "web3";
 // Contract addresses
 export const contractAddresses = {
   1: "0x6c1dA678A1B615f673208e74AB3510c22117090e", // PLSTR on Ethereum
-  369: "0x1036eD73F2B0174e1eA00d9A37796A6A18B9cd01", // xBOND on PulseChain
+  369: "0x8D1d7065a3C10E3054B766Bf6691ecbA1d6D6fd9", // xBOND on PulseChain
 };
 
 // Token addresses
@@ -16,48 +16,9 @@ export const tokenAddresses = {
 // ABIs (unchanged, placeholders for reference)
 const xBONDABI = [
 	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "xBONDAmount",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint112",
-				"name": "reserve0",
-				"type": "uint112"
-			},
-			{
-				"internalType": "uint112",
-				"name": "reserve1",
-				"type": "uint112"
-			},
-			{
-				"internalType": "bool",
-				"name": "isXBONDToken0",
-				"type": "bool"
-			}
-		],
-		"name": "_swapToPLSX",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
 		"inputs": [],
 		"stateMutability": "nonpayable",
 		"type": "constructor"
-	},
-	{
-		"inputs": [],
-		"name": "BelowMinimumShareAmount",
-		"type": "error"
 	},
 	{
 		"inputs": [],
@@ -182,11 +143,6 @@ const xBONDABI = [
 	},
 	{
 		"inputs": [],
-		"name": "InsufficientSwapOutput",
-		"type": "error"
-	},
-	{
-		"inputs": [],
 		"name": "InvalidTokenDecimals",
 		"type": "error"
 	},
@@ -202,22 +158,12 @@ const xBONDABI = [
 	},
 	{
 		"inputs": [],
-		"name": "NotCreator",
-		"type": "error"
-	},
-	{
-		"inputs": [],
 		"name": "PoolAlreadyExists",
 		"type": "error"
 	},
 	{
 		"inputs": [],
 		"name": "PoolCreationFailed",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "PoolNotInitialized",
 		"type": "error"
 	},
 	{
@@ -233,11 +179,6 @@ const xBONDABI = [
 	},
 	{
 		"inputs": [],
-		"name": "SwapFailed",
-		"type": "error"
-	},
-	{
-		"inputs": [],
 		"name": "WithdrawalPeriodNotElapsed",
 		"type": "error"
 	},
@@ -249,11 +190,6 @@ const xBONDABI = [
 	{
 		"inputs": [],
 		"name": "ZeroAmount",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "ZeroSupply",
 		"type": "error"
 	},
 	{
@@ -282,105 +218,6 @@ const xBONDABI = [
 		"type": "event"
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "spender",
-				"type": "address"
-			},
-			{
-				"internalType": "uint256",
-				"name": "value",
-				"type": "uint256"
-			}
-		],
-		"name": "approve",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "plsxAmount",
-				"type": "uint256"
-			}
-		],
-		"name": "initializePool",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "totalAmount",
-				"type": "uint256"
-			}
-		],
-		"name": "issueShares",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": false,
-				"internalType": "address",
-				"name": "caller",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "lpTokensWithdrawn",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "xBONDAmount",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "plsxAmount",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "plsxFromSwap",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "totalPLSXAdded",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "remainingLPBalance",
-				"type": "uint256"
-			}
-		],
-		"name": "LiquidityWithdrawnAndReinvested",
-		"type": "event"
-	},
-	{
 		"anonymous": false,
 		"inputs": [
 			{
@@ -397,9 +234,34 @@ const xBONDABI = [
 			},
 			{
 				"indexed": false,
-				"internalType": "bool",
-				"name": "isXBONDToken0",
-				"type": "bool"
+				"internalType": "uint256",
+				"name": "xBONDAmount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "plsxAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "LiquidityAdded",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "caller",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "lpTokens",
+				"type": "uint256"
 			},
 			{
 				"indexed": false,
@@ -412,9 +274,15 @@ const xBONDABI = [
 				"internalType": "uint256",
 				"name": "plsxAmount",
 				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
 			}
 		],
-		"name": "PoolCreatedAndLiquidityAdded",
+		"name": "LiquidityWithdrawn",
 		"type": "event"
 	},
 	{
@@ -423,37 +291,18 @@ const xBONDABI = [
 			{
 				"indexed": true,
 				"internalType": "address",
-				"name": "pairAddress",
+				"name": "pair",
 				"type": "address"
 			},
 			{
 				"indexed": false,
 				"internalType": "bool",
-				"name": "poolCreated",
-				"type": "bool"
-			},
-			{
-				"indexed": false,
-				"internalType": "bool",
-				"name": "isXBONDToken0",
+				"name": "isxBONDToken0",
 				"type": "bool"
 			}
 		],
-		"name": "PoolStateUpdated",
+		"name": "PoolCreated",
 		"type": "event"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			}
-		],
-		"name": "redeemShares",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
 	},
 	{
 		"anonymous": false,
@@ -473,17 +322,17 @@ const xBONDABI = [
 			{
 				"indexed": false,
 				"internalType": "uint256",
-				"name": "totalFee",
+				"name": "fee",
 				"type": "uint256"
 			},
 			{
 				"indexed": false,
 				"internalType": "uint256",
-				"name": "liquidityAdded",
+				"name": "liquidity",
 				"type": "uint256"
 			}
 		],
-		"name": "SharesIssuedWithLiquidity",
+		"name": "SharesIssued",
 		"type": "event"
 	},
 	{
@@ -512,10 +361,335 @@ const xBONDABI = [
 		"type": "event"
 	},
 	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "from",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "value",
+				"type": "uint256"
+			}
+		],
+		"name": "Transfer",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "from",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amountAfterTax",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "plsxReceived",
+				"type": "uint256"
+			}
+		],
+		"name": "TransferTaxApplied",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "caller",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "xBONDAmount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "plsxReceived",
+				"type": "uint256"
+			}
+		],
+		"name": "xBONDSwapped",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "spender",
+				"type": "address"
+			}
+		],
+		"name": "allowance",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "spender",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "value",
+				"type": "uint256"
+			}
+		],
+		"name": "approve",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "account",
+				"type": "address"
+			}
+		],
+		"name": "balanceOf",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"inputs": [],
-		"name": "swapAccumulatedXBONDToPLSX",
+		"name": "createPool",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "pair",
+				"type": "address"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "decimals",
+		"outputs": [
+			{
+				"internalType": "uint8",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getContractBalances",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "xBONDBalance",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "plsxBalance",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "lpBalance",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getIssuanceStatus",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "isActive",
+				"type": "bool"
+			},
+			{
+				"internalType": "uint256",
+				"name": "timeRemaining",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "shareAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "getRedeemablePLSX",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getTotalBurned",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "plsxAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "initializePool",
 		"outputs": [],
 		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "plsxAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "issueShares",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "name",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "shareAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "redeemShares",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "swapAccumulatedxBONDToPLSX",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "symbol",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalSupply",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -541,31 +715,6 @@ const xBONDABI = [
 		],
 		"stateMutability": "nonpayable",
 		"type": "function"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "from",
-				"type": "address"
-			},
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "to",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "value",
-				"type": "uint256"
-			}
-		],
-		"name": "Transfer",
-		"type": "event"
 	},
 	{
 		"inputs": [
@@ -597,394 +746,10 @@ const xBONDABI = [
 		"type": "function"
 	},
 	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "from",
-				"type": "address"
-			},
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "to",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "amountAfterTax",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "creatorShare",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "burnShare",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "swapShare",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "bool",
-				"name": "swapSuccessful",
-				"type": "bool"
-			}
-		],
-		"name": "TransferTaxApplied",
-		"type": "event"
-	},
-	{
 		"inputs": [],
-		"name": "withdrawLiquidityAndReinvest",
+		"name": "withdrawLiquidity",
 		"outputs": [],
 		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "caller",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "xBONDAmount",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "plsxReceived",
-				"type": "uint256"
-			}
-		],
-		"name": "XBONDToPLSXSwapped",
-		"type": "event"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "owner",
-				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "spender",
-				"type": "address"
-			}
-		],
-		"name": "allowance",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "account",
-				"type": "address"
-			}
-		],
-		"name": "balanceOf",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "totalAmount",
-				"type": "uint256"
-			}
-		],
-		"name": "calculateSharesReceived",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "shares",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "totalFee",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "pure",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "decimals",
-		"outputs": [
-			{
-				"internalType": "uint8",
-				"name": "",
-				"type": "uint8"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getContractInfo",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "contractBalance",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "remainingIssuancePeriod",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getContractXBOND",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getHeldLPTokens",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "heldLPTokens",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getLPTokenHolder",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getPLSXBackingRatio",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getPoolAddress",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getPoolDepthRatio",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getPoolLiquidity",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "xBONDAmount",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "plsxAmount",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "shareAmount",
-				"type": "uint256"
-			}
-		],
-		"name": "getRedeemablePLSX",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "plsxAmount",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getTimeUntilNextWithdrawal",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getTotalBurned",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getTotalPLSXTaxed",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "user",
-				"type": "address"
-			}
-		],
-		"name": "getUserShareInfo",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "shareBalance",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "name",
-		"outputs": [
-			{
-				"internalType": "string",
-				"name": "",
-				"type": "string"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "symbol",
-		"outputs": [
-			{
-				"internalType": "string",
-				"name": "",
-				"type": "string"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "totalSupply",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
 		"type": "function"
 	}
 ]; // Your provided xBOND ABI
