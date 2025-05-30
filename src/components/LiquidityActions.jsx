@@ -325,24 +325,26 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
           )}
         </p>
         <p className="text-gray-600 mb-1">
-          <strong>Pool xBOND Amount:</strong> {formatNumber(xBONDAmount)} xBOND}
+          <strong>Pool xBOND Amount:</strong> {formatNumber(poolXBONDAmount)} xBOND
         </p>
-        <p className="mb-1">
-          <strong>Pool PLSX Amount:</strong> {formatNumber(plsxAmount)} xBOND
+        <p className="text-gray-600 mb-1">
+          <strong>Pool PLSX Amount:</strong> {formatNumber(poolPlsxAmount)} PLSX
         </p>
-        <p className="text-gray-600 mb- <strong>Pool Depth Ratio:</strong> {poolDepthRatio} PLSX/xBOND}
+        <p className="text-gray-600 mb-1">
+          <strong>Pool Depth Ratio:</strong> {poolDepthRatio} PLSX/xBOND
         </p>
-        <p className="mb-2">
-          <strong>Held LP Tokens:</strong> {formatNumber(lpedAmount)} LP Tokens
+        <p className="text-gray-600 mb-2">
+          <strong>Held LP Tokens:</strong> {formatNumber(lpTokenAmount)} LP
         </p>
         <button
           onClick={handleWithdrawLiquidity}
-            disabled={loadingWithdraw || (nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime)}
-            className="btn-primary w-full"
-            title={nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime ? "Withdrawal not available yet" : ""}
+          disabled={loadingWithdraw || (nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime)}
+          className="btn-primary w-full"
+          title={nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime ? "Withdrawal not available yet" : ""}
         >
-            {loadingWithdraw ? "Processing..." : "Withdraw Liquidity"}
+          {loadingWithdraw ? "Processing..." : "Withdraw Liquidity"}
         </button>
+      </div>
       <div className="flex items-center gap-4">
         <button
           onClick={handleSwapXBONDToPLSX}
@@ -352,9 +354,11 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         >
           {loadingSwap ? "Processing..." : "Swap xBOND to PLSX"}
         </button>
-        <p className="text-gray- <strong>600</strong> {formatNumber(xBONDAmount)} xBOND}
+        <p className="text-gray-600">
+          <strong>Available:</strong> {formatNumber(xBONDAmount)} xBOND
         </p>
-      {error && <p className="text-red-500">{error}</p>}
+      </div>
+      {error && <p className="text-red-500 mt-4">{error}</p>}
     </div>
   );
 };
