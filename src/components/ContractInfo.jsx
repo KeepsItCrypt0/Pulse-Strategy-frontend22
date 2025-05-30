@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
 
 const ContractInfo = ({ contract, web3, chainId }) => {
-  const [info, setInfo] = useState({ plsxBalance: "0", issuancePeriod: "0", totalIssued: "0", totalBurned: "0" });
+  const [info, setInfo] = useState({ balance: "0", issuancePeriod: "0", totalIssued: "0", totalBurned: "0" });
   const [countdown, setCountdown] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -20,19 +20,30 @@ const ContractInfo = ({ contract, web3, chainId }) => {
 
       const totalIssued = await contract.methods.totalSupply().call();
       let newInfo = {
-        plsxBalance: "0",
+        balance: "0",
         issuancePeriod: "0",
         totalIssued: web3.utils.fromWei(totalIssued || "0", "ether"),
         totalBurned: "0",
       };
 
-      if (chainId === 369) {
+      if (chainId === 1) {
+        // PLSTR: Use getContractInfo
+        try {
+          const result = await contract.methods.getContractInfo().call();
+          newInfo.balance = web3.utils.fromWei(result.contractBalance || "0", "ether");
+          newInfo.issuancePeriod = result.remainingIssuancePeriod || "0";
+        } catch (err) {
+          console.warn("Failed to fetch PLSTR contract info:", err);
+          setError("Failed to fetch vPLS balance or issuance period. Contract may not support getContractInfo.");
+        }
+      } else if (chainId === 369) {
+        // xBOND: Use getContractBalances and getIssuanceStatus
         const balances = await contract.methods.getContractBalances().call();
         const issuanceStatus = await contract.methods.getIssuanceStatus().call();
         const totalBurned = await contract.methods.getTotalBurned().call();
         newInfo = {
           ...newInfo,
-          plsxBalance: web3.utils.fromWei(balances.plsxBalance || "0", "ether"),
+          balance: web3.utils.fromWei(balances.plsxBalance || "0", "ether"),
           issuancePeriod: issuanceStatus.timeRemaining || "0",
           totalBurned: web3.utils.fromWei(totalBurned || "0", "ether"),
         };
@@ -89,7 +100,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
         <>
           <p className="text-gray-600">
             <strong>Contract Balance:</strong>{" "}
-            {formatNumber(info.plsxBalance)} {chainId === 1 ? "vPLS" : "PLSX"}
+            {formatNumber(info.balance)} {chainId === 1 ? "vPLS" : "PLSX"}
           </p>
           <p className="text-gray-600">
             <strong>Total {chainId === 1 ? "PLSTR" : "xBOND"} Issued:</strong>{" "}
