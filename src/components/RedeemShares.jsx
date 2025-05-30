@@ -34,29 +34,16 @@ const RedeemShares = ({ contract, account, web3, chainId }) => {
           let redeemable;
           if (chainId === 1) {
             const normalizedAccount = web3.utils.toChecksumAddress(account);
-            console.log("Calling getRedeemableStakedPLS:", {
-              account: normalizedAccount,
-              amountWei,
-              contractAddress: contract.options.address,
-            });
             redeemable = await contract.methods
               .getRedeemableStakedPLS(normalizedAccount, amountWei)
               .call({ from: normalizedAccount });
           } else {
-            console.log("Calling getRedeemablePLSX:", {
-              amountWei,
-              contractAddress: contract.options.address,
-            });
             redeemable = await contract.methods
               .getRedeemablePLSX(amountWei)
               .call({ from: account });
           }
-          const redeemableStr = redeemable ? redeemable.toString() : "0";
-          setEstimatedToken(web3.utils.fromWei(redeemableStr, "ether"));
-          console.log(`Estimated ${chainId === 1 ? "vPLS" : "PLSX"} fetched:`, {
-            amount,
-            redeemable: redeemableStr,
-          });
+          setEstimatedToken(web3.utils.fromWei(redeemable || "0", "ether"));
+          console.log(`Estimated ${chainId === 1 ? "vPLS" : "PLSX"} fetched:`, { amount, redeemable });
         } else {
           setEstimatedToken("0");
         }
@@ -127,7 +114,7 @@ const RedeemShares = ({ contract, account, web3, chainId }) => {
       >
         {loading ? "Processing..." : `Redeem ${chainId === 1 ? "PLSTR" : "xBOND"}`}
       </button>
-      {error && <p className="text-red-400 mt-2">{error}</p>}
+      {error && <p className="text-red-700 mt-2">{error}</p>}
     </div>
   );
 };
