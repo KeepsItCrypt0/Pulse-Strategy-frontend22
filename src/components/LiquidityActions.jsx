@@ -24,7 +24,8 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
   const WITHDRAWAL_PERIOD = 90 * 24 * 60 * 60; // 90 days in seconds
   const BLOCK_RANGE = 1_000_000; // Last 1M blocks for event fetching
 
-  const plsxContract = new web3.eth.Contract(
+  // PLSX contract instance
+  const plsxContract = web3 && new web3.eth.Contract(
     [
       {
         constant: true,
@@ -50,14 +51,15 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
   const fetchInfo = async () => {
     try {
       setError("");
-      if (!contract || !web3 || !account) throw new Error("Contract, Web3, or account not initialized");
+      if (!contract || !web3 || !account) {
+        throw new Error("Contract, Web3, or account not initialized");
+      }
 
       // Fetch contract balances
-      let balances;
       try {
-        balances = await contract.methods.getContractBalances().call();
-        setXBONDAmount(web3.utils.fromWei(balances.xBONDBalance?.toString() || "0", "ether"));
-        setLpTokenAmount(web3.utils.fromWei(balances.lpBalance?.toString() || "0", "ether"));
+        const balances = await contract.methods.getContractBalances().call();
+        setXBONDAmount(web3.utils.fromWei(balances[0]?.toString() || "0", "ether"));
+        setLpTokenAmount(web3.utils.fromWei(balances[2]?.toString() || "0", "ether"));
       } catch (err) {
         console.error("Failed to fetch contract balances:", err);
         setError("Failed to fetch contract balances");
@@ -81,9 +83,9 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
           ],
           PULSEX_FACTORY
         );
-        const xBOND = contract._address;
-        const token0 = xBOND < PLSX_ADDRESS ? xBOND : PLSX_ADDRESS;
-        const token1 = xBOND < PLSX_ADDRESS ? PLSX_ADDRESS : xBOND;
+        const xBONDAddress = contract._address;
+        const token0 = xBONDAddress < PLSX_ADDRESS ? xBONDAddress : PLSX_ADDRESS;
+        const token1 = xBONDAddress < PLSX_ADDRESS ? PLSX_ADDRESS : xBONDAddress;
         pairAddr = await factoryContract.methods.getPair(token0, token1).call();
         setPoolAddress(pairAddr);
       } catch (err) {
@@ -119,12 +121,11 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
           );
           const { reserve0, reserve1 } = await pairContract.methods.getReserves().call();
           const token0Addr = await pairContract.methods.token0().call();
-          const isXBONDToken0 = token0Addr.toLowerCase() === xBOND.toLowerCase();
+          const isXBONDToken0 = token0Addr.toLowerCase() === xBONDAddress.toLowerCase();
           const xBONDAmt = isXBONDToken0 ? reserve0 : reserve1;
           const plsxAmt = isXBONDToken0 ? reserve1 : reserve0;
           setPoolXBONDAmount(web3.utils.fromWei(xBONDAmt?.toString() || "0", "ether"));
           setPoolPlsxAmount(web3.utils.fromWei(plsxAmt?.toString() || "0", "ether"));
-          // Calculate ratio safely
           const xBONDAmtNum = parseFloat(web3.utils.fromWei(xBONDAmt?.toString() || "0", "ether"));
           const plsxAmtNum = parseFloat(web3.utils.fromWei(plsxAmt?.toString() || "0", "ether"));
           const ratio = xBONDAmtNum > 0 ? plsxAmtNum / xBONDAmtNum : 0;
@@ -135,19 +136,19 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         }
       }
 
-      // Fetch latest LiquidityWithdrawn event (last 1M blocks)
+      // Fetch latest LiquidityWithdrawn event
       try {
         const latestBlock = await web3.eth.getBlockNumber();
         const fromBlock = Math.max(0, Number(latestBlock.toString()) - BLOCK_RANGE);
-        const filter = contract.filters.LiquidityWithdrawn(account);
-        const events = await contract.getPastEvents("LiquidityWithdrawn", {
-          filter,
-          fromBlock,
-          toBlock: "latest",
-        });
+        const filter = contract.filters?.LiquidityWithdrawn(account);
+        if (!filter) {
+          throw new Error("Failed to create LiquidityWithdrawn filter");
+        }
+        const events = await contract.queryFilter(filter, fromBlock, "latest");
         const lastEvent = events[events.length - 1];
-        const lastTimestamp = lastEvent ? Number(lastEvent.returnValues.timestamp?.toString()) : 0;
+        const lastTimestamp = lastEvent ? Number(lastEvent.args?.timestamp?.toString() || 0) : 0;
         setNextWithdrawalTime(lastTimestamp ? lastTimestamp + WITHDRAWAL_PERIOD : 0);
+        console.log("LiquidityWithdrawn events:", events);
       } catch (err) {
         console.error("Failed to fetch LiquidityWithdrawn events:", err);
         setError("Failed to fetch withdrawal events");
@@ -178,6 +179,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     setLoadingWithdraw(true);
     setError("");
     try {
+      if (!contract) throw new Error("Contract not initialized");
       await contract.methods.withdrawLiquidity().send({ from: account });
       alert("Liquidity withdrawn successfully!");
       fetchInfo();
@@ -200,6 +202,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     setLoadingSwap(true);
     setError("");
     try {
+      if (!contract) throw new Error("Contract not initialized");
       await contract.methods.swapAccumulatedxBONDToPLSX().send({ from: account });
       alert("xBOND swapped to PLSX successfully!");
       fetchInfo();
@@ -237,6 +240,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     setLoadingInit(true);
     setError("");
     try {
+      if (!contract || !plsxContract) throw new Error("Contract or PLSX contract not initialized");
       const amountNum = Number(initAmount);
       if (amountNum < MIN_INIT_AMOUNT) {
         throw new Error(`Amount must be at least ${MIN_INIT_AMOUNT} PLSX`);
@@ -298,7 +302,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
           </p>
           <button
             onClick={handleInitializePool}
-            disabled={loadingInit || !initAmount || Number(initAmount) < MIN_INIT_AMOUNT}
+            disabled={loadingInit || !initAmount || Number(initAmount) < MIN_INIT_AMOUNT || !contract}
             className="btn-primary w-full"
           >
             {loadingInit ? "Processing..." : "Initialize Pool"}
@@ -338,9 +342,9 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         </p>
         <button
           onClick={handleWithdrawLiquidity}
-          disabled={loadingWithdraw || (nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime)}
+          disabled={loadingWithdraw || (nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime) || !contract}
           className="btn-primary w-full"
-          title={nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime ? "Withdrawal not available yet" : ""}
+          title={nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime ? "Withdrawal not available yet" : !contract ? "Contract not initialized" : ""}
         >
           {loadingWithdraw ? "Processing..." : "Withdraw Liquidity"}
         </button>
@@ -348,9 +352,9 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
       <div className="flex items-center gap-4">
         <button
           onClick={handleSwapXBONDToPLSX}
-          disabled={loadingSwap || Number(xBONDAmount) <= 0}
+          disabled={loadingSwap || Number(xBONDAmount) <= 0 || !contract}
           className="btn-primary w-full"
-          title={Number(xBONDAmount) <= 0 ? "No xBOND available to swap" : ""}
+          title={Number(xBONDAmount) <= 0 ? "No xBOND available to swap" : !contract ? "Contract not initialized" : ""}
         >
           {loadingSwap ? "Processing..." : "Swap xBOND to PLSX"}
         </button>
