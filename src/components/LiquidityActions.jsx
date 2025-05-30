@@ -11,6 +11,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
   const [poolDepthRatio, setPoolDepthRatio] = useState("0");
   const [initAmount, setInitAmount] = useState("");
   const [displayInitAmount, setDisplayInitAmount] = useState("");
+  const [nextWithdrawalTime, setNextWithdrawalTime] = useState(0);
   const [loadingWithdraw, setLoadingWithdraw] = useState(false);
   const [loadingSwap, setLoadingSwap] = useState(false);
   const [loadingInit, setLoadingInit] = useState(false);
@@ -20,6 +21,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
   const PULSEX_FACTORY = "0x29eA7545DEf87022BAdc76323F373EA1e707C523";
   const CONTROLLER_ADDRESS = "0x6aaE8556C69b795b561CB75ca83aF6187d2F0AF5";
   const MIN_INIT_AMOUNT = 10;
+  const WITHDRAWAL_PERIOD = 90 * 24 * 60 * 60; // 90 days in seconds
 
   const plsxContract = new web3.eth.Contract(
     [
@@ -47,7 +49,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
   const fetchInfo = async () => {
     try {
       setError("");
-      if (!contract || !web3) throw new Error("Contract or Web3 not initialized");
+      if (!contract || !web3 || !account) throw new Error("Contract, Web3, or account not initialized");
 
       // Fetch contract balances
       const balances = await contract.methods.getContractBalances().call();
@@ -112,6 +114,17 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         setPoolDepthRatio(formatNumber(ratio));
       }
 
+      // Fetch latest LiquidityWithdrawn event
+      const filter = contract.filters.LiquidityWithdrawn(account);
+      const events = await contract.getPastEvents("LiquidityWithdrawn", {
+        filter,
+        fromBlock: 0,
+        toBlock: "latest",
+      });
+      const lastEvent = events[events.length - 1];
+      const lastTimestamp = lastEvent ? Number(lastEvent.returnValues.timestamp) : 0;
+      setNextWithdrawalTime(lastTimestamp ? lastTimestamp + WITHDRAWAL_PERIOD : 0);
+
       console.log("Fetched info:", {
         xBONDAmount: balances.xBONDBalance,
         lpTokenAmount: balances.lpBalance,
@@ -119,6 +132,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         poolXBONDAmount,
         poolPlsxAmount,
         poolDepthRatio,
+        nextWithdrawalTime,
       });
     } catch (err) {
       console.error("Failed to fetch info:", err);
@@ -138,7 +152,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     try {
       await contract.methods.withdrawLiquidity().send({ from: account });
       alert("Liquidity withdrawn successfully!");
-      fetchInfo();
+      fetchInfo(); // Refresh to update timestamp
       console.log("Liquidity withdrawn");
     } catch (err) {
       let errorMessage = `Error withdrawing liquidity: ${err.message || "Unknown error"}`;
@@ -223,6 +237,17 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     }
   };
 
+  const getWithdrawalStatus = () => {
+    if (!nextWithdrawalTime) return "No withdrawals yet";
+    const now = Math.floor(Date.now() / 1000);
+    if (now >= nextWithdrawalTime) return "Withdrawal Available";
+    const secondsLeft = nextWithdrawalTime - now;
+    const days = Math.floor(secondsLeft / 86400);
+    const hours = Math.floor((secondsLeft % 86400) / 3600);
+    const minutes = Math.floor((secondsLeft % 3600) / 60);
+    return `Next Withdrawal in ${days}d ${hours}h ${minutes}m`;
+  };
+
   if (chainId !== 369) return null;
 
   const isController = account?.toLowerCase() === CONTROLLER_ADDRESS.toLowerCase();
@@ -254,6 +279,9 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
       )}
       <div className="mb-4">
         <p className="text-gray-600 mb-1">
+          <strong>Withdrawal Status:</strong> {getWithdrawalStatus()}
+        </p>
+        <p className="text-gray-600 mb-1">
           <strong>Pool Address:</strong>{" "}
           {poolAddress === "0x0000000000000000000000000000000000000000" ? (
             "Not initialized"
@@ -282,8 +310,9 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         </p>
         <button
           onClick={handleWithdrawLiquidity}
-          disabled={loadingWithdraw}
+          disabled={loadingWithdraw || (nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime)}
           className="btn-primary w-full"
+          title={nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime ? "Withdrawal not yet available" : ""}
         >
           {loadingWithdraw ? "Processing..." : "Withdraw Liquidity"}
         </button>
