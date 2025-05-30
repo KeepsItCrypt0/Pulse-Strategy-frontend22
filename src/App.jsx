@@ -41,7 +41,6 @@ function App() {
     try {
       const web3Instance = await getWeb3();
       if (!web3Instance) {
-        console.log("Web3 not initialized, defaulting to disconnected state");
         setChainId(null);
         setNetworkName("Disconnected");
         setLoading(false);
