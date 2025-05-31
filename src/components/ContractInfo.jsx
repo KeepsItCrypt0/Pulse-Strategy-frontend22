@@ -118,7 +118,9 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           {chainId === 369 && (
             <p className="text-gray-600">
               <strong>PLSX Backing Ratio:</strong>{" "}
-              {formatNumber(Number(info.plsxBackingRatio).toFixed(1), true).replace(" to 1", " to 1")}
+              {Number.isInteger(Number(info.plsxBackingRatio))
+                ? `${formatNumber(info.plsxBackingRatio)} to 1`
+                : `${formatNumber(Number(info.plsxBackingRatio).toFixed(1))} to 1`}
             </p>
           )}
         </>
