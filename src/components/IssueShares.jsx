@@ -45,16 +45,23 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
             throw new Error(`Amount must be at least ${MIN_ISSUE_AMOUNT} ${chainId === 1 ? "vPLS" : "PLSX"}`);
           }
           const amountWei = web3.utils.toWei(amount, "ether");
-          const result = await contract.methods.calculateSharesReceived(amountWei).call({ from: account });
           let shares, fee;
           if (chainId === 1) {
-            // PLSTR: 0.5% fee
+            // PLSTR: Use calculateSharesReceived with 0.5% fee
+            const result = await contract.methods.calculateSharesReceived(amountWei).call({ from: account });
             shares = (typeof result === "object" ? result.shares || result[0] : result).toString();
             fee = web3.utils.toWei((amountNum * 0.005).toString(), "ether"); // 0.5% fee
           } else {
-            // xBOND: 5% fee
-            shares = (typeof result === "object" ? result.sharesToRecipient || result[4] : result).toString();
+            // xBOND: Calculate 5% fee and 1:1 shares after fee
             fee = web3.utils.toWei((amountNum * 0.05).toString(), "ether"); // 5% fee
+            shares = web3.utils.toWei((amountNum * 0.95).toString(), "ether"); // 95% of input as shares (1:1)
+            // Log calculateSharesReceived for debugging
+            try {
+              const result = await contract.methods.calculateSharesReceived(amountWei).call({ from: account });
+              console.log("xBOND calculateSharesReceived result:", result);
+            } catch (err) {
+              console.error("Failed to fetch xBOND calculateSharesReceived:", err);
+            }
           }
           setEstimatedShares(web3.utils.fromWei(shares, "ether"));
           setEstimatedFee(web3.utils.fromWei(fee, "ether"));
