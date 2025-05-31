@@ -46,7 +46,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           balance: web3.utils.fromWei(contractPLSXBalance || "0", "ether"),
           issuancePeriod: remainingIssuancePeriod || "0",
           totalBurned: web3.utils.fromWei(totalBurned || "0", "ether"),
-          plsxBackingRatio: (Number(plsxBackingRatio || "0") / 1e16).toString(), // Scaled by 10^16, e.g., 10000000000000000 = 1.0
+          plsxBackingRatio: (Number(plsxBackingRatio || "0") / 1e18).toString(), // Scaled by 10^18, e.g., 1000000000000000000 = 1.0
         };
       }
 
