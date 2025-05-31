@@ -4,7 +4,7 @@ import Web3 from "web3";
 // Contract addresses
 export const contractAddresses = {
   1: "0x6c1dA678A1B615f673208e74AB3510c22117090e", // PLSTR on Ethereum
-  369: "0x8D1d7065a3C10E3054B766Bf6691ecbA1d6D6fd9", // xBOND on PulseChain
+  369: "0x698Bf5BfF1bD69e1b23a60B7C7dec7649D59d049", // xBOND on PulseChain
 };
 
 // Token addresses
@@ -153,6 +153,11 @@ const xBONDABI = [
 	},
 	{
 		"inputs": [],
+		"name": "LiquidityAdditionFailed",
+		"type": "error"
+	},
+	{
+		"inputs": [],
 		"name": "NoPoolCreated",
 		"type": "error"
 	},
@@ -175,6 +180,11 @@ const xBONDABI = [
 			}
 		],
 		"name": "SafeERC20FailedOperation",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "SwapFailed",
 		"type": "error"
 	},
 	{
@@ -536,6 +546,24 @@ const xBONDABI = [
 	},
 	{
 		"inputs": [],
+		"name": "getContractBalanceRatio",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "plsxAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "xBONDAmount",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
 		"name": "getContractBalances",
 		"outputs": [
 			{
@@ -576,6 +604,37 @@ const xBONDABI = [
 		"type": "function"
 	},
 	{
+		"inputs": [],
+		"name": "getLastWithdrawalTime",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getPoolRatio",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "plsxAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "xBONDAmount",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"inputs": [
 			{
 				"internalType": "uint256",
@@ -584,6 +643,19 @@ const xBONDABI = [
 			}
 		],
 		"name": "getRedeemablePLSX",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getTimeUntilNextWithdrawal",
 		"outputs": [
 			{
 				"internalType": "uint256",
