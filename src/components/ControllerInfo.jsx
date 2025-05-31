@@ -43,7 +43,7 @@ const ControllerInfo = ({ contract, web3, chainId }) => {
           strategy: strategy || "0x0",
           xBondBalance: web3.utils.fromWei(xBondBalance || "0", "ether"),
           estimatedStrategyPLSX: web3.utils.fromWei(estimatedControllerPLSX || "0", "ether"),
-          strategySharePercentage: (Number(controllerSharePercentage || "0") / 100).toString(), // Scaled by 100, e.g., 1000 = 10.00%
+          strategySharePercentage: (Number(controllerSharePercentage || "0") / 1e16).toString(), // Scaled by 10^16, e.g., 10000000000000000 = 100%
         };
       }
 
@@ -101,7 +101,9 @@ const ControllerInfo = ({ contract, web3, chainId }) => {
               </p>
               <p className="text-gray-600">
                 <strong>Strategy Share Percentage:</strong>{" "}
-                {formatNumber(info.strategySharePercentage)}%
+                {Number.isInteger(Number(info.strategySharePercentage))
+                  ? `${formatNumber(info.strategySharePercentage)}%`
+                  : `${formatNumber(Number(info.strategySharePercentage).toFixed(2))}%`}
               </p>
             </>
           )}
