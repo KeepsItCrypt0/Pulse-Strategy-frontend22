@@ -1,4 +1,3 @@
-// src/components/RedeemShares.jsx
 import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
 
@@ -39,7 +38,7 @@ const RedeemShares = ({ contract, account, web3, chainId }) => {
               .call({ from: normalizedAccount });
           } else {
             redeemable = await contract.methods
-              .getRedeemablePLSX(amountWei)
+              .getRedeemablePLSX(account, amountWei)
               .call({ from: account });
           }
           setEstimatedToken(web3.utils.fromWei(redeemable || "0", "ether"));
