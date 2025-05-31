@@ -65,6 +65,10 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         throw new Error("Contract, Web3, or account not initialized");
       }
 
+      // Log Web3.js version and utils
+      console.log("Web3 version:", web3.version);
+      console.log("Web3 utils:", Object.keys(web3.utils || {}));
+
       // Fetch contract balances
       try {
         const balances = await contract.methods.getContractBalances().call();
@@ -193,7 +197,6 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     setError("");
     try {
       if (!contract) throw new Error("Contract not initialized");
-      if (!web3) throw new Error("Web3 not initialized");
       const gasEstimate = await contract.methods.withdrawLiquidity().estimateGas({ from: account });
       console.log("Withdraw Liquidity Gas Estimate:", gasEstimate);
       await contract.methods
@@ -223,7 +226,6 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     setError("");
     try {
       if (!contract) throw new Error("Contract not initialized");
-      if (!web3) throw new Error("Web3 not initialized");
       const gasEstimate = await contract.methods.swapAccumulatedxBONDToPLSX().estimateGas({ from: account });
       console.log("Swap xBOND to PLSX Gas Estimate:", gasEstimate);
       await contract.methods
@@ -268,8 +270,9 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     setError("");
     try {
       console.log("Starting pool initialization...");
-      if (!web3) throw new Error("Web3 not initialized");
       if (!contract || !plsxContract) throw new Error("Contract or PLSX contract not initialized");
+      console.log("Web3 version:", web3.version);
+      console.log("Web3 utils:", Object.keys(web3.utils || {}));
       const amountNum = Number(initAmount);
       console.log("Input Amount:", amountNum);
       if (amountNum < MIN_INIT_AMOUNT) {
@@ -340,6 +343,8 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         errorMessage = "Failed to transfer PLSX tokens. Check balance, allowance, or gas settings.";
       } else if (err.message.includes("out of gas")) {
         errorMessage = "Transaction ran out of gas. Try increasing the gas limit.";
+      } else if (err.message.includes("toBN")) {
+        errorMessage = "Web3.js utility error. Check Web3.js version and configuration.";
       }
       setError(errorMessage);
       console.error("Initialize pool error:", err);
