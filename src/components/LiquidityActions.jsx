@@ -193,6 +193,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     setError("");
     try {
       if (!contract) throw new Error("Contract not initialized");
+      if (!web3) throw new Error("Web3 not initialized");
       const gasEstimate = await contract.methods.withdrawLiquidity().estimateGas({ from: account });
       console.log("Withdraw Liquidity Gas Estimate:", gasEstimate);
       await contract.methods
@@ -222,6 +223,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     setError("");
     try {
       if (!contract) throw new Error("Contract not initialized");
+      if (!web3) throw new Error("Web3 not initialized");
       const gasEstimate = await contract.methods.swapAccumulatedxBONDToPLSX().estimateGas({ from: account });
       console.log("Swap xBOND to PLSX Gas Estimate:", gasEstimate);
       await contract.methods
@@ -239,9 +241,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
       } else if (err.message.includes("out of gas")) {
         errorMessage = "Transaction ran out of gas. Try increasing the gas limit.";
       }
-     
-
- setError(errorMessage);
+      setError(errorMessage);
       console.error("Swap error:", err);
     } finally {
       setLoadingSwap(false);
@@ -268,6 +268,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     setError("");
     try {
       console.log("Starting pool initialization...");
+      if (!web3) throw new Error("Web3 not initialized");
       if (!contract || !plsxContract) throw new Error("Contract or PLSX contract not initialized");
       const amountNum = Number(initAmount);
       console.log("Input Amount:", amountNum);
@@ -280,7 +281,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
       // Check balance
       const balance = await plsxContract.methods.balanceOf(account).call();
       console.log("PLSX Balance:", web3.utils.fromWei(balance, "ether"));
-      if (web3.utils.toBN(balance).lt(web3.utils.toBN(amountWei))) {
+      if (BigInt(balance) < BigInt(amountWei)) {
         throw new Error("Insufficient PLSX balance");
       }
 
@@ -309,7 +310,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
       // Verify allowance
       const allowance = await plsxContract.methods.allowance(account, contract._address).call();
       console.log("Allowance:", web3.utils.fromWei(allowance, "ether"));
-      if (web3.utils.toBN(allowance).lt(web3.utils.toBN(amountWei))) {
+      if (BigInt(allowance) < BigInt(amountWei)) {
         throw new Error("Insufficient allowance");
       }
 
