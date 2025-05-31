@@ -10,6 +10,7 @@ const ControllerInfo = ({ contract, web3, chainId }) => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const fetchInfo = async () => {
     if (!contract || !web3 || !chainId) {
@@ -41,12 +42,13 @@ const ControllerInfo = ({ contract, web3, chainId }) => {
         console.log("Raw xBondBalance (Wei):", xBondBalance);
         console.log("Raw estimatedControllerPLSX (Wei):", estimatedControllerPLSX);
         console.log("Raw controllerSharePercentage:", controllerSharePercentage);
+        console.log("Strategy Controller Address:", strategy);
         newInfo = {
           ...newInfo,
           strategy: strategy || "0x0",
           xBondBalance: web3.utils.fromWei(xBondBalance || "0", "ether"),
           estimatedStrategyPLSX: web3.utils.fromWei(estimatedControllerPLSX || "0", "ether"),
-          strategySharePercentage: (Number(controllerSharePercentage || "0") / 1e18).toString(), // Try 10^18 scaling
+          strategySharePercentage: (Number(controllerSharePercentage || "0") / 1e16).toString(), // Reverted to 10^16
         };
       }
 
@@ -62,7 +64,11 @@ const ControllerInfo = ({ contract, web3, chainId }) => {
 
   useEffect(() => {
     if (contract && web3 && chainId) fetchInfo();
-  }, [contract, web3, chainId]);
+  }, [contract, web3, chainId, refreshTrigger]);
+
+  const handleRefresh = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   return (
     <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
@@ -108,6 +114,12 @@ const ControllerInfo = ({ contract, web3, chainId }) => {
                   ? `${formatNumber(info.strategySharePercentage)}%`
                   : `${formatNumber(Number(info.strategySharePercentage).toFixed(2))}%`}
               </p>
+              <button
+                onClick={handleRefresh}
+                className="mt-2 text-purple-600 hover:text-purple-800 transition-colors"
+              >
+                Refresh Data
+              </button>
             </>
           )}
         </>
