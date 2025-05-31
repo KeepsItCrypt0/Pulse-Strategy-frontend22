@@ -2,7 +2,15 @@ import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
 
 const ContractInfo = ({ contract, web3, chainId }) => {
-  const [info, setInfo] = useState({ balance: "0", issuancePeriod: "0", totalIssued: "0", totalBurned: "0" });
+  const [info, setInfo] = useState({
+    balance: "0",
+    issuancePeriod: "0",
+    totalIssued: "0",
+    totalBurned: "0",
+    totalMintedShares: "0",
+    plsxBackingRatio: "0",
+    controllerSharePercentage: "0",
+  });
   const [countdown, setCountdown] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -23,6 +31,9 @@ const ContractInfo = ({ contract, web3, chainId }) => {
         issuancePeriod: "0",
         totalIssued: web3.utils.fromWei(totalIssued || "0", "ether"),
         totalBurned: "0",
+        totalMintedShares: "0",
+        plsxBackingRatio: "0",
+        controllerSharePercentage: "0",
       };
 
       if (chainId === 1) {
@@ -31,13 +42,17 @@ const ContractInfo = ({ contract, web3, chainId }) => {
         newInfo.balance = web3.utils.fromWei(contractBalance || "0", "ether");
         newInfo.issuancePeriod = remainingIssuancePeriod || "0";
       } else if (chainId === 369) {
-        // xBOND: Use getContractMetrics
-        const { contractPLSXBalance, totalBurned, remainingIssuancePeriod } = await contract.methods.getContractMetrics().call();
+        // xBOND: Use getContractMetrics and getContractHealth
+        const { contractPLSXBalance, totalBurned, totalMintedShares, remainingIssuancePeriod } = await contract.methods.getContractMetrics().call();
+        const { plsxBackingRatio, controllerSharePercentage } = await contract.methods.getContractHealth().call();
         newInfo = {
           ...newInfo,
           balance: web3.utils.fromWei(contractPLSXBalance || "0", "ether"),
           issuancePeriod: remainingIssuancePeriod || "0",
           totalBurned: web3.utils.fromWei(totalBurned || "0", "ether"),
+          totalMintedShares: web3.utils.fromWei(totalMintedShares || "0", "ether"),
+          plsxBackingRatio: (Number(plsxBackingRatio || "0") / 100).toString(), // Assuming scaled by 100, e.g., 1000 = 10.00%
+          controllerSharePercentage: (Number(controllerSharePercentage || "0") / 100).toString(), // Assuming scaled by 100
         };
       }
 
@@ -98,13 +113,29 @@ const ContractInfo = ({ contract, web3, chainId }) => {
             <strong>Total {chainId === 1 ? "PLSTR" : "xBOND"} Issued:</strong>{" "}
             {formatNumber(info.totalIssued)} {chainId === 1 ? "PLSTR" : "xBOND"}
           </p>
-          <p className="text-gray-600">
-            <strong>Issuance Period Countdown:</strong> {countdown}
-          </p>
+          {chainId === 369 && (
+            <p className="text-gray-600">
+              <strong>Total {chainId === 1 ? "PLSTR" : "xBOND"} Minted:</strong>{" "}
+              {formatNumber(info.totalMintedShares)} {chainId === 1 ? "PLSTR" : "xBOND"}
+            </p>
+          )}
           {chainId === 369 && (
             <p className="text-gray-600">
               <strong>Total Burned:</strong> {formatNumber(info.totalBurned)} xBOND
             </p>
+          )}
+          <p className="text-gray-600">
+            <strong>Issuance Period Countdown:</strong> {countdown}
+          </p>
+          {chainId === 369 && (
+            <>
+              <p className="text-gray-600">
+                <strong>PLSX Backing Ratio:</strong> {formatNumber(info.plsxBackingRatio)}%
+              </p>
+              <p className="text-gray-600">
+                <strong>Controller Share Percentage:</strong> {formatNumber(info.controllerSharePercentage)}%
+              </p>
+            </>
           )}
         </>
       )}
