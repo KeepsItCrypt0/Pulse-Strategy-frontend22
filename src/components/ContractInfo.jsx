@@ -8,6 +8,8 @@ const ContractInfo = ({ contract, web3, chainId }) => {
     totalIssued: "0",
     totalBurned: "0",
     plsxBackingRatio: "0",
+    strategySharePercentage: "0",
+    strategy: "0x0",
   });
   const [countdown, setCountdown] = useState("");
   const [loading, setLoading] = useState(true);
@@ -30,6 +32,8 @@ const ContractInfo = ({ contract, web3, chainId }) => {
         totalIssued: web3.utils.fromWei(totalIssued || "0", "ether"),
         totalBurned: "0",
         plsxBackingRatio: "0",
+        strategySharePercentage: "0",
+        strategy: "0x0",
       };
 
       if (chainId === 1) {
@@ -38,20 +42,26 @@ const ContractInfo = ({ contract, web3, chainId }) => {
         newInfo.balance = web3.utils.fromWei(contractBalance || "0", "ether");
         newInfo.issuancePeriod = remainingIssuancePeriod || "0";
       } else if (chainId === 369) {
-        // xBOND: Use getContractMetrics
+        // xBOND: Use getContractMetrics, getContractHealth, getStrategyController
         const { contractPLSXBalance, totalBurned, remainingIssuancePeriod } = await contract.methods.getContractMetrics().call();
+        const { controllerSharePercentage } = await contract.methods.getContractHealth().call();
+        const strategy = await contract.methods.getStrategyController().call();
         const balanceNum = Number(web3.utils.fromWei(contractPLSXBalance || "0", "ether"));
         const issuedNum = Number(web3.utils.fromWei(totalIssued || "0", "ether"));
         const calculatedRatio = issuedNum > 0 ? balanceNum / issuedNum : 0;
         console.log("Raw contractPLSXBalance (Wei):", contractPLSXBalance);
         console.log("Raw totalIssued (Wei):", totalIssued);
         console.log("Calculated PLSX Backing Ratio:", calculatedRatio);
+        console.log("Raw controllerSharePercentage:", controllerSharePercentage);
+        console.log("Strategy Controller Address:", strategy);
         newInfo = {
           ...newInfo,
           balance: balanceNum.toString(),
           issuancePeriod: remainingIssuancePeriod || "0",
           totalBurned: web3.utils.fromWei(totalBurned || "0", "ether"),
           plsxBackingRatio: calculatedRatio.toString(),
+          strategySharePercentage: (Number(controllerSharePercentage || "0") / 1e16).toString(),
+          strategy: strategy || "0x0",
         };
       }
 
@@ -113,21 +123,38 @@ const ContractInfo = ({ contract, web3, chainId }) => {
             {formatNumber(info.totalIssued)} {chainId === 1 ? "PLSTR" : "xBOND"}
           </p>
           {chainId === 369 && (
-            <p className="text-gray-600">
-              <strong>Total xBOND Burned:</strong> {formatNumber(info.totalBurned)} xBOND
-            </p>
+            <>
+              <p className="text-gray-600">
+                <strong>Total xBOND Burned:</strong> {formatNumber(info.totalBurned)} xBOND
+              </p>
+              <p className="text-gray-600">
+                <strong>PLSX Backing Ratio:</strong>{" "}
+                {Number.isInteger(Number(info.plsxBackingRatio))
+                  ? `${formatNumber(info.plsxBackingRatio)} to 1`
+                  : `${formatNumber(Number(info.plsxBackingRatio).toFixed(4))} to 1`}
+              </p>
+              <p className="text-gray-600">
+                <strong>Strategy Share Percentage:</strong>{" "}
+                {Number.isInteger(Number(info.strategySharePercentage))
+                  ? `${formatNumber(info.strategySharePercentage)}%`
+                  : `${formatNumber(Number(info.strategySharePercentage).toFixed(2))}%`}
+              </p>
+              <p className="text-gray-600">
+                <strong>Strategy Address:</strong>{" "}
+                <a
+                  href={`https://scan.pulsechain.com/address/${info.strategy}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-purple-600 hover:text-purple-800 transition-colors"
+                >
+                  {info.strategy.slice(0, 6)}...{info.strategy.slice(-4)}
+                </a>
+              </p>
+            </>
           )}
           <p className="text-gray-600">
             <strong>Issuance Period Countdown:</strong> {countdown}
           </p>
-          {chainId === 369 && (
-            <p className="text-gray-600">
-              <strong>PLSX Backing Ratio:</strong>{" "}
-              {Number.isInteger(Number(info.plsxBackingRatio))
-                ? `${formatNumber(info.plsxBackingRatio)} to 1`
-                : `${formatNumber(Number(info.plsxBackingRatio).toFixed(4))} to 1`}
-            </p>
-          )}
         </>
       )}
     </div>
