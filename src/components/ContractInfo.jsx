@@ -105,11 +105,11 @@ const ContractInfo = ({ contract, web3, chainId }) => {
       ) : (
         <>
           <p className="text-gray-600">
-            <strong>PLSX Balance:</strong>{" "}
+            <strong>{chainId === 1 ? "vPLS Balance" : "PLSX Balance"}:</strong>{" "}
             {formatNumber(info.balance)} {chainId === 1 ? "vPLS" : "PLSX"}
           </p>
           <p className="text-gray-600">
-            <strong>xBOND Issued:</strong>{" "}
+            <strong>{chainId === 1 ? "PLSTR Issued" : "xBOND Issued"}:</strong>{" "}
             {formatNumber(info.totalIssued)} {chainId === 1 ? "PLSTR" : "xBOND"}
           </p>
           {chainId === 369 && (
