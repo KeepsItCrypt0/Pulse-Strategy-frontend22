@@ -48,11 +48,13 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
           const result = await contract.methods.calculateSharesReceived(amountWei).call({ from: account });
           let shares, fee;
           if (chainId === 1) {
+            // PLSTR: 0.5% fee
             shares = (typeof result === "object" ? result.shares || result[0] : result).toString();
-            fee = (typeof result === "object" ? result.totalFee || result[1] : web3.utils.toWei((amountNum * 0.005).toString(), "ether")).toString();
+            fee = web3.utils.toWei((amountNum * 0.005).toString(), "ether"); // 0.5% fee
           } else {
+            // xBOND: 5% fee
             shares = (typeof result === "object" ? result.sharesToRecipient || result[4] : result).toString();
-            fee = (typeof result === "object" ? result.totalFee || result[1] : result).toString();
+            fee = web3.utils.toWei((amountNum * 0.05).toString(), "ether"); // 5% fee
           }
           setEstimatedShares(web3.utils.fromWei(shares, "ether"));
           setEstimatedFee(web3.utils.fromWei(fee, "ether"));
@@ -131,7 +133,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
           {chainId === 1 ? (
             <span className="text-sm text-gray-500 ml-2">(0.5% fee applied)</span>
           ) : (
-            <span className="text-sm text-gray-500 ml-2">(Fee applied, see contract)</span>
+            <span className="text-sm text-gray-500 ml-2">(5% fee applied)</span>
           )}
         </p>
         <p className="text-gray-600 mb-2">
@@ -158,7 +160,7 @@ const IssueShares = ({ web3, contract, account, chainId }) => {
       >
         {loading ? "Processing..." : `Issue ${chainId === 1 ? "PLSTR" : "xBOND"}`}
       </button>
-      {error && <p className="text-red-700 mt-4">{error}</p>}
+      {error && <p className="text-red-600 mt-4">{error}</p>}
     </div>
   );
 };
