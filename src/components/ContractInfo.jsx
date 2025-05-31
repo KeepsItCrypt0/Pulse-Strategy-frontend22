@@ -51,7 +51,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           issuancePeriod: remainingIssuancePeriod || "0",
           totalBurned: web3.utils.fromWei(totalBurned || "0", "ether"),
           totalMintedShares: web3.utils.fromWei(totalMintedShares || "0", "ether"),
-          plsxBackingRatio: (Number(plsxBackingRatio || "0") / 100).toString(), // Assuming scaled by 100, e.g., 1000 = 10.00%
+          plsxBackingRatio: (Number(plsxBackingRatio || "0") / 100).toString(), // Assuming scaled by 100, e.g., 1000 = 10:1
           controllerSharePercentage: (Number(controllerSharePercentage || "0") / 100).toString(), // Assuming scaled by 100
         };
       }
@@ -130,10 +130,12 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           {chainId === 369 && (
             <>
               <p className="text-gray-600">
-                <strong>PLSX Backing Ratio:</strong> {formatNumber(info.plsxBackingRatio)}%
+                <strong>PLSX Backing Ratio:</strong>{" "}
+                {formatNumber(info.plsxBackingRatio, true).replace(" to 1", ":1")}
               </p>
               <p className="text-gray-600">
-                <strong>Controller Share Percentage:</strong> {formatNumber(info.controllerSharePercentage)}%
+                <strong>Controller Share Ratio:</strong>{" "}
+                {formatNumber(info.controllerSharePercentage, true).replace(" to 1", ":1")}
               </p>
             </>
           )}
