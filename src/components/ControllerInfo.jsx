@@ -46,7 +46,6 @@ const ControllerInfo = ({ contract, web3, chainId }) => {
       setInfo(newInfo);
       console.log("Controller info fetched:", newInfo);
     } catch (error) {
-      console`)
       console.error("Failed to fetch controller info:", error);
       setError(`Failed to load controller data: ${error.message || "Contract execution failed"}`);
     } finally {
