@@ -38,15 +38,20 @@ const ContractInfo = ({ contract, web3, chainId }) => {
         newInfo.balance = web3.utils.fromWei(contractBalance || "0", "ether");
         newInfo.issuancePeriod = remainingIssuancePeriod || "0";
       } else if (chainId === 369) {
-        // xBOND: Use getContractMetrics and getContractHealth
+        // xBOND: Use getContractMetrics
         const { contractPLSXBalance, totalBurned, remainingIssuancePeriod } = await contract.methods.getContractMetrics().call();
-        const { plsxBackingRatio } = await contract.methods.getContractHealth().call();
+        const balanceNum = Number(web3.utils.fromWei(contractPLSXBalance || "0", "ether"));
+        const issuedNum = Number(web3.utils.fromWei(totalIssued || "0", "ether"));
+        const calculatedRatio = issuedNum > 0 ? balanceNum / issuedNum : 0;
+        console.log("Raw contractPLSXBalance (Wei):", contractPLSXBalance);
+        console.log("Raw totalIssued (Wei):", totalIssued);
+        console.log("Calculated PLSX Backing Ratio:", calculatedRatio);
         newInfo = {
           ...newInfo,
-          balance: web3.utils.fromWei(contractPLSXBalance || "0", "ether"),
+          balance: balanceNum.toString(),
           issuancePeriod: remainingIssuancePeriod || "0",
           totalBurned: web3.utils.fromWei(totalBurned || "0", "ether"),
-          plsxBackingRatio: (Number(plsxBackingRatio || "0") / 1e18).toString(), // Scaled by 10^18, e.g., 1000000000000000000 = 1.0
+          plsxBackingRatio: calculatedRatio.toString(),
         };
       }
 
