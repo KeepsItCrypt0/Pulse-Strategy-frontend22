@@ -38,12 +38,15 @@ const ControllerInfo = ({ contract, web3, chainId }) => {
         const { xBondBalance } = await contract.methods.getStrategyControllerHoldings().call();
         const { estimatedControllerPLSX } = await contract.methods.getPLSXReserveContributions().call();
         const { controllerSharePercentage } = await contract.methods.getContractHealth().call();
+        console.log("Raw xBondBalance (Wei):", xBondBalance);
+        console.log("Raw estimatedControllerPLSX (Wei):", estimatedControllerPLSX);
+        console.log("Raw controllerSharePercentage:", controllerSharePercentage);
         newInfo = {
           ...newInfo,
           strategy: strategy || "0x0",
           xBondBalance: web3.utils.fromWei(xBondBalance || "0", "ether"),
           estimatedStrategyPLSX: web3.utils.fromWei(estimatedControllerPLSX || "0", "ether"),
-          strategySharePercentage: (Number(controllerSharePercentage || "0") / 1e16).toString(), // Scaled by 10^16, e.g., 10000000000000000 = 100%
+          strategySharePercentage: (Number(controllerSharePercentage || "0") / 1e18).toString(), // Try 10^18 scaling
         };
       }
 
