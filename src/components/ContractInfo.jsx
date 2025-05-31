@@ -125,7 +125,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
               <strong>PLSX Backing Ratio:</strong>{" "}
               {Number.isInteger(Number(info.plsxBackingRatio))
                 ? `${formatNumber(info.plsxBackingRatio)} to 1`
-                : `${formatNumber(Number(info.plsxBackingRatio).toFixed(1))} to 1`}
+                : `${formatNumber(Number(info.plsxBackingRatio).toFixed(4))} to 1`}
             </p>
           )}
         </>
