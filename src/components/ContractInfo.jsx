@@ -1,4 +1,3 @@
-// src/components/ContractInfo.jsx
 import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
 
@@ -32,14 +31,12 @@ const ContractInfo = ({ contract, web3, chainId }) => {
         newInfo.balance = web3.utils.fromWei(contractBalance || "0", "ether");
         newInfo.issuancePeriod = remainingIssuancePeriod || "0";
       } else if (chainId === 369) {
-        // xBOND: Use getContractBalances and getIssuanceStatus
-        const balances = await contract.methods.getContractBalances().call();
-        const issuanceStatus = await contract.methods.getIssuanceStatus().call();
-        const totalBurned = await contract.methods.getTotalBurned().call();
+        // xBOND: Use getContractMetrics
+        const { contractPLSXBalance, totalBurned, remainingIssuancePeriod } = await contract.methods.getContractMetrics().call();
         newInfo = {
           ...newInfo,
-          balance: web3.utils.fromWei(balances.plsxBalance || "0", "ether"),
-          issuancePeriod: issuanceStatus.timeRemaining || "0",
+          balance: web3.utils.fromWei(contractPLSXBalance || "0", "ether"),
+          issuancePeriod: remainingIssuancePeriod || "0",
           totalBurned: web3.utils.fromWei(totalBurned || "0", "ether"),
         };
       }
