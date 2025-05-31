@@ -9,7 +9,6 @@ const ContractInfo = ({ contract, web3, chainId }) => {
     totalBurned: "0",
     totalMintedShares: "0",
     plsxBackingRatio: "0",
-    controllerSharePercentage: "0",
   });
   const [countdown, setCountdown] = useState("");
   const [loading, setLoading] = useState(true);
@@ -33,7 +32,6 @@ const ContractInfo = ({ contract, web3, chainId }) => {
         totalBurned: "0",
         totalMintedShares: "0",
         plsxBackingRatio: "0",
-        controllerSharePercentage: "0",
       };
 
       if (chainId === 1) {
@@ -44,7 +42,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
       } else if (chainId === 369) {
         // xBOND: Use getContractMetrics and getContractHealth
         const { contractPLSXBalance, totalBurned, totalMintedShares, remainingIssuancePeriod } = await contract.methods.getContractMetrics().call();
-        const { plsxBackingRatio, controllerSharePercentage } = await contract.methods.getContractHealth().call();
+        const { plsxBackingRatio } = await contract.methods.getContractHealth().call();
         newInfo = {
           ...newInfo,
           balance: web3.utils.fromWei(contractPLSXBalance || "0", "ether"),
@@ -52,7 +50,6 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           totalBurned: web3.utils.fromWei(totalBurned || "0", "ether"),
           totalMintedShares: web3.utils.fromWei(totalMintedShares || "0", "ether"),
           plsxBackingRatio: (Number(plsxBackingRatio || "0") / 100).toString(), // Assuming scaled by 100, e.g., 1000 = 10:1
-          controllerSharePercentage: (Number(controllerSharePercentage || "0") / 100).toString(), // Assuming scaled by 100
         };
       }
 
@@ -106,7 +103,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
       ) : (
         <>
           <p className="text-gray-600">
-            <strong>Contract Balance:</strong>{" "}
+            <strong>Contract PLSX Balance:</strong>{" "}
             {formatNumber(info.balance)} {chainId === 1 ? "vPLS" : "PLSX"}
           </p>
           <p className="text-gray-600">
@@ -121,23 +118,17 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           )}
           {chainId === 369 && (
             <p className="text-gray-600">
-              <strong>Total Burned:</strong> {formatNumber(info.totalBurned)} xBOND
+              <strong>Total xBOND Burned:</strong> {formatNumber(info.totalBurned)} xBOND
             </p>
           )}
           <p className="text-gray-600">
             <strong>Issuance Period Countdown:</strong> {countdown}
           </p>
           {chainId === 369 && (
-            <>
-              <p className="text-gray-600">
-                <strong>PLSX Backing Ratio:</strong>{" "}
-                {formatNumber(info.plsxBackingRatio, true).replace(" to 1", ":1")}
-              </p>
-              <p className="text-gray-600">
-                <strong>Controller Share Ratio:</strong>{" "}
-                {formatNumber(info.controllerSharePercentage, true).replace(" to 1", ":1")}
-              </p>
-            </>
+            <p className="text-gray-600">
+              <strong>PLSX Backing Ratio:</strong>{" "}
+              {formatNumber(info.plsxBackingRatio, true).replace(" to 1", ":1")}
+            </p>
           )}
         </>
       )}
