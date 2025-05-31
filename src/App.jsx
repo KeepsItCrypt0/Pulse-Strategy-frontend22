@@ -6,7 +6,6 @@ import IssueShares from "./components/IssueShares";
 import RedeemShares from "./components/RedeemShares";
 import AdminPanel from "./components/AdminPanel";
 import UserInfo from "./components/UserInfo";
-import LiquidityActions from "./components/LiquidityActions";
 import { getWeb3, getContract, getAccount, contractAddresses, switchNetwork } from "./web3";
 import "./index.css";
 
@@ -184,9 +183,6 @@ function App() {
                 <UserInfo contract={contract} account={account} web3={web3} chainId={chainId} />
                 <IssueShares web3={web3} contract={contract} account={account} chainId={chainId} />
                 <RedeemShares contract={contract} account={account} web3={web3} chainId={chainId} />
-                {chainId === 369 && (
-                  <LiquidityActions contract={contract} account={account} web3={web3} chainId={chainId} />
-                )}
                 {chainId === 1 && isController && (
                   <AdminPanel web3={web3} contract={contract} account={account} chainId={chainId} />
                 )}
@@ -199,9 +195,6 @@ function App() {
             <UserInfo contract={contract} account={account} web3={web3} chainId={chainId} />
             <IssueShares web3={web3} contract={contract} account={account} chainId={chainId} />
             <RedeemShares contract={contract} account={account} web3={web3} chainId={chainId} />
-            {chainId === 369 && (
-              <LiquidityActions contract={contract} account={account} web3={web3} chainId={chainId} />
-            )}
             {chainId === 1 && isController && (
               <AdminPanel web3={web3} contract={contract} account={account} chainId={chainId} />
             )}
