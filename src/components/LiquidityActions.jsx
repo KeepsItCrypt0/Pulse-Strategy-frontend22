@@ -44,6 +44,16 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         outputs: [{ name: "success", type: "bool" }],
         type: "function",
       },
+      {
+        constant: true,
+        inputs: [
+          { name: "_owner", type: "address" },
+          { name: "_spender", type: "address" },
+        ],
+        name: "allowance",
+        outputs: [{ name: "remaining", type: "uint256" }],
+        type: "function",
+      },
     ],
     PLSX_ADDRESS
   );
@@ -183,7 +193,11 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     setError("");
     try {
       if (!contract) throw new Error("Contract not initialized");
-      await contract.methods.withdrawLiquidity().send({ from: account });
+      const gasEstimate = await contract.methods.withdrawLiquidity().estimateGas({ from: account });
+      console.log("Withdraw Liquidity Gas Estimate:", gasEstimate);
+      await contract.methods
+        .withdrawLiquidity()
+        .send({ from: account, gas: Math.ceil(gasEstimate * 1.2), gasPrice: web3.utils.toWei("100", "gwei") });
       alert("Liquidity withdrawn successfully!");
       fetchInfo();
       console.log("Liquidity withdrawn");
@@ -193,6 +207,8 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         errorMessage = "Insufficient liquidity to withdraw.";
       } else if (err.message.includes("WithdrawalPeriodNotElapsed")) {
         errorMessage = "Withdrawal not available yet (90-day period).";
+      } else if (err.message.includes("out of gas")) {
+        errorMessage = "Transaction ran out of gas. Try increasing the gas limit.";
       }
       setError(errorMessage);
       console.error("Withdraw liquidity error:", err);
@@ -206,7 +222,11 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     setError("");
     try {
       if (!contract) throw new Error("Contract not initialized");
-      await contract.methods.swapAccumulatedxBONDToPLSX().send({ from: account });
+      const gasEstimate = await contract.methods.swapAccumulatedxBONDToPLSX().estimateGas({ from: account });
+      console.log("Swap xBOND to PLSX Gas Estimate:", gasEstimate);
+      await contract.methods
+        .swapAccumulatedxBONDToPLSX()
+        .send({ from: account, gas: Math.ceil(gasEstimate * 1.2), gasPrice: web3.utils.toWei("100", "gwei") });
       alert("xBOND swapped to PLSX successfully!");
       fetchInfo();
       console.log("xBOND swapped to PLSX");
@@ -216,8 +236,12 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         errorMessage = "No xBOND available to swap.";
       } else if (err.message.includes("InsufficientLiquidity")) {
         errorMessage = "Swap output too low.";
+      } else if (err.message.includes("out of gas")) {
+        errorMessage = "Transaction ran out of gas. Try increasing the gas limit.";
       }
-      setError(errorMessage);
+     
+
+ setError(errorMessage);
       console.error("Swap error:", err);
     } finally {
       setLoadingSwap(false);
@@ -243,27 +267,78 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     setLoadingInit(true);
     setError("");
     try {
+      console.log("Starting pool initialization...");
       if (!contract || !plsxContract) throw new Error("Contract or PLSX contract not initialized");
       const amountNum = Number(initAmount);
+      console.log("Input Amount:", amountNum);
       if (amountNum < MIN_INIT_AMOUNT) {
         throw new Error(`Amount must be at least ${MIN_INIT_AMOUNT} PLSX`);
       }
       const amountWei = web3.utils.toWei(initAmount, "ether");
-      await plsxContract.methods
+      console.log("Amount in Wei:", amountWei);
+
+      // Check balance
+      const balance = await plsxContract.methods.balanceOf(account).call();
+      console.log("PLSX Balance:", web3.utils.fromWei(balance, "ether"));
+      if (web3.utils.toBN(balance).lt(web3.utils.toBN(amountWei))) {
+        throw new Error("Insufficient PLSX balance");
+      }
+
+      // Check pool status
+      const poolCreated = await contract.methods._poolCreated().call();
+      console.log("Pool Created:", poolCreated);
+      if (!poolCreated) throw new Error("Pool not created. Call createPool first.");
+
+      // Approve
+      console.log("Approving contract:", contract._address);
+      const approvalGasEstimate = await plsxContract.methods
         .approve(contract._address, amountWei)
-        .send({ from: account });
-      await contract.methods.initializePool(amountWei).send({ from: account });
+        .estimateGas({ from: account });
+      console.log("Approval Gas Estimate:", approvalGasEstimate);
+      const approvalTx = await plsxContract.methods
+        .approve(contract._address, amountWei)
+        .send({ from: account, gas: Math.ceil(approvalGasEstimate * 1.2), gasPrice: web3.utils.toWei("100", "gwei") });
+      console.log("Approval Tx:", approvalTx);
+
+      // Wait for approval confirmation
+      const receipt = await web3.eth.getTransactionReceipt(approvalTx.transactionHash);
+      if (!receipt || receipt.status === false) {
+        throw new Error("Approval transaction failed");
+      }
+
+      // Verify allowance
+      const allowance = await plsxContract.methods.allowance(account, contract._address).call();
+      console.log("Allowance:", web3.utils.fromWei(allowance, "ether"));
+      if (web3.utils.toBN(allowance).lt(web3.utils.toBN(amountWei))) {
+        throw new Error("Insufficient allowance");
+      }
+
+      // Initialize pool
+      console.log("Initializing pool...");
+      const gasEstimate = await contract.methods.initializePool(amountWei).estimateGas({ from: account });
+      console.log("Initialize Pool Gas Estimate:", gasEstimate);
+      await contract.methods
+        .initializePool(amountWei)
+        .send({ from: account, gas: Math.ceil(gasEstimate * 1.5), gasPrice: web3.utils.toWei("100", "gwei") });
+      console.log("Pool initialized successfully");
       alert("Pool initialized successfully!");
       setInitAmount("");
       setDisplayInitAmount("");
       fetchInfo();
-      console.log("Pool initialized:", { amountWei });
     } catch (err) {
       let errorMessage = `Error initializing pool: ${err.message || "Unknown error"}`;
       if (err.message.includes("InsufficientAllowance")) {
-        errorMessage = "Insufficient PLSX allowance.";
+        errorMessage = "Insufficient PLSX allowance. Please try approving again.";
       } else if (err.message.includes("InsufficientInitialLiquidity")) {
         errorMessage = `Amount must be at least ${MIN_INIT_AMOUNT} PLSX.`;
+      } else if (err.message.includes("Insufficient PLSX balance")) {
+        errorMessage = "Insufficient PLSX balance in your wallet.";
+      } else if (err.message.includes("NoPoolCreated")) {
+        errorMessage = "Pool not created. Please call createPool first.";
+      } else if (err.message.includes("transferFrom failed")) {
+        errorMessage = "Failed to transfer PLSX tokens. Check balance, allowance, or gas settings.";
+      } else if (err.message.includes("out of gas")) {
+        errorMessage = "Transaction ran out of gas. Try increasing the gas limit.";
       }
       setError(errorMessage);
       console.error("Initialize pool error:", err);
