@@ -83,9 +83,12 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
           ],
           PULSEX_FACTORY
         );
-        const xBONDAddress = contract._address;
-        const token0 = xBONDAddress < PLSX_ADDRESS ? xBONDAddress : PLSX_ADDRESS;
-        const token1 = xBONDAddress < PLSX_ADDRESS ? PLSX_ADDRESS : xBONDAddress;
+        const contractAddress = contract._address;
+        if (!contractAddress) {
+          throw new Error("Contract address not available");
+        }
+        const token0 = contractAddress < PLSX_ADDRESS ? contractAddress : PLSX_ADDRESS;
+        const token1 = contractAddress < PLSX_ADDRESS ? PLSX_ADDRESS : contractAddress;
         pairAddr = await factoryContract.methods.getPair(token0, token1).call();
         setPoolAddress(pairAddr);
       } catch (err) {
@@ -121,7 +124,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
           );
           const { reserve0, reserve1 } = await pairContract.methods.getReserves().call();
           const token0Addr = await pairContract.methods.token0().call();
-          const isXBONDToken0 = token0Addr.toLowerCase() === xBONDAddress.toLowerCase();
+          const isXBONDToken0 = token0Addr.toLowerCase() === contractAddress.toLowerCase();
           const xBONDAmt = isXBONDToken0 ? reserve0 : reserve1;
           const plsxAmt = isXBONDToken0 ? reserve1 : reserve0;
           setPoolXBONDAmount(web3.utils.fromWei(xBONDAmt?.toString() || "0", "ether"));
@@ -140,10 +143,10 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
       try {
         const latestBlock = await web3.eth.getBlockNumber();
         const fromBlock = Math.max(0, Number(latestBlock.toString()) - BLOCK_RANGE);
-        const filter = contract.filters?.LiquidityWithdrawn(account);
-        if (!filter) {
-          throw new Error("Failed to create LiquidityWithdrawn filter");
+        if (!contract.filters) {
+          throw new Error("Contract filters not available, check ABI");
         }
+        const filter = contract.filters.LiquidityWithdrawn(account);
         const events = await contract.queryFilter(filter, fromBlock, "latest");
         const lastEvent = events[events.length - 1];
         const lastTimestamp = lastEvent ? Number(lastEvent.args?.timestamp?.toString() || 0) : 0;
