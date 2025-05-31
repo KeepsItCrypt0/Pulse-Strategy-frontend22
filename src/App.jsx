@@ -180,7 +180,7 @@ function App() {
             {account && chainId && (
               <>
                 <ContractInfo contract={contract} web3={web3} chainId={chainId} />
-                <ControllerInfo contract={contract} web3={web3} chainId={chainId} />
+                {chainId === 369 && <ControllerInfo contract={contract} web3={web3} chainId={chainId} />}
                 <UserInfo contract={contract} account={account} web3={web3} chainId={chainId} />
                 <IssueShares web3={web3} contract={contract} account={account} chainId={chainId} />
                 <RedeemShares contract={contract} account={account} web3={web3} chainId={chainId} />
@@ -193,7 +193,7 @@ function App() {
         ) : account && chainId ? (
           <>
             <ContractInfo contract={contract} web3={web3} chainId={chainId} />
-            <ControllerInfo contract={contract} web3={web3} chainId={chainId} />
+            {chainId === 369 && <ControllerInfo contract={contract} web3={web3} chainId={chainId} />}
             <UserInfo contract={contract} account={account} web3={web3} chainId={chainId} />
             <IssueShares web3={web3} contract={contract} account={account} chainId={chainId} />
             <RedeemShares contract={contract} account={account} web3={web3} chainId={chainId} />
