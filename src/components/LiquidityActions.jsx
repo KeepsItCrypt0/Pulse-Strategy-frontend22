@@ -24,8 +24,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
   const WITHDRAWAL_PERIOD = 90 * 24 * 60 * 60; // 90 days in seconds
   const BLOCK_RANGE = 1_000_000; // Last 1M blocks for event fetching
 
-  // PLSX contract instance
-  const plsxContract = web3 && new web3.eth.Contract(
+  const plsxContract = new web3.eth.Contract(
     [
       {
         constant: true,
@@ -44,16 +43,6 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         outputs: [{ name: "success", type: "bool" }],
         type: "function",
       },
-      {
-        constant: true,
-        inputs: [
-          { name: "_owner", type: "address" },
-          { name: "_spender", type: "address" },
-        ],
-        name: "allowance",
-        outputs: [{ name: "remaining", type: "uint256" }],
-        type: "function",
-      },
     ],
     PLSX_ADDRESS
   );
@@ -61,19 +50,14 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
   const fetchInfo = async () => {
     try {
       setError("");
-      if (!contract || !web3 || !account) {
-        throw new Error("Contract, Web3, or account not initialized");
-      }
-
-      // Log Web3.js version and utils
-      console.log("Web3 version:", web3.version);
-      console.log("Web3 utils:", Object.keys(web3.utils || {}));
+      if (!contract || !web3 || !account) throw new Error("Contract, Web3, or account not initialized");
 
       // Fetch contract balances
+      let balances;
       try {
-        const balances = await contract.methods.getContractBalances().call();
-        setXBONDAmount(web3.utils.fromWei(balances[0]?.toString() || "0", "ether"));
-        setLpTokenAmount(web3.utils.fromWei(balances[2]?.toString() || "0", "ether"));
+        balances = await contract.methods.getContractBalances().call();
+        setXBONDAmount(web3.utils.fromWei(balances.xBONDBalance?.toString() || "0", "ether"));
+        setLpTokenAmount(web3.utils.fromWei(balances.lpBalance?.toString() || "0", "ether"));
       } catch (err) {
         console.error("Failed to fetch contract balances:", err);
         setError("Failed to fetch contract balances");
@@ -97,12 +81,9 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
           ],
           PULSEX_FACTORY
         );
-        const contractAddress = contract._address;
-        if (!contractAddress) {
-          throw new Error("Contract address not available");
-        }
-        const token0 = contractAddress < PLSX_ADDRESS ? contractAddress : PLSX_ADDRESS;
-        const token1 = contractAddress < PLSX_ADDRESS ? PLSX_ADDRESS : contractAddress;
+        const xBOND = contract._address;
+        const token0 = xBOND < PLSX_ADDRESS ? xBOND : PLSX_ADDRESS;
+        const token1 = xBOND < PLSX_ADDRESS ? PLSX_ADDRESS : xBOND;
         pairAddr = await factoryContract.methods.getPair(token0, token1).call();
         setPoolAddress(pairAddr);
       } catch (err) {
@@ -138,11 +119,12 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
           );
           const { reserve0, reserve1 } = await pairContract.methods.getReserves().call();
           const token0Addr = await pairContract.methods.token0().call();
-          const isXBONDToken0 = token0Addr.toLowerCase() === contractAddress.toLowerCase();
+          const isXBONDToken0 = token0Addr.toLowerCase() === xBOND.toLowerCase();
           const xBONDAmt = isXBONDToken0 ? reserve0 : reserve1;
           const plsxAmt = isXBONDToken0 ? reserve1 : reserve0;
           setPoolXBONDAmount(web3.utils.fromWei(xBONDAmt?.toString() || "0", "ether"));
           setPoolPlsxAmount(web3.utils.fromWei(plsxAmt?.toString() || "0", "ether"));
+          // Calculate ratio safely
           const xBONDAmtNum = parseFloat(web3.utils.fromWei(xBONDAmt?.toString() || "0", "ether"));
           const plsxAmtNum = parseFloat(web3.utils.fromWei(plsxAmt?.toString() || "0", "ether"));
           const ratio = xBONDAmtNum > 0 ? plsxAmtNum / xBONDAmtNum : 0;
@@ -153,19 +135,19 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         }
       }
 
-      // Fetch latest LiquidityWithdrawn event
+      // Fetch latest LiquidityWithdrawn event (last 1M blocks)
       try {
         const latestBlock = await web3.eth.getBlockNumber();
         const fromBlock = Math.max(0, Number(latestBlock.toString()) - BLOCK_RANGE);
-        if (!contract.filters) {
-          throw new Error("Contract filters not available, check ABI");
-        }
         const filter = contract.filters.LiquidityWithdrawn(account);
-        const events = await contract.queryFilter(filter, fromBlock, "latest");
+        const events = await contract.getPastEvents("LiquidityWithdrawn", {
+          filter,
+          fromBlock,
+          toBlock: "latest",
+        });
         const lastEvent = events[events.length - 1];
-        const lastTimestamp = lastEvent ? Number(lastEvent.args?.timestamp?.toString() || 0) : 0;
+        const lastTimestamp = lastEvent ? Number(lastEvent.returnValues.timestamp?.toString()) : 0;
         setNextWithdrawalTime(lastTimestamp ? lastTimestamp + WITHDRAWAL_PERIOD : 0);
-        console.log("LiquidityWithdrawn events:", events);
       } catch (err) {
         console.error("Failed to fetch LiquidityWithdrawn events:", err);
         setError("Failed to fetch withdrawal events");
@@ -196,12 +178,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     setLoadingWithdraw(true);
     setError("");
     try {
-      if (!contract) throw new Error("Contract not initialized");
-      const gasEstimate = await contract.methods.withdrawLiquidity().estimateGas({ from: account });
-      console.log("Withdraw Liquidity Gas Estimate:", gasEstimate);
-      await contract.methods
-        .withdrawLiquidity()
-        .send({ from: account, gas: Math.ceil(gasEstimate * 1.2), gasPrice: web3.utils.toWei("100", "gwei") });
+      await contract.methods.withdrawLiquidity().send({ from: account });
       alert("Liquidity withdrawn successfully!");
       fetchInfo();
       console.log("Liquidity withdrawn");
@@ -211,8 +188,6 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         errorMessage = "Insufficient liquidity to withdraw.";
       } else if (err.message.includes("WithdrawalPeriodNotElapsed")) {
         errorMessage = "Withdrawal not available yet (90-day period).";
-      } else if (err.message.includes("out of gas")) {
-        errorMessage = "Transaction ran out of gas. Try increasing the gas limit.";
       }
       setError(errorMessage);
       console.error("Withdraw liquidity error:", err);
@@ -225,12 +200,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     setLoadingSwap(true);
     setError("");
     try {
-      if (!contract) throw new Error("Contract not initialized");
-      const gasEstimate = await contract.methods.swapAccumulatedxBONDToPLSX().estimateGas({ from: account });
-      console.log("Swap xBOND to PLSX Gas Estimate:", gasEstimate);
-      await contract.methods
-        .swapAccumulatedxBONDToPLSX()
-        .send({ from: account, gas: Math.ceil(gasEstimate * 1.2), gasPrice: web3.utils.toWei("100", "gwei") });
+      await contract.methods.swapAccumulatedxBONDToPLSX().send({ from: account });
       alert("xBOND swapped to PLSX successfully!");
       fetchInfo();
       console.log("xBOND swapped to PLSX");
@@ -240,8 +210,6 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         errorMessage = "No xBOND available to swap.";
       } else if (err.message.includes("InsufficientLiquidity")) {
         errorMessage = "Swap output too low.";
-      } else if (err.message.includes("out of gas")) {
-        errorMessage = "Transaction ran out of gas. Try increasing the gas limit.";
       }
       setError(errorMessage);
       console.error("Swap error:", err);
@@ -269,82 +237,26 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
     setLoadingInit(true);
     setError("");
     try {
-      console.log("Starting pool initialization...");
-      if (!contract || !plsxContract) throw new Error("Contract or PLSX contract not initialized");
-      console.log("Web3 version:", web3.version);
-      console.log("Web3 utils:", Object.keys(web3.utils || {}));
       const amountNum = Number(initAmount);
-      console.log("Input Amount:", amountNum);
       if (amountNum < MIN_INIT_AMOUNT) {
         throw new Error(`Amount must be at least ${MIN_INIT_AMOUNT} PLSX`);
       }
       const amountWei = web3.utils.toWei(initAmount, "ether");
-      console.log("Amount in Wei:", amountWei);
-
-      // Check balance
-      const balance = await plsxContract.methods.balanceOf(account).call();
-      console.log("PLSX Balance:", web3.utils.fromWei(balance, "ether"));
-      if (BigInt(balance) < BigInt(amountWei)) {
-        throw new Error("Insufficient PLSX balance");
-      }
-
-      // Check pool status
-      const poolCreated = await contract.methods._poolCreated().call();
-      console.log("Pool Created:", poolCreated);
-      if (!poolCreated) throw new Error("Pool not created. Call createPool first.");
-
-      // Approve
-      console.log("Approving contract:", contract._address);
-      const approvalGasEstimate = await plsxContract.methods
+      await plsxContract.methods
         .approve(contract._address, amountWei)
-        .estimateGas({ from: account });
-      console.log("Approval Gas Estimate:", approvalGasEstimate);
-      const approvalTx = await plsxContract.methods
-        .approve(contract._address, amountWei)
-        .send({ from: account, gas: Math.ceil(approvalGasEstimate * 1.2), gasPrice: web3.utils.toWei("100", "gwei") });
-      console.log("Approval Tx:", approvalTx);
-
-      // Wait for approval confirmation
-      const receipt = await web3.eth.getTransactionReceipt(approvalTx.transactionHash);
-      if (!receipt || receipt.status === false) {
-        throw new Error("Approval transaction failed");
-      }
-
-      // Verify allowance
-      const allowance = await plsxContract.methods.allowance(account, contract._address).call();
-      console.log("Allowance:", web3.utils.fromWei(allowance, "ether"));
-      if (BigInt(allowance) < BigInt(amountWei)) {
-        throw new Error("Insufficient allowance");
-      }
-
-      // Initialize pool
-      console.log("Initializing pool...");
-      const gasEstimate = await contract.methods.initializePool(amountWei).estimateGas({ from: account });
-      console.log("Initialize Pool Gas Estimate:", gasEstimate);
-      await contract.methods
-        .initializePool(amountWei)
-        .send({ from: account, gas: Math.ceil(gasEstimate * 1.5), gasPrice: web3.utils.toWei("100", "gwei") });
-      console.log("Pool initialized successfully");
+        .send({ from: account });
+      await contract.methods.initializePool(amountWei).send({ from: account });
       alert("Pool initialized successfully!");
       setInitAmount("");
       setDisplayInitAmount("");
       fetchInfo();
+      console.log("Pool initialized:", { amountWei });
     } catch (err) {
       let errorMessage = `Error initializing pool: ${err.message || "Unknown error"}`;
       if (err.message.includes("InsufficientAllowance")) {
-        errorMessage = "Insufficient PLSX allowance. Please try approving again.";
+        errorMessage = "Insufficient PLSX allowance.";
       } else if (err.message.includes("InsufficientInitialLiquidity")) {
         errorMessage = `Amount must be at least ${MIN_INIT_AMOUNT} PLSX.`;
-      } else if (err.message.includes("Insufficient PLSX balance")) {
-        errorMessage = "Insufficient PLSX balance in your wallet.";
-      } else if (err.message.includes("NoPoolCreated")) {
-        errorMessage = "Pool not created. Please call createPool first.";
-      } else if (err.message.includes("transferFrom failed")) {
-        errorMessage = "Failed to transfer PLSX tokens. Check balance, allowance, or gas settings.";
-      } else if (err.message.includes("out of gas")) {
-        errorMessage = "Transaction ran out of gas. Try increasing the gas limit.";
-      } else if (err.message.includes("toBN")) {
-        errorMessage = "Web3.js utility error. Check Web3.js version and configuration.";
       }
       setError(errorMessage);
       console.error("Initialize pool error:", err);
@@ -386,7 +298,7 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
           </p>
           <button
             onClick={handleInitializePool}
-            disabled={loadingInit || !initAmount || Number(initAmount) < MIN_INIT_AMOUNT || !contract}
+            disabled={loadingInit || !initAmount || Number(initAmount) < MIN_INIT_AMOUNT}
             className="btn-primary w-full"
           >
             {loadingInit ? "Processing..." : "Initialize Pool"}
@@ -426,9 +338,9 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
         </p>
         <button
           onClick={handleWithdrawLiquidity}
-          disabled={loadingWithdraw || (nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime) || !contract}
+          disabled={loadingWithdraw || (nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime)}
           className="btn-primary w-full"
-          title={nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime ? "Withdrawal not available yet" : !contract ? "Contract not initialized" : ""}
+          title={nextWithdrawalTime > 0 && Math.floor(Date.now() / 1000) < nextWithdrawalTime ? "Withdrawal not available yet" : ""}
         >
           {loadingWithdraw ? "Processing..." : "Withdraw Liquidity"}
         </button>
@@ -436,9 +348,9 @@ const LiquidityActions = ({ contract, account, web3, chainId }) => {
       <div className="flex items-center gap-4">
         <button
           onClick={handleSwapXBONDToPLSX}
-          disabled={loadingSwap || Number(xBONDAmount) <= 0 || !contract}
+          disabled={loadingSwap || Number(xBONDAmount) <= 0}
           className="btn-primary w-full"
-          title={Number(xBONDAmount) <= 0 ? "No xBOND available to swap" : !contract ? "Contract not initialized" : ""}
+          title={Number(xBONDAmount) <= 0 ? "No xBOND available to swap" : ""}
         >
           {loadingSwap ? "Processing..." : "Swap xBOND to PLSX"}
         </button>
