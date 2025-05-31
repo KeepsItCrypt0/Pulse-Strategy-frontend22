@@ -1,4 +1,3 @@
-// src/components/UserInfo.jsx
 import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
 
@@ -29,7 +28,7 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
           .call({ from: normalizedAccount });
       } else {
         redeemable = await contract.methods
-          .getRedeemablePLSX(balance)
+          .getRedeemablePLSX(account, balance)
           .call({ from: account });
       }
       const redeemableEther = web3.utils.fromWei(redeemable || "0", "ether");
@@ -64,7 +63,7 @@ const UserInfo = ({ contract, account, web3, chainId }) => {
           <p className="text-red-700">{error}</p>
           <button
             onClick={fetchInfo}
-            className="mt-2 text-purple-300 hover:text-pink-400"
+            className="mt-2 text-purple-300 hover:text-red-300 transition-colors"
           >
             Retry
           </button>
