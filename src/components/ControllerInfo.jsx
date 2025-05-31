@@ -80,7 +80,14 @@ const ControllerInfo = ({ contract, web3, chainId }) => {
         <>
           <p className="text-gray-600">
             <strong>Strategy Address:</strong>{" "}
-            {info.strategy.slice(0, 6)}...{info.strategy.slice(-4)}
+            <a
+              href={`https://scan.pulsechain.com/address/${info.strategy}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-purple-600 hover:text-purple-800 transition-colors"
+            >
+              {info.strategy.slice(0, 6)}...{info.strategy.slice(-4)}
+            </a>
           </p>
           {chainId === 369 && (
             <>
