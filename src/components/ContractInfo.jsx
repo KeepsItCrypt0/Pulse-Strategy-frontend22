@@ -9,10 +9,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
     totalBurned: "0",
     plsxBackingRatio: "0",
     vplsBackingRatio: "0",
-    strategySharePercentage: "0",
-    strategy: "0x0",
-    strategyControllerXBondBalance: "0", // Added for xBOND
-    estimatedControllerPLSX: "0", // Added for xBOND
+    estimatedControllerPLSX: "0", // Kept for xBOND
   });
   const [countdown, setCountdown] = useState("");
   const [loading, setLoading] = useState(true);
@@ -36,9 +33,6 @@ const ContractInfo = ({ contract, web3, chainId }) => {
         totalBurned: "0",
         plsxBackingRatio: "0",
         vplsBackingRatio: "0",
-        strategySharePercentage: "0",
-        strategy: "0x0",
-        strategyControllerXBondBalance: "0",
         estimatedControllerPLSX: "0",
       };
 
@@ -54,31 +48,22 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           vplsBackingRatio: vplsRatioDecimal,
         };
       } else if (chainId === 369) {
-        // xBOND: Use getContractMetrics, getContractHealth, getStrategyController, and new view functions
+        // xBOND: Use getContractMetrics and getStrategyControllerActivitySummary
         const { contractPLSXBalance, totalBurned, remainingIssuancePeriod } = await contract.methods.getContractMetrics().call();
-        const { plsxBackingRatio, controllerSharePercentage } = await contract.methods.getContractHealth().call();
-        const strategy = await contract.methods.getStrategyController().call();
-        const strategyControllerXBondBalance = await contract.methods.getStrategyControllerHoldings().call();
-        const { xBondBalance, estimatedControllerPLSX } = await contract.methods.getStrategyControllerActivitySummary().call();
+        const { plsxBackingRatio } = await contract.methods.getContractHealth().call();
+        const { estimatedControllerPLSX } = await contract.methods.getStrategyControllerActivitySummary().call();
         const balanceNum = Number(web3.utils.fromWei(contractPLSXBalance || "0", "ether"));
         const issuedNum = Number(web3.utils.fromWei(totalIssued || "0", "ether"));
-        const calculatedRatio = issuedNum > 0 ? balanceNum / issuedNum : 0;
         console.log("Raw contractPLSXBalance (Wei):", contractPLSXBalance);
         console.log("Raw totalIssued (Wei):", totalIssued);
-        console.log("Calculated PLSX Backing Ratio:", calculatedRatio);
-        console.log("Raw controllerSharePercentage:", controllerSharePercentage);
-        console.log("Strategy Controller Address:", strategy);
-        console.log("Strategy Controller xBOND Balance (Wei):", strategyControllerXBondBalance);
-        console.log("Strategy Controller Activity Summary:", { xBondBalance, estimatedControllerPLSX });
+        console.log("Raw plsxBackingRatio (Wei):", plsxBackingRatio);
+        console.log("Estimated Controller PLSX (Wei):", estimatedControllerPLSX);
         newInfo = {
           ...newInfo,
           balance: balanceNum.toString(),
           issuancePeriod: remainingIssuancePeriod || "0",
           totalBurned: web3.utils.fromWei(totalBurned || "0", "ether"),
           plsxBackingRatio: web3.utils.fromWei(plsxBackingRatio || "0", "ether"),
-          strategySharePercentage: (Number(controllerSharePercentage || "0") / 1e16).toString(),
-          strategy: strategy || "0x0",
-          strategyControllerXBondBalance: web3.utils.fromWei(strategyControllerXBondBalance || "0", "ether"),
           estimatedControllerPLSX: web3.utils.fromWei(estimatedControllerPLSX || "0", "ether"),
         };
       }
@@ -160,29 +145,8 @@ const ContractInfo = ({ contract, web3, chainId }) => {
                   : `${formatNumber(Number(info.plsxBackingRatio).toFixed(4))} to 1`}
               </p>
               <p className="text-gray-600">
-                <strong>Strategy Share Percentage:</strong>{" "}
-                {Number.isInteger(Number(info.strategySharePercentage))
-                  ? `${formatNumber(info.strategySharePercentage)}%`
-                  : `${formatNumber(Number(info.strategySharePercentage).toFixed(2))}%`}
-              </p>
-              <p className="text-gray-600">
-                <strong>Strategy Controller xBOND Balance:</strong>{" "}
-                {formatNumber(info.strategyControllerXBondBalance)} xBOND
-              </p>
-              <p className="text-gray-600">
                 <strong>Estimated Controller PLSX Contribution:</strong>{" "}
                 {formatNumber(info.estimatedControllerPLSX)} PLSX
-              </p>
-              <p className="text-gray-600">
-                <strong>Strategy Controller Address:</strong>{" "}
-                <a
-                  href={`https://scan.pulsechain.com/address/${info.strategy}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-purple-600 hover:text-purple-800 transition-colors"
-                >
-                  {info.strategy.slice(0, 6)}...{info.strategy.slice(-4)}
-                </a>
               </p>
             </>
           )}
