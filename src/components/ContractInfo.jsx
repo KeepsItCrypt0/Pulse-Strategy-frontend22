@@ -39,6 +39,8 @@ const ContractInfo = ({ contract, web3, chainId }) => {
         const { contractBalance, remainingIssuancePeriod } = await contract.methods.getContractInfo().call();
         const vplsRatio = await contract.methods.getVPLSBackingRatio().call();
         const vplsRatioDecimal = web3.utils.fromWei(vplsRatio || "0", "ether");
+        console.log("Raw vPLS Backing Ratio (Wei):", vplsRatio);
+        console.log("vPLS Backing Ratio (Ether):", vplsRatioDecimal);
         newInfo = {
           ...newInfo,
           balance: web3.utils.fromWei(contractBalance || "0", "ether"),
@@ -124,9 +126,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           {chainId === 1 && (
             <p className="text-gray-600">
               <strong>vPLS Backing Ratio:</strong>{" "}
-              {Number.isInteger(Number(info.vplsBackingRatio))
-                ? `${formatNumber(info.vplsBackingRatio)} to 1`
-                : `${formatNumber(Number(info.vplsBackingRatio).toFixed(4))} to 1`}
+              {formatNumber(Number(info.vplsBackingRatio).toFixed(4))} to 1
             </p>
           )}
           {chainId === 369 && (
