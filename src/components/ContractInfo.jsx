@@ -114,11 +114,11 @@ const ContractInfo = ({ contract, web3, chainId }) => {
       ) : (
         <>
           <p className="text-gray-600">
-            <strong>Contract {chainId === 1 ? "vPLS" : "PLSX"} Balance:</strong>{" "}
+            <strong>{chainId === 1 ? "vPLS Balance" : "PLSX Balance"}:</strong>{" "}
             {formatNumber(info.balance)} {chainId === 1 ? "vPLS" : "PLSX"}
           </p>
           <p className="text-gray-600">
-            <strong>Total {chainId === 1 ? "PLSTR" : "xBOND"} Issued:</strong>{" "}
+            <strong>{chainId === 1 ? "PLSTR Issued" : "xBOND Issued"}:</strong>{" "}
             {formatNumber(info.totalIssued)} {chainId === 1 ? "PLSTR" : "xBOND"}
           </p>
           {chainId === 1 && (
@@ -132,7 +132,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           {chainId === 369 && (
             <>
               <p className="text-gray-600">
-                <strong>Total xBOND Burned:</strong> {formatNumber(info.totalBurned)} xBOND
+                <strong>xBOND Burned:</strong> {formatNumber(info.totalBurned)} xBOND
               </p>
               <p className="text-gray-600">
                 <strong>PLSX Backing Ratio:</strong>{" "}
@@ -143,7 +143,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
             </>
           )}
           <p className="text-gray-600">
-            <strong>Issuance Period Countdown:</strong> {countdown}
+            <strong>Issuance Period:</strong> {countdown}
           </p>
         </>
       )}
