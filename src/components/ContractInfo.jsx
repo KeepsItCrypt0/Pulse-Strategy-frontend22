@@ -9,7 +9,6 @@ const ContractInfo = ({ contract, web3, chainId }) => {
     totalBurned: "0",
     plsxBackingRatio: "0",
     vplsBackingRatio: "0",
-    estimatedControllerPLSX: "0",
   });
   const [countdown, setCountdown] = useState("");
   const [loading, setLoading] = useState(true);
@@ -33,7 +32,6 @@ const ContractInfo = ({ contract, web3, chainId }) => {
         totalBurned: "0",
         plsxBackingRatio: "0",
         vplsBackingRatio: "0",
-        estimatedControllerPLSX: "0",
       };
 
       if (chainId === 1) {
@@ -48,25 +46,21 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           vplsBackingRatio: vplsRatioDecimal,
         };
       } else if (chainId === 369) {
-        // xBOND: Use getContractMetrics and getStrategyControllerActivitySummary
+        // xBOND: Use getContractMetrics and getContractHealth
         const { contractPLSXBalance, totalBurned, remainingIssuancePeriod } = await contract.methods.getContractMetrics().call();
         const { plsxBackingRatio } = await contract.methods.getContractHealth().call();
-        const { estimatedControllerPLSX } = await contract.methods.getStrategyControllerActivitySummary().call();
         const balanceNum = Number(web3.utils.fromWei(contractPLSXBalance || "0", "ether"));
         const issuedNum = Number(web3.utils.fromWei(totalIssued || "0", "ether"));
         console.log("Raw contractPLSXBalance (Wei):", contractPLSXBalance);
         console.log("Contract PLSX Balance (Ether):", balanceNum);
         console.log("Raw totalIssued (Wei):", totalIssued);
         console.log("Raw plsxBackingRatio (Wei):", plsxBackingRatio);
-        console.log("Raw estimatedControllerPLSX (Wei):", estimatedControllerPLSX);
-        console.log("Estimated Controller PLSX (Ether):", web3.utils.fromWei(estimatedControllerPLSX || "0", "ether"));
         newInfo = {
           ...newInfo,
           balance: balanceNum.toString(),
           issuancePeriod: remainingIssuancePeriod || "0",
           totalBurned: web3.utils.fromWei(totalBurned || "0", "ether"),
           plsxBackingRatio: web3.utils.fromWei(plsxBackingRatio || "0", "ether"),
-          estimatedControllerPLSX: web3.utils.fromWei(estimatedControllerPLSX || "0", "ether"),
         };
       }
 
@@ -145,10 +139,6 @@ const ContractInfo = ({ contract, web3, chainId }) => {
                 {Number.isInteger(Number(info.plsxBackingRatio))
                   ? `${formatNumber(info.plsxBackingRatio)} to 1`
                   : `${formatNumber(Number(info.plsxBackingRatio).toFixed(4))} to 1`}
-              </p>
-              <p className="text-gray-600">
-                <strong>Estimated Controller PLSX Contribution:</strong>{" "}
-                {formatNumber(info.estimatedControllerPLSX)} PLSX (Raw: {info.estimatedControllerPLSX})
               </p>
             </>
           )}
