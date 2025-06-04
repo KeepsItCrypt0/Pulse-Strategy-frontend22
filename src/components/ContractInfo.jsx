@@ -35,12 +35,20 @@ const ContractInfo = ({ contract, web3, chainId }) => {
       };
 
       if (chainId === 1) {
-        // PLSTR: Use getContractInfo and getVPLSBackingRatio
+        // PLSTR: Use getContractInfo and calculate vPLS Backing Ratio
         const { contractBalance, remainingIssuancePeriod } = await contract.methods.getContractInfo().call();
-        const vplsRatio = await contract.methods.getVPLSBackingRatio().call();
-        const vplsRatioDecimal = web3.utils.fromWei(vplsRatio || "0", "ether");
-        console.log("Raw vPLS Backing Ratio (Wei):", vplsRatio);
-        console.log("vPLS Backing Ratio (Ether):", vplsRatioDecimal);
+        // Calculate vPLS Backing Ratio: (contractBalance * 1e18) / totalSupply
+        let vplsRatioDecimal = "0";
+        if (totalIssued !== "0") {
+          const vplsRatioWei = (BigInt(contractBalance) * BigInt(1e18)) / BigInt(totalIssued);
+          vplsRatioDecimal = web3.utils.fromWei(vplsRatioWei.toString(), "ether");
+        }
+        console.log("Raw contractBalance (Wei):", contractBalance);
+        console.log("Contract Balance (Ether):", web3.utils.fromWei(contractBalance || "0", "ether"));
+        console.log("Raw totalSupply (Wei):", totalIssued);
+        console.log("Total Supply (Ether):", web3.utils.fromWei(totalIssued || "0", "ether"));
+        console.log("Calculated vPLS Backing Ratio (Ether):", vplsRatioDecimal);
+        console.log("Formatted vPLS Backing Ratio:", Number(vplsRatioDecimal).toFixed(4));
         newInfo = {
           ...newInfo,
           balance: web3.utils.fromWei(contractBalance || "0", "ether"),
@@ -108,7 +116,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           <p className="text-red-700">{error}</p>
           <button
             onClick={fetchInfo}
-            className="mt-2 text-purple-300 hover:text-red-300 transition-colors"
+            className="mt-2 text-purple-600 hover:text-purple-800 transition-colors"
           >
             Retry
           </button>
@@ -126,7 +134,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           {chainId === 1 && (
             <p className="text-gray-600">
               <strong>vPLS Backing Ratio:</strong>{" "}
-              {formatNumber(Number(info.vplsBackingRatio).toFixed(4))} to 1
+              {Number(info.vplsBackingRatio).toFixed(4)} to 1
             </p>
           )}
           {chainId === 369 && (
@@ -145,6 +153,12 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           <p className="text-gray-600">
             <strong>Issuance Period:</strong> {countdown}
           </p>
+          <button
+            onClick={fetchInfo}
+            className="mt-2 text-purple-600 hover:text-purple-800 transition-colors"
+          >
+            Refresh Data
+          </button>
         </>
       )}
     </div>
