@@ -123,7 +123,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
           </p>
           {chainId === 1 && (
             <p className="text-gray-600">
-              <strong>VPLS Backing Ratio:</strong>{" "}
+              <strong>vPLS Backing Ratio:</strong>{" "}
               {Number.isInteger(Number(info.vplsBackingRatio))
                 ? `${formatNumber(info.vplsBackingRatio)} to 1`
                 : `${formatNumber(Number(info.vplsBackingRatio).toFixed(4))} to 1`}
