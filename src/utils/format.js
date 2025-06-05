@@ -3,7 +3,7 @@ export const formatNumber = (value, isRatio = false) => {
     const num = Number(value);
     if (isNaN(num)) throw new Error("Invalid number");
     if (isRatio) {
-      return `${num.toFixed(4)} to 1`; // Changed from toFixed(2) to toFixed(4)
+      return `${num.toFixed(2)} to 1`;
     }
     return new Intl.NumberFormat("en-US", {
       maximumFractionDigits: 4,
@@ -11,7 +11,7 @@ export const formatNumber = (value, isRatio = false) => {
     }).format(num);
   } catch (err) {
     console.error("Format number error:", { value, error: err.message });
-    return isRatio ? "0.0000 to 1" : "0"; // Updated default for ratios
+    return isRatio ? "1 to 1" : "0";
   }
 };
 
