@@ -9,6 +9,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
     totalBurned: "0",
     plsxBackingRatio: "0",
     vplsBackingRatio: "0",
+    plsxAddedByStrategy: "0", // New state variable
   });
   const [countdown, setCountdown] = useState("");
   const [loading, setLoading] = useState(true);
@@ -32,6 +33,7 @@ const ContractInfo = ({ contract, web3, chainId }) => {
         totalBurned: "0",
         plsxBackingRatio: "0",
         vplsBackingRatio: "0",
+        plsxAddedByStrategy: "0", // Initialize new field
       };
 
       if (chainId === 1) {
@@ -47,20 +49,24 @@ const ContractInfo = ({ contract, web3, chainId }) => {
         };
       } else if (chainId === 369) {
         // xBOND: Use getContractMetrics and getContractHealth
-        const { contractPLSXBalance, totalBurned, remainingIssuancePeriod } = await contract.methods.getContractMetrics().call();
+        const { contractPLSXBalance, totalBurned, remainingIssuancePeriod, currentTotalSupply } = await contract.methods.getContractMetrics().call();
         const { plsxBackingRatio } = await contract.methods.getContractHealth().call();
         const balanceNum = Number(web3.utils.fromWei(contractPLSXBalance || "0", "ether"));
         const issuedNum = Number(web3.utils.fromWei(totalIssued || "0", "ether"));
+        const totalSupplyNum = Number(web3.utils.fromWei(currentTotalSupply || "0", "ether"));
+        const plsxAdded = balanceNum - totalSupplyNum; // Calculate PLSX Added by Strategy
         console.log("Raw contractPLSXBalance (Wei):", contractPLSXBalance);
         console.log("Contract PLSX Balance (Ether):", balanceNum);
         console.log("Raw totalIssued (Wei):", totalIssued);
-        console.log("Raw plsxBackingRatio (Wei):", plsxBackingRatio);
+        console.log("Raw currentTotalSupply (Wei):", currentTotalSupply);
+        console.log("PLSX Added by Strategy (Ether):", plsxAdded);
         newInfo = {
           ...newInfo,
           balance: balanceNum.toString(),
           issuancePeriod: remainingIssuancePeriod || "0",
           totalBurned: web3.utils.fromWei(totalBurned || "0", "ether"),
           plsxBackingRatio: web3.utils.fromWei(plsxBackingRatio || "0", "ether"),
+          plsxAddedByStrategy: plsxAdded.toString(), // Add to state
         };
       }
 
@@ -139,6 +145,9 @@ const ContractInfo = ({ contract, web3, chainId }) => {
                 {Number.isInteger(Number(info.plsxBackingRatio))
                   ? `${formatNumber(info.plsxBackingRatio)} to 1`
                   : `${formatNumber(Number(info.plsxBackingRatio).toFixed(4))} to 1`}
+              </p>
+              <p className="text-gray-600">
+                <strong>PLSX Added by Strategy:</strong> {formatNumber(info.plsxAddedByStrategy)} PLSX
               </p>
             </>
           )}
