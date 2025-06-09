@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { formatNumber } from "../utils/format.js";
-import { contractAddresses, tokenAddresses, plsABI, incABI, plsxABI, hexABI, PLSTR_ABI } from "../web3.js";
+import { formatNumber } from "../utils/format";
+import { contractAddresses, tokenAddresses, plsABI, incABI, plsxABI, hexABI } from "../web3";
 
 const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [userData, setUserData] = useState({
     balance: "0", // Bond or PLSTR balance
     redeemableToken: "0", // Redeemable token for bonds
-    plstrBalance: "0",
     plsBalance: "0",
     plsxBalance: "0",
     incBalance: "0",
@@ -16,10 +15,10 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [error, setError] = useState("");
 
   const bondConfig = {
-    pBOND: { token: "PLS", redeemFunction: "getRedeemablePLS", balanceField: "plsBalance" },
-    xBOND: { token: "PLS", redeemFunction: "getRedeemablePLS", tokenBalanceField: "plsxBalance" },
-    iBOND: { token: "INC", redeemFunction: "getRedeemableINC", balanceField: "balanceBalance" },
-    hBOND: { token: "HEX", redeemFunction: "getRedeemableHex", balanceField: "balanceBalance" },
+    pBOND: { token: "PLS", redeemFunction: "getRedeemablePLS", tokenBalanceField: "plsBalance" },
+    xBOND: { token: "PLSX", redeemFunction: "getRedeemablePLSX", tokenBalanceField: "plsxBalance" },
+    iBOND: { token: "INC", redeemFunction: "getRedeemableINC", tokenBalanceField: "incBalance" },
+    hBOND: { token: "HEX", redeemFunction: "getRedeemableHEX", tokenBalanceField: "hexBalance" },
   };
 
   const fetchUserData = async () => {
@@ -36,7 +35,6 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
       let data = {
         balance: balanceInEther,
         redeemableToken: "0",
-        plstrBalance: "0",
         plsBalance: "0",
         plsxBalance: "0",
         incBalance: "0",
@@ -45,48 +43,64 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
 
       // Fetch redeemable token for bond contracts
       const config = bondConfig[contractSymbol] || bondConfig.pBOND;
-      if (contractSymbol !== "PLSTR" && balance > "0") {
+      if (contractSymbol !== "PLSTR" && balance > 0) {
         const redeemable = await contract.methods[config.redeemFunction](balance).call().catch(() => "0");
         data.redeemableToken = web3.utils.fromWei(redeemable || "0", "ether");
       }
 
       // Fetch token balances
       const tokenAddrs = tokenAddresses[369] || {};
-      const contractAddrs = contractAddresses[369] || {};
-
-      // PLSTR balance (use contractAddresses for PLSTR)
-      if (contractAddrs.PLSTR) {
-        const plstrContract = new web3.eth.Contract(PLSTR_ABI, contractAddrs.PLSTR);
-        const plstrBalance = await plstrContract.methods.balanceOf(account).call().catch(() => "0");
-        data.plstrBalance = web3.utils.fromWei(plstrBalance || "0", "ether");
-      }
 
       // WPLS balance
       if (tokenAddrs.PLS) {
         const plsContract = new web3.eth.Contract(plsABI, tokenAddrs.PLS);
-        const plsBalance = await plsContract.methods.balanceOf(account).call().catch(() => "0");
-        data.plsBalance = web3.utils.fromWei(plsBalance || "0", "ether");
+        try {
+          const plsBalance = await plsContract.methods.balanceOf(account).call();
+          data.plsBalance = web3.utils.fromWei(plsBalance || "0", "ether");
+          console.log("WPLS balance fetched:", { address: tokenAddrs.PLS, balance: data.plsBalance });
+        } catch (err) {
+          console.error("Failed to fetch WPLS balance:", err);
+          data.plsBalance = "0";
+        }
       }
 
       // PLSX balance
       if (tokenAddrs.PLSX) {
         const plsxContract = new web3.eth.Contract(plsxABI, tokenAddrs.PLSX);
-        const plsxBalance = await plsxContract.methods.balanceOf(account).call().catch(() => "0");
-        data.plsxBalance = web3.utils.fromWei(plsxBalance || "0", "ether");
+        try {
+          const plsxBalance = await plsxContract.methods.balanceOf(account).call();
+          data.plsxBalance = web3.utils.fromWei(plsxBalance || "0", "ether");
+          console.log("PLSX balance fetched:", { address: tokenAddrs.PLSX, balance: data.plsxBalance });
+        } catch (err) {
+          console.error("Failed to fetch PLSX balance:", err);
+          data.plsxBalance = "0";
+        }
       }
 
       // INC balance
       if (tokenAddrs.INC) {
         const incContract = new web3.eth.Contract(incABI, tokenAddrs.INC);
-        const incBalance = await incContract.methods.balanceOf(account).call().catch(() => "0");
-        data.incBalance = web3.utils.fromWei(incBalance || "0", "ether");
+        try {
+          const incBalance = await incContract.methods.balanceOf(account).call();
+          data.incBalance = web3.utils.fromWei(incBalance || "0", "ether");
+          console.log("INC balance fetched:", { address: tokenAddrs.INC, balance: data.incBalance });
+        } catch (err) {
+          console.error("Failed to fetch INC balance:", err);
+          data.incBalance = "0";
+        }
       }
 
       // HEX balance
       if (tokenAddrs.HEX) {
         const hexContract = new web3.eth.Contract(hexABI, tokenAddrs.HEX);
-        const hexBalance = await hexContract.methods.balanceOf(account).call().catch(() => "0");
-        data.hexBalance = web3.utils.fromWei(hexBalance || "0", "ether");
+        try {
+          const hexBalance = await hexContract.methods.balanceOf(account).call();
+          data.hexBalance = web3.utils.fromWei(hexBalance || "0", "ether");
+          console.log("HEX balance fetched:", { address: tokenAddrs.HEX, balance: data.hexBalance });
+        } catch (err) {
+          console.error("Failed to fetch HEX balance:", err);
+          data.hexBalance = "0";
+        }
       }
 
       setUserData(data);
@@ -133,7 +147,6 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
           )}
           {contractSymbol === "PLSTR" && (
             <>
-              <p className="text-gray-600">PLSTR Balance: <span className="text-purple-600">{formatNumber(userData.plstrBalance)} PLSTR</span></p>
               <p className="text-gray-600">WPLS Balance: <span className="text-purple-600">{formatNumber(userData.plsBalance)} WPLS</span></p>
               <p className="text-gray-600">PLSX Balance: <span className="text-purple-600">{formatNumber(userData.plsxBalance)} PLSX</span></p>
               <p className="text-gray-600">INC Balance: <span className="text-purple-600">{formatNumber(userData.incBalance)} INC</span></p>
