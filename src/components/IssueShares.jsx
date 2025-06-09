@@ -8,22 +8,6 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const ALLOWED_ADDRESS = "0x6aaE8556C69b795b561CB75ca83aF6187d2F0AF5"; // Address allowed for PLSTR issuance
-
-  // Null checks for props
-  if (!web3 || !contract || !account || !chainId || !contractSymbol) {
-    console.warn("IssueShares: Missing required props", { web3, contract, account, chainId, contractSymbol });
-    return <div className="text-gray-600 p-6">Loading contract data...</div>;
-  }
-
-  const isPLSTR = contractSymbol === "PLSTR";
-
-  // Check if account is allowed for PLSTR
-  if (isPLSTR && (!account || account.toLowerCase() !== ALLOWED_ADDRESS.toLowerCase())) {
-    console.log("IssueShares: Access to PLSTR blocked for account", { account });
-    return null;
-  }
-
   const tokenConfig = {
     PLSTR: [
       { symbol: "PLSX", address: tokenAddresses[369].PLSX, decimals: "ether", abi: plsxABI },
@@ -37,33 +21,13 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
     hBOND: [{ symbol: "HEX", address: tokenAddresses[369].HEX, decimals: "ether", abi: hexABI }],
   };
 
+  const isPLSTR = contractSymbol === "PLSTR";
   const tokens = tokenConfig[contractSymbol] || [];
   const defaultToken = tokens[0]?.symbol || "";
 
-  // Validate tokenConfig
-  if (!tokens.length) {
-    console.error("IssueShares: Invalid tokenConfig for contractSymbol", { contractSymbol, tokenConfig });
-    return <div className="text-red-600 p-6">Error: Invalid contract configuration</div>;
-  }
-
   useEffect(() => {
-    let mounted = true;
-    console.log("IssueShares useEffect: Setting selectedToken", { contractSymbol, isPLSTR, defaultToken, account });
-
-    if (mounted) {
-      setSelectedToken(isPLSTR ? "" : defaultToken);
-    }
-
-    return () => {
-      mounted = false;
-      console.log("IssueShares useEffect: Cleanup", { contractSymbol });
-    };
+    setSelectedToken(isPLSTR ? "" : defaultToken);
   }, [contractSymbol, isPLSTR, defaultToken]);
-
-  if (chainId !== 369) {
-    console.log("IssueShares: Invalid chainId", { chainId });
-    return <div className="text-gray-600 p-6">Please connect to PulseChain</div>;
-  }
 
   const handleIssueShares = async () => {
     if (!amount || Number(amount) <= 0 || (isPLSTR && !selectedToken)) {
@@ -103,6 +67,8 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
     }
   };
 
+  if (chainId !== 369) return null;
+
   const estimatedShares = amount ? (isPLSTR ? Number(amount) : Number(amount) * 0.955).toFixed(6) : "0";
   const feeAmount = amount && !isPLSTR ? (Number(amount) * 0.045).toFixed(6) : "0";
 
@@ -133,8 +99,7 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
             type="text"
             value={defaultToken}
             readOnly
-            name="token"
-            className="w-full p-2 border rounded-lg bg-gray-50"
+            className="w-full p-2 border rounded-lg bg-gray-100"
           />
         </div>
       )}
@@ -143,24 +108,23 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
         <input
           type="number"
           value={amount}
-          name="amount"
           onChange={(e) => setAmount(e.target.value)}
           placeholder={`Enter ${isPLSTR ? selectedToken || "token" : defaultToken} amount`}
-          className="amount w-full p-4 border rounded"
+          className="w-full p-2 border rounded-lg"
+          disabled={loading}
         />
         <p className="text-gray-600 mt-2">
           Estimated {contractSymbol} Shares{!isPLSTR ? " (after 4.5% fee)" : ""}:{" "}
-          <span className="text-pink-600">{formatNumber(estimatedShares)}</span>
+          <span className="text-purple-600">{formatNumber(estimatedShares)}</span>
         </p>
         {!isPLSTR && (
           <p className="text-gray-600 mt-1">
-            Fee (4.5%): <span className="text-pink-600">{formatNumber(feeAmount)} {defaultToken}</span>
+            Fee (4.5%): <span className="text-purple-600">{formatNumber(feeAmount)} {defaultToken}</span>
           </p>
         )}
       </div>
       <button
         onClick={handleIssueShares}
-        name="issueShares"
         disabled={loading || !amount || Number(amount) <= 0 || (isPLSTR && !selectedToken)}
         className="btn-primary"
       >
