@@ -6,6 +6,24 @@ const SwapBurn = ({ web3, contract, account, chainId, contractSymbol }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Token decimals
+  const tokenDecimals = {
+    PLS: 18,
+    PLSX: 18,
+    INC: 18,
+    HEX: 8,
+  };
+
+  // Convert balance based on token decimals
+  const fromUnits = (balance, decimals) => {
+    try {
+      return web3.utils.fromWei(balance, decimals === 18 ? "ether" : decimals === 8 ? "gwei" : "ether");
+    } catch (err) {
+      console.error("Error converting balance:", err);
+      return "0";
+    }
+  };
+
   const bondConfig = {
     pBOND: {
       swap: "swapAccumulatedpBONDToPLS",
@@ -62,8 +80,8 @@ const SwapBurn = ({ web3, contract, account, chainId, contractSymbol }) => {
       }
 
       setAccumulatedBalance({
-        bond: web3.utils.fromWei(bondBalance, "ether"),
-        token: web3.utils.fromWei(tokenBalance, "ether"),
+        bond: fromUnits(bondBalance, 18),
+        token: fromUnits(tokenBalance, tokenDecimals[config.token]),
       });
       console.log("Accumulated balances fetched:", {
         contractSymbol,
