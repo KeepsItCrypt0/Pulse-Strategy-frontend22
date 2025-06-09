@@ -216,7 +216,7 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
         balanceRatio = {
           tokenAmount: web3.utils.fromWei(balanceRatios[config.ratioField] || "0", "ether"),
           bondAmount: web3.utils.fromWei(
-            balanceRatios[`${contractSymbol.toLowerCase()}Amount]` || "0",
+            balanceRatios[`${contractSymbol.toLowerCase()}Amount`] || "0",
             "ether"
           ),
         };
