@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { formatNumber } from "../utils/format";
-import { contractAddresses, tokenAddresses, plsABI, incABI, plsxABI, hexABI, PLSTR_ABI } from "../web3";
+import { formatNumber } from "../utils/format.js";
+import { contractAddresses, tokenAddresses, plsABI, incABI, plsxABI, hexABI, PLSTR_ABI } from "../web3.js";
 
 const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [userData, setUserData] = useState({
     balance: "0", // Bond or PLSTR balance
     redeemableToken: "0", // Redeemable token for bonds
+ bonds
     plstrBalance: "0",
     plsBalance: "0",
     plsxBalance: "0",
@@ -16,10 +17,10 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [error, setError] = useState("");
 
   const bondConfig = {
-    pBOND: { token: "PLS", redeemFunction: "getRedeemablePLS", tokenBalanceField: "plsBalance" },
-    xBOND: { token: "PLSX", redeemFunction: "getRedeemablePLSX", tokenBalanceField: "plsxBalance" },
-    iBOND: { token: "INC", redeemFunction: "getRedeemableINC", tokenBalanceField: "incBalance" },
-    hBOND: { token: "HEX", redeemFunction: "getRedeemableHEX", tokenBalanceField: "hexBalance" },
+    pBOND: { token: "PLS", redeemFunction: "getRedeemablePLS", balanceField: "plsBalance" },
+    xBOND: { token: "PLS", redeemFunction: "getRedeemablePLS", tokenBalanceField: "plsxBalance" },
+    iBOND: { token: "INC", redeemFunction: "getRedeemableINC", balanceField: "balanceBalance" },
+    hBOND: { token: "HEX", redeemFunction: "getRedeemableHex", balanceField: "balanceBalance" },
   };
 
   const fetchUserData = async () => {
@@ -45,7 +46,7 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
 
       // Fetch redeemable token for bond contracts
       const config = bondConfig[contractSymbol] || bondConfig.pBOND;
-      if (contractSymbol !== "PLSTR" && balance > 0) {
+      if (contractSymbol !== "PLSTR" && balance > "0") {
         const redeemable = await contract.methods[config.redeemFunction](balance).call().catch(() => "0");
         data.redeemableToken = web3.utils.fromWei(redeemable || "0", "ether");
       }
@@ -54,9 +55,9 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
       const tokenAddrs = tokenAddresses[369] || {};
       const contractAddrs = contractAddresses[369] || {};
 
-      // PLSTR balance
+      // PLSTR balance (use contractAddresses for PLSTR)
       if (contractAddrs.PLSTR) {
-        const plstrContract = new web3.eth.Contract(plstrABI, contractAddrs.PLSTR);
+        const plstrContract = new web3.eth.Contract(PLSTR_ABI, contractAddrs.PLSTR);
         const plstrBalance = await plstrContract.methods.balanceOf(account).call().catch(() => "0");
         data.plstrBalance = web3.utils.fromWei(plstrBalance || "0", "ether");
       }
