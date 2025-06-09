@@ -7,8 +7,8 @@ import RedeemShares from "./components/RedeemShares";
 import SwapBurn from "./components/SwapBurn";
 import ClaimPLSTR from "./components/ClaimPLSTR";
 import AdminPanel from "./components/AdminPanel";
-import { getWeb3, getAccount } from "./web3";
-import { tokenAddresses, PLSTR_ABI, pBOND_ABI, xBOND_ABI, iBOND_ABI, hBOND_ABI } from "./web3";
+import { getWeb3, getAccount, contractAddresses } from "./web3"; // Changed to import contractAddresses
+import { PLSTR_ABI, pBOND_ABI, xBOND_ABI, iBOND_ABI, hBOND_ABI } from "./web3"; // Removed tokenAddresses
 import "./index.css";
 
 const App = () => {
@@ -54,7 +54,7 @@ const App = () => {
       const accounts = await getAccount(web3Instance);
       setAccount(accounts);
 
-      const contractAddress = tokenAddresses[369]?.[contractSymbol];
+      const contractAddress = contractAddresses[369]?.[contractSymbol]; // Changed to contractAddresses
       const contractABI = contractABIs[contractSymbol];
       if (!contractAddress || !contractABI) {
         throw new Error(`Contract address or ABI not found for ${contractSymbol} on PulseChain`);
@@ -154,7 +154,7 @@ const App = () => {
         <ConnectWallet
           account={account}
           web3={web3}
-          contractAddress={tokenAddresses[369]?.[contractSymbol] || ""}
+          contractAddress={contractAddresses[369]?.[contractSymbol] || ""} // Changed to contractAddresses
           chainId={chainId}
           onConnect={initializeApp}
         />
