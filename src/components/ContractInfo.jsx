@@ -26,8 +26,8 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
       totalBurned: "0",
       remainingIssuancePeriod: "0",
     },
-    hBONDBalance: "0", // For hBOND-specific balance in Contract Health
-    hexBalance: "0", // For hBOND-specific balance in Contract Health
+    hBONDBalance: "0",
+    hexBalance: "0",
     pairAddress: "",
     contractHealth: { tokenBackingRatio: "0", controllerSharePercentage: "0" },
     controllerToken: "0",
@@ -35,6 +35,24 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Token decimals
+  const tokenDecimals = {
+    PLS: 18,
+    PLSX: 18,
+    INC: 18,
+    HEX: 8,
+  };
+
+  // Convert balance based on token decimals
+  const fromUnits = (balance, decimals) => {
+    try {
+      return web3.utils.fromWei(balance, decimals === 18 ? "ether" : decimals === 8 ? "gwei" : "ether");
+    } catch (err) {
+      console.error("Error converting balance:", err);
+      return "0";
+    }
+  };
 
   const bondConfig = {
     pBOND: {
@@ -114,7 +132,6 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
       let totalTokenFromSwaps = "0";
 
       if (isPLSTR) {
-        // PLSTR-specific data
         const [
           bondAddrs,
           balances,
@@ -139,28 +156,27 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
         };
 
         contractMetrics = {
-          plsxBalance: web3.utils.fromWei(metrics.contractPLSXBalance || "0", "ether"),
-          plsBalance: web3.utils.fromWei(metrics.contractPLSBalance || "0", "ether"),
-          incBalance: web3.utils.fromWei(metrics.contractINCBalance || "0", "ether"),
-          hexBalance: web3.utils.fromWei(metrics.contractHEXBalance || "0", "ether"),
-          totalMintedShares: web3.utils.fromWei(metrics.totalMintedShares || "0", "ether"),
-          totalBurned: web3.utils.fromWei(metrics.totalBurned || "0", "ether"),
-          pendingPLSTRhBOND: web3.utils.fromWei(metrics.pendingPLSTRhBOND || "0", "ether"),
-          pendingPLSTRpBOND: web3.utils.fromWei(metrics.pendingPLSTRpBOND || "0", "ether"),
-          pendingPLSTRiBOND: web3.utils.fromWei(metrics.pendingPLSTRiBOND || "0", "ether"),
-          pendingPLSTRxBOND: web3.utils.fromWei(metrics.pendingPLSTRxBOND || "0", "ether"),
+          plsxBalance: fromUnits(metrics.contractPLSXBalance || "0", tokenDecimals.PLSX),
+          plsBalance: fromUnits(metrics.contractPLSBalance || "0", tokenDecimals.PLS),
+          incBalance: fromUnits(metrics.contractINCBalance || "0", tokenDecimals.INC),
+          hexBalance: fromUnits(metrics.contractHEXBalance || "0", tokenDecimals.HEX),
+          totalMintedShares: fromUnits(metrics.totalMintedShares || "0", 18),
+          totalBurned: fromUnits(metrics.totalBurned || "0", 18),
+          pendingPLSTRhBOND: fromUnits(metrics.pendingPLSTRhBOND || "0", 18),
+          pendingPLSTRpBOND: fromUnits(metrics.pendingPLSTRpBOND || "0", 18),
+          pendingPLSTRiBOND: fromUnits(metrics.pendingPLSTRiBOND || "0", 18),
+          pendingPLSTRxBOND: fromUnits(metrics.pendingPLSTRxBOND || "0", 18),
         };
 
         issuanceEventCount = eventCount.toString();
 
         totalDeposits = {
-          plsx: web3.utils.fromWei(deposits.totalPlsx || "0", "ether"),
-          pls: web3.utils.fromWei(deposits.totalPls || "0", "ether"),
-          inc: web3.utils.fromWei(deposits.totalInc || "0", "ether"),
-          hex: web3.utils.fromWei(deposits.totalHex || "0", "ether"),
+          plsx: fromUnits(deposits.totalPlsx || "0", tokenDecimals.PLSX),
+          pls: fromUnits(deposits.totalPls || "0", tokenDecimals.PLS),
+          inc: fromUnits(deposits.totalInc || "0", tokenDecimals.INC),
+          hex: fromUnits(deposits.totalHex || "0", tokenDecimals.HEX),
         };
       } else {
-        // Bond contract data (hBOND, pBOND, iBOND, xBOND)
         const metrics = await contract.methods.getContractMetrics().call().catch(() => ({}));
         const balances = await contract.methods.getContractBalances().call().catch(() => ({}));
         const pairAddr = contract.methods.getPairAddress
@@ -187,32 +203,32 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
         });
 
         bondMetrics = {
-          totalSupply: web3.utils.fromWei(metrics.currentTotalSupply || "0", "ether"),
-          tokenBalance: web3.utils.fromWei(metrics[config.metricsField] || "0", "ether"),
-          totalMintedShares: web3.utils.fromWei(metrics.totalMintedShares || "0", "ether"),
-          totalBurned: web3.utils.fromWei(metrics.totalBurned || "0", "ether"),
+          totalSupply: fromUnits(metrics.currentTotalSupply || "0", 18),
+          tokenBalance: fromUnits(metrics[config.metricsField] || "0", tokenDecimals[config.token]),
+          totalMintedShares: fromUnits(metrics.totalMintedShares || "0", 18),
+          totalBurned: fromUnits(metrics.totalBurned || "0", 18),
           remainingIssuancePeriod: (metrics.remainingIssuancePeriod || "0").toString(),
         };
 
         if (contractSymbol === "hBOND") {
-          hBONDBalance = web3.utils.fromWei(balances[config.bondField] || "0", "ether");
-          hexBalance = web3.utils.fromWei(balances[config.balanceField] || "0", "ether");
+          hBONDBalance = fromUnits(balances[config.bondField] || "0", 18);
+          hexBalance = fromUnits(balances[config.balanceField] || "0", tokenDecimals.HEX);
         }
 
         pairAddress = pairAddr;
 
         contractHealth = {
-          tokenBackingRatio: web3.utils.fromWei(health[config.healthField] || "0", "ether"),
-          controllerSharePercentage: web3.utils.fromWei(health.controllerSharePercentage || "0", "ether"),
+          tokenBackingRatio: fromUnits(health[config.healthField] || "0", 18),
+          controllerSharePercentage: fromUnits(health.controllerSharePercentage || "0", 18),
         };
 
-        controllerToken = web3.utils.fromWei(controllerReserve || "0", "ether");
+        controllerToken = fromUnits(controllerReserve || "0", tokenDecimals[config.token]);
 
-        totalTokenFromSwaps = web3.utils.fromWei(swaps || "0", "ether");
+        totalTokenFromSwaps = fromUnits(swaps || "0", tokenDecimals[config.token]);
       }
 
       setContractData({
-        totalSupply: web3.utils.fromWei(totalSupply || "0", "ether"),
+        totalSupply: fromUnits(totalSupply || "0", 18),
         bondAddresses,
         metrics: contractMetrics,
         issuanceEventCount,
