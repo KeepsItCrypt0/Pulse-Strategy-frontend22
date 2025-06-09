@@ -65,30 +65,17 @@ const App = () => {
       const contractInstance = new web3Instance.eth.Contract(contractABI, contractAddress);
       setContract(contractInstance);
 
-      if (contractInstance && accounts) {
-        try {
-          let isOwner = false;
-          if (contractInstance.methods.strategyController) {
-            const controller = await contractInstance.methods.strategyController().call();
-            isOwner = accounts?.toLowerCase() === controller?.toLowerCase();
-          } else if (accounts?.toLowerCase() === CREATOR_ADDRESS.toLowerCase()) {
-            isOwner = true;
-            console.log(`Fallback: ${accounts} recognized as creator for ${contractSymbol}`);
-          }
-          setIsController(isOwner);
-          console.log("Controller check:", {
-            account: accounts,
-            controller: controller || "N/A",
-            isController: isOwner,
-            chainId,
-            contractAddress,
-            contractSymbol,
-          });
-        } catch (err) {
-          console.error("Failed to fetch controller:", err);
-          setIsController(accounts?.toLowerCase() === CREATOR_ADDRESS.toLowerCase());
-          setError(`Failed to verify controller: ${err.message || "Unknown error"}`);
-        }
+      if (accounts) {
+        // Set isController based on hardcoded creator address
+        const isOwner = accounts?.toLowerCase() === CREATOR_ADDRESS.toLowerCase();
+        setIsController(isOwner);
+        console.log("Controller check:", {
+          account: accounts,
+          isController: isOwner,
+          chainId,
+          contractAddress,
+          contractSymbol,
+        });
       }
       console.log("App initialized:", {
         chainId,
