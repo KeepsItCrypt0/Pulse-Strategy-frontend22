@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
-import { tokenAddresses, ERC20_ABI } from "../web3";
+import { tokenAddresses } from "../web3";
 
 const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   const [amount, setAmount] = useState("");
