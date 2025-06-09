@@ -126,10 +126,10 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
 
       // Basic contract data
       const totalSupply = await contract.methods.totalSupply().call();
-      console.log("Total Supply:", totalSupply);
+      console.log("Total Supply:", { raw: totalSupply, formatted: fromUnits(totalSupply, 18) });
 
       let bondAddresses = contractData.bondAddresses;
-      let contractMetrics = contractData.metrics;
+      let metrics = contractData.metrics;
       let issuanceEventCount = "0";
       let totalDeposits = contractData.totalDeposits;
       let bondMetrics = contractData.bondMetrics;
@@ -144,7 +144,7 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
         const [
           bondAddrs,
           balances,
-          metrics,
+          contractMetrics,
           eventCount,
           deposits,
         ] = await Promise.all([
@@ -155,7 +155,7 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
           contract.methods.getTotalDeposits().call(),
         ]);
 
-        console.log("PLSTR Data:", { bondAddrs, balances, metrics, eventCount, deposits });
+        console.log("PLSTR Data:", { bondAddrs, balances, metrics: contractMetrics, eventCount, deposits });
 
         bondAddresses = {
           hBOND: bondAddrs.hBOND || "",
@@ -164,17 +164,17 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
           xBOND: bondAddrs.xBOND || "",
         };
 
-        contractMetrics = {
-          plsxBalance: fromUnits(metrics.contractPLSXBalance || "0", tokenDecimals.PLSX),
-          plsBalance: fromUnits(metrics.contractPLSBalance || "0", tokenDecimals.PLS),
-          incBalance: fromUnits(metrics.contractINCBalance || "0", tokenDecimals.INC),
-          hexBalance: fromUnits(metrics.contractHEXBalance || "0", tokenDecimals.HEX),
-          totalMintedShares: fromUnits(metrics.totalMintedShares || "0", 18),
-          totalBurned: fromUnits(metrics.totalBurned || "0", 18),
-          pendingPLSTRhBOND: fromUnits(metrics.pendingPLSTRhBOND || "0", 18),
-          pendingPLSTRpBOND: fromUnits(metrics.pendingPLSTRpBOND || "0", 18),
-          pendingPLSTRiBOND: fromUnits(metrics.pendingPLSTRiBOND || "0", 18),
-          pendingPLSTRxBOND: fromUnits(metrics.pendingPLSTRxBOND || "0", 18),
+        metrics = {
+          plsxBalance: fromUnits(balances.contractPLSXBalance || "0", tokenDecimals.PLSX),
+          plsBalance: fromUnits(balances.contractPLSBalance || "0", tokenDecimals.PLS),
+          incBalance: fromUnits(balances.contractINCBalance || "0", tokenDecimals.INC),
+          hexBalance: fromUnits(balances.contractHEXBalance || "0", tokenDecimals.HEX),
+          totalMintedShares: fromUnits(contractMetrics.totalMintedShares || "0", 18),
+          totalBurned: fromUnits(contractMetrics.totalBurned || "0", 18),
+          pendingPLSTRhBOND: fromUnits(contractMetrics.pendingPLSTRhBOND || "0", 18),
+          pendingPLSTRpBOND: fromUnits(contractMetrics.pendingPLSTRpBOND || "0", 18),
+          pendingPLSTRiBOND: fromUnits(contractMetrics.pendingPLSTRiBOND || "0", 18),
+          pendingPLSTRxBOND: fromUnits(contractMetrics.pendingPLSTRxBOND || "0", 18),
         };
 
         issuanceEventCount = eventCount.toString();
@@ -239,7 +239,7 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
       setContractData({
         totalSupply: fromUnits(totalSupply || "0", 18),
         bondAddresses,
-        metrics: contractMetrics,
+        metrics,
         issuanceEventCount,
         totalDeposits,
         bondMetrics,
@@ -251,7 +251,7 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
         totalTokenFromSwaps,
       });
 
-      console.log("Contract data set:", { contractSymbol, totalSupply });
+      console.log("Contract data set:", { contractSymbol, totalSupply, bondMetrics, metrics });
     } catch (err) {
       console.error("Error fetching contract data:", err);
       setError(`Failed to load ${contractSymbol} data: ${err.message}`);
@@ -287,10 +287,12 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
         <>
           {contractSymbol === "PLSTR" ? (
             <>
-              <h3 className="text-lg font-medium mt-4">Bond Addresses</h3>
-              {Object.entries(contractData.bondAddresses).map(([bond, address]) => (
-                <p key={bond} className="text-gray-600">{bond}: <span className="text-purple-600">{address || "Not available"}</span></p>
-              ))}
+              <h3 className="text-lg font-medium mt-4">Contract Balances</h3>
+              <p className="text-gray-600">PLSX Balance: <span className="text-purple-600">{formatNumber(contractData.metrics.plsxBalance)} PLSX</span></p>
+              <p className="text-gray-600">PLS Balance: <span className="text-purple-600">{formatNumber(contractData.metrics.plsBalance)} PLS</span></p>
+              <p className="text-gray-600">INC Balance: <span className="text-purple-600">{formatNumber(contractData.metrics.incBalance)} INC</span></p>
+              <p className="text-gray-600">HEX Balance: <span className="text-purple-600">{formatNumber(contractData.metrics.hexBalance)} HEX</span></p>
+              <div className="mt-6"></div>
               <h3 className="text-lg font-medium mt-4">Contract Metrics</h3>
               <p className="text-gray-600">Total Supply: <span className="text-purple-600">{formatNumber(contractData.totalSupply)} PLSTR</span></p>
               <p className="text-gray-600">Total Minted Shares: <span className="text-purple-600">{formatNumber(contractData.metrics.totalMintedShares)} PLSTR</span></p>
@@ -300,16 +302,28 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
                 .map(([key, value]) => (
                   <p key={key} className="text-gray-600">Pending PLSTR ({key.replace("pendingPLSTR", "")}): <span className="text-purple-600">{formatNumber(value)} PLSTR</span></p>
                 ))}
+              <h3 className="text-lg font-medium mt-4">Bond Addresses</h3>
+              {Object.entries(contractData.bondAddresses).map(([bond, address]) => (
+                <p key={bond} className="text-gray-600">{bond}: <span className="text-purple-600">{address || "Not available"}</span></p>
+              ))}
               <h3 className="text-lg font-medium mt-4">Total Deposits</h3>
               {Object.entries(contractData.totalDeposits).map(([token, amount]) => (
                 <p key={token} className="text-gray-600">{token.toUpperCase()}: <span className="text-purple-600">{formatNumber(amount)} {token.toUpperCase()}</span></p>
               ))}
               <p className="text-gray-600">Issuance Event Count: <span className="text-purple-600">{contractData.issuanceEventCount}</span></p>
+              {console.log("PLSTR UI rendered: Contract Balances above Contract Metrics", {
+                plsxBalance: contractData.metrics.plsxBalance,
+                plsBalance: contractData.metrics.plsBalance,
+                incBalance: contractData.metrics.incBalance,
+                hexBalance: contractData.metrics.hexBalance,
+                totalSupply: contractData.totalSupply,
+              })}
             </>
           ) : (
             <>
               <h3 className="text-lg font-medium mt-4">Contract Metrics</h3>
               <p className="text-gray-600">Total Supply: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalSupply)} {contractSymbol}</span></p>
+              <p className="text-gray-600">{tokenSymbol} Balance: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.tokenBalance)} {tokenSymbol}</span></p>
               <p className="text-gray-600">Total Minted Shares: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalMintedShares)} {contractSymbol}</span></p>
               <p className="text-gray-600">Total Burned: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalBurned)} {contractSymbol}</span></p>
               <p className="text-gray-600">Remaining Issuance Period: <span className="text-purple-600">{formatIssuancePeriod(contractData.bondMetrics.remainingIssuancePeriod)}</span></p>
