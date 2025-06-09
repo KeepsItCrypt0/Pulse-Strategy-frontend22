@@ -9,11 +9,19 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   const [error, setError] = useState("");
 
   const ADMIN_ADDRESS = "0x6aaE8556C69b795b561CB75ca83aF6187d2F0AF5"; // Admin address for PLSTR restriction
+
+  // Null checks for props
+  if (!web3 || !contract || !account || !chainId || !contractSymbol) {
+    console.warn("IssueShares: Missing required props", { web3, contract, account, chainId, contractSymbol });
+    return <div className="text-gray-600 p-6">Loading contract data...</div>;
+  }
+
   const isPLSTR = contractSymbol === "PLSTR";
   const isAdmin = account && account.toLowerCase() === ADMIN_ADDRESS.toLowerCase();
 
   // Return null if PLSTR and not admin
   if (isPLSTR && !isAdmin) {
+    console.log("IssueShares: Non-admin access to PLSTR blocked", { account });
     return null;
   }
 
@@ -33,9 +41,30 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   const tokens = tokenConfig[contractSymbol] || [];
   const defaultToken = tokens[0]?.symbol || "";
 
+  // Validate tokenConfig
+  if (!tokens.length) {
+    console.error("IssueShares: Invalid tokenConfig for contractSymbol", { contractSymbol, tokenConfig });
+    return <div className="text-red-600 p-6">Error: Invalid contract configuration</div>;
+  }
+
   useEffect(() => {
-    setSelectedToken(isPLSTR ? "" : defaultToken);
+    let mounted = true;
+    console.log("IssueShares useEffect: Setting selectedToken", { contractSymbol, isPLSTR, defaultToken });
+
+    if (mounted) {
+      setSelectedToken(isPLSTR ? "" : defaultToken);
+    }
+
+    return () => {
+      mounted = false;
+      console.log("IssueShares useEffect: Cleanup", { contractSymbol });
+    };
   }, [contractSymbol, isPLSTR, defaultToken]);
+
+  if (chainId !== 369) {
+    console.log("IssueShares: Invalid chainId", { chainId });
+    return <div className="text-gray-600 p-6">Please connect to PulseChain</div>;
+  }
 
   const handleIssueShares = async () => {
     if (!amount || Number(amount) <= 0 || (isPLSTR && !selectedToken)) {
@@ -75,8 +104,6 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
     }
   };
 
-  if (chainId !== 369) return null;
-
   const estimatedShares = amount ? (isPLSTR ? Number(amount) : Number(amount) * 0.955).toFixed(6) : "0";
   const feeAmount = amount && !isPLSTR ? (Number(amount) * 0.045).toFixed(6) : "0";
 
@@ -107,32 +134,35 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
             type="text"
             value={defaultToken}
             readOnly
-            className="w-full p-2 border rounded-lg bg-gray-100"
+            name="token"
+            className="w-full p-2 border rounded-lg bg-gray-50"
           />
         </div>
       )}
+      <div>
       <div className="mb-4">
         <label className="text-gray-600">Amount ({isPLSTR ? selectedToken || "Token" : defaultToken})</label>
         <input
           type="number"
           value={amount}
+          name="amount"
           onChange={(e) => setAmount(e.target.value)}
           placeholder={`Enter ${isPLSTR ? selectedToken || "token" : defaultToken} amount`}
-          className="w-full p-2 border rounded-lg"
-          disabled={loading}
+          className="amount w-full p-4 border rounded"
         />
         <p className="text-gray-600 mt-2">
           Estimated {contractSymbol} Shares{!isPLSTR ? " (after 4.5% fee)" : ""}:{" "}
-          <span className="text-purple-600">{formatNumber(estimatedShares)}</span>
+          <span className="text-pink-600">{formatNumber(estimatedShares)}</span>
         </p>
         {!isPLSTR && (
           <p className="text-gray-600 mt-1">
-            Fee (4.5%): <span className="text-purple-600">{formatNumber(feeAmount)} {defaultToken}</span>
+            Fee (4.045%): <span className="text-pink-600">{formatNumber(feeAmount)} {defaultToken}</span>
           </p>
         )}
       </div>
       <button
         onClick={handleIssueShares}
+        name="issueShares"
         disabled={loading || !amount || Number(amount) <= 0 || (isPLSTR && !selectedToken)}
         className="btn-primary"
       >
