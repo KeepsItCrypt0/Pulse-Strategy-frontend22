@@ -8,11 +8,15 @@ const AdminIssueShares = ({ web3, contract, account, chainId, contractSymbol }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const ALLOWED_ADDRESS = "0x6aaE8556C69b795b561CB75ca83aF6187d2F0AF5";
+  // Null checks for props
+  if (!web3 || !contract || !account || !chainId || !contractSymbol) {
+    console.warn("AdminIssueShares: Missing required props", { web3, contract, account, chainId, contractSymbol });
+    return <div className="text-gray-600 p-6">Loading contract data...</div>;
+  }
 
-  // Restrict to allowed address
-  if (!account || account.toLowerCase() !== ALLOWED_ADDRESS.toLowerCase()) {
-    console.log("AdminIssueShares: Access blocked for account", { account });
+  // Only render for PLSTR
+  if (contractSymbol !== "PLSTR") {
+    console.log("AdminIssueShares: Skipped rendering for non-PLSTR contract", { contractSymbol });
     return null;
   }
 
@@ -27,9 +31,19 @@ const AdminIssueShares = ({ web3, contract, account, chainId, contractSymbol }) 
 
   const tokens = tokenConfig[contractSymbol] || [];
 
+  if (!tokens.length) {
+    console.error("AdminIssueShares: Invalid token config", { contractSymbol });
+    return <div className="text-red-600 p-6">Error: Invalid contract configuration</div>;
+  }
+
+  if (chainId !== 369) {
+    console.log("AdminIssueShares: Invalid chainId", { chainId });
+    return <div className="text-gray-600 p-6">Please connect to a supported network.</div>;
+  }
+
   const handleIssueShares = async () => {
     if (!amount || Number(amount) <= 0 || !selectedToken) {
-      setError("Please enter a valid amount and select a token");
+      setError("Please enter a valid amount and select a token.");
       return;
     }
     setLoading(true);
@@ -42,17 +56,17 @@ const AdminIssueShares = ({ web3, contract, account, chainId, contractSymbol }) 
       const allowance = await tokenContract.methods.allowance(account, contract.options.address).call();
       if (web3.utils.toBN(allowance).lt(web3.utils.toBN(tokenAmount))) {
         await tokenContract.methods.approve(contract.options.address, tokenAmount).send({ from: account });
-        console.log("Token approved:", { token: token.symbol, tokenAmount });
+        console.log("Token approved:", { token: token.symbol, amount: tokenAmount });
       }
       const issueMethod = "issueShares";
       if (!contract.methods[issueMethod]) {
-        throw new Error(`Method ${issueMethod} not found in ${contractSymbol} contract`);
+        throw new Error(`Method ${issueMethod} not found in ${contractSymbol}`);
       }
       await contract.methods[issueMethod](token.address, tokenAmount).send({ from: account });
       alert(`Successfully issued ${contractSymbol} shares with ${amount} ${token.symbol}!`);
       setAmount("");
       setSelectedToken("");
-      console.log("Shares issued:", { contractSymbol, token: token.symbol, tokenAmount });
+      console.log("Shares issued:", { contractSymbol, token: token.symbol, amount: tokenAmount });
     } catch (err) {
       setError(`Error issuing shares: ${err.message}`);
       console.error("Issue shares error:", err);
@@ -61,22 +75,17 @@ const AdminIssueShares = ({ web3, contract, account, chainId, contractSymbol }) 
     }
   };
 
-  if (chainId !== 369) {
-    console.log("AdminIssueShares: Invalid chainId", { chainId });
-    return null;
-  }
-
-  const estimatedShares = amount ? Number(amount).toFixed(6) : "0";
+  const estimatedFees = amount ? Number(amount).toFixed(6) : "0";
 
   return (
     <div className="mb-6">
-      <h3 className="text-lg font-medium mb-2 text-purple-600">Issue PLSTR Shares</h3>
+      <h3 className="text-lg font-medium mb-2 text-purple-600">Issue Shares</h3>
       <div className="mb-4">
         <label className="text-gray-600">Select Token</label>
         <select
           value={selectedToken}
           onChange={(e) => setSelectedToken(e.target.value)}
-          className="w-full p-2 border rounded-lg"
+          className="w-full p-1 border rounded"
           disabled={loading}
         >
           <option value="">Select a token</option>
@@ -88,17 +97,17 @@ const AdminIssueShares = ({ web3, contract, account, chainId, contractSymbol }) 
         </select>
       </div>
       <div className="mb-4">
-        <label className="text-gray-600">Amount ({selectedToken || "Token"})</label>
+        <label className="text-gray-600">Amount ({selectedToken || "token"})</label>{" "}
         <input
           type="number"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          placeholder={`Enter ${selectedToken || "token"} amount`}
-          className="w-full p-2 border rounded-lg"
+          placeholder={`Enter amount (${selectedToken || "token"})`}
+          className="input-field"
           disabled={loading}
         />
-        <p className="text-gray-600 mt-2">
-          Estimated PLSTR Shares: <span className="text-purple-600">{formatNumber(estimatedShares)}</span>
+        <p className="text-gray-500 mt-1">
+          Estimated {contractSymbol}: {formatNumber(estimatedFees)}
         </p>
       </div>
       <button
@@ -124,9 +133,20 @@ const AdminPanel = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Null checks for props
+  if (!web3 || !contract || !account || !chainId || !contractSymbol) {
+    console.warn("AdminPanel: Missing required props", { web3, contract, account, chainId, contractSymbol });
+    return <div className="text-gray-600 p-6">Loading contract data...</div>;
+  }
+
+  if (chainId !== 369) {
+    console.log("AdminPanel: Invalid chainId", { chainId });
+    return <div className="text-gray-600 p-6">Please connect to a supported network.</div>;
+  }
+
   const handleSetPairAddress = async () => {
     if (!pairAddress) {
-      setError("Please enter a valid pair address");
+      setError("Please enter a valid pair address.");
       return;
     }
     setLoading(true);
@@ -146,7 +166,7 @@ const AdminPanel = ({ contract, account, web3, chainId, contractSymbol }) => {
 
   const handleSetBondAddresses = async () => {
     if (Object.values(bondAddresses).some((addr) => !addr)) {
-      setError("Please enter all bond addresses");
+      setError("Please enter all bond addresses.");
       return;
     }
     setLoading(true);
@@ -157,7 +177,7 @@ const AdminPanel = ({ contract, account, web3, chainId, contractSymbol }) => {
         .send({ from: account });
       alert("Bond addresses set successfully!");
       setBondAddresses({ hBOND: "", pBOND: "", iBOND: "", xBOND: "" });
-      console.log("Bond addresses set:", { bondAddresses });
+      console.log("Bond addresses set:", { contractSymbol, bondAddresses });
     } catch (err) {
       setError(`Error setting bond addresses: ${err.message}`);
       console.error("Set bond addresses error:", err);
@@ -165,11 +185,6 @@ const AdminPanel = ({ contract, account, web3, chainId, contractSymbol }) => {
       setLoading(false);
     }
   };
-
-  if (chainId !== 369) {
-    console.log("AdminPanel: Invalid chainId", { chainId });
-    return null;
-  }
 
   return (
     <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
@@ -192,7 +207,7 @@ const AdminPanel = ({ contract, account, web3, chainId, contractSymbol }) => {
               value={pairAddress}
               onChange={(e) => setPairAddress(e.target.value)}
               placeholder="Enter pair address"
-              className="w-full p-2 border rounded-lg"
+              className="w-full p-1 border rounded"
               disabled={loading}
             />
           </div>
@@ -217,7 +232,7 @@ const AdminPanel = ({ contract, account, web3, chainId, contractSymbol }) => {
                   setBondAddresses({ ...bondAddresses, [bond]: e.target.value })
                 }
                 placeholder={`Enter ${bond} address`}
-                className="w-full p-2 border rounded-lg"
+                className="w-full p-1 border rounded"
                 disabled={loading}
               />
             </div>
