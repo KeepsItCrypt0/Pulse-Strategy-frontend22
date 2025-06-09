@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
-import { tokenAddresses } from "../web3";
+import { tokenAddresses, ERC20_ABI } from "../web3";
 
 const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   const [amount, setAmount] = useState("");
@@ -26,13 +26,17 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
       const token = tokenOptions.find((t) => t.symbol === selectedToken);
       if (!token) throw new Error("Invalid token selected");
       const tokenAmount = web3.utils.toWei(amount, token.decimals);
-      const tokenContract = new web3.eth.Contract(ERC20_ABI, token.address); // Define ERC20_ABI
+      const tokenContract = new web3.eth.Contract(ERC20_ABI, token.address);
       const allowance = await tokenContract.methods.allowance(account, contract.options.address).call();
       if (web3.utils.toBN(allowance).lt(web3.utils.toBN(tokenAmount))) {
         await tokenContract.methods.approve(contract.options.address, tokenAmount).send({ from: account });
         console.log("Token approved:", { token: selectedToken, tokenAmount });
       }
-      await contract.methods.issueShares(token.address, tokenAmount).send({ from: account });
+      const issueMethod = contractSymbol === "PLSTR" ? "issueShares" : "issueShares"; // Adjust if method names differ
+      if (!contract.methods[issueMethod]) {
+        throw new Error(`Method ${issueMethod} not found in ${contractSymbol} contract`);
+      }
+      await contract.methods[issueMethod](token.address, tokenAmount).send({ from: account });
       alert(`Successfully issued ${contractSymbol} shares with ${amount} ${selectedToken}!`);
       setAmount("");
       console.log("Shares issued:", { contractSymbol, token: selectedToken, tokenAmount });
@@ -44,9 +48,9 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
     }
   };
 
-  if (chainId !== 369) return null; // Removed contractSymbol !== "PLSTR"
+  if (chainId !== 369) return null;
 
-  const estimatedShares = amount ? (Number(amount) * 0.955).toFixed(6) : "0"; // 4.5% fee
+  const estimatedShares = amount ? (Number(amount) * 0.955).toFixed(6) : "0";
 
   return (
     <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
@@ -93,33 +97,5 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
     </div>
   );
 };
-
-// Minimal ERC-20 ABI for approve and allowance
-const ERC20_ABI = [
-  {
-    constant: true,
-    inputs: [
-      { name: "_owner", type: "address" },
-      { name: "_spender", type: "address" },
-    ],
-    name: "allowance",
-    outputs: [{ name: "", type: "uint256" }],
-    payable: false,
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    constant: false,
-    inputs: [
-      { name: "_spender", type: "address" },
-      { name: "_value", type: "uint256" },
-    ],
-    name: "approve",
-    outputs: [{ name: "", type: "bool" }],
-    payable: false,
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-];
 
 export default IssueShares;
