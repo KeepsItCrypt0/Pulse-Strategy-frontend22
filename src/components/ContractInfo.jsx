@@ -205,7 +205,7 @@ const ContractInfo = ({ contractSymbol = "PLSTR" }) => {
           hexBalance: web3.utils.fromWei(metrics.contractHEXBalance, "ether"),
           totalMintedShares: web3.utils.fromWei(metrics.totalMintedShares, "ether"),
           totalBurned: web3.utils.fromWei(metrics.totalBurned, "ether"),
-          pendingPLSTRhBOND: web3.utils.fromWei(metricsupdating metrics.pendingPLSTRhBOND, "ether"),
+          pendingPLSTRhBOND: web3.utils.fromWei(metrics.pendingPLSTRhBOND, "ether"),
           pendingPLSTRpBOND: web3.utils.fromWei(metrics.pendingPLSTRpBOND, "ether"),
           pendingPLSTRiBOND: web3.utils.fromWei(metrics.pendingPLSTRiBOND, "ether"),
           pendingPLSTRxBOND: web3.utils.fromWei(metrics.pendingPLSTRxBOND, "ether"),
