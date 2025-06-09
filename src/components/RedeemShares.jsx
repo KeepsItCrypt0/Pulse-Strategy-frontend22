@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
-import { tokenAddresses, ERC20_ABI } from "../web3";
+import { tokenAddresses, plsABI, incABI, plsxABI, hexABI } from "../web3";
 
 const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [amount, setAmount] = useState("");
@@ -15,15 +15,15 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [error, setError] = useState("");
 
   const tokenConfig = {
-    pBOND: { symbol: "PLS", address: tokenAddresses[369].PLS, redeemMethod: "getRedeemablePLS" },
-    xBOND: { symbol: "PLSX", address: tokenAddresses[369].PLSX, redeemMethod: "getRedeemablePLSX" },
-    iBOND: { symbol: "INC", address: tokenAddresses[369].INC, redeemMethod: "getRedeemableINC" },
-    hBOND: { symbol: "HEX", address: tokenAddresses[369].HEX, redeemMethod: "getRedeemableHEX" },
+    pBOND: { symbol: "PLS", address: tokenAddresses[369].PLS, redeemMethod: "getRedeemablePLS", abi: plsABI },
+    xBOND: { symbol: "PLSX", address: tokenAddresses[369].PLSX, redeemMethod: "getRedeemablePLSX", abi: plsxABI },
+    iBOND: { symbol: "INC", address: tokenAddresses[369].INC, redeemMethod: "getRedeemableINC", abi: incABI },
+    hBOND: { symbol: "HEX", address: tokenAddresses[369].HEX, redeemMethod: "getRedeemableHEX", abi: hexABI },
     PLSTR: [
-      { symbol: "PLSX", address: tokenAddresses[369].PLSX },
-      { symbol: "PLS", address: tokenAddresses[369].PLS },
-      { symbol: "INC", address: tokenAddresses[369].INC },
-      { symbol: "HEX", address: tokenAddresses[369].HEX },
+      { symbol: "PLSX", address: tokenAddresses[369].PLSX, abi: plsxABI },
+      { symbol: "PLS", address: tokenAddresses[369].PLS, abi: plsABI },
+      { symbol: "INC", address: tokenAddresses[369].INC, abi: incABI },
+      { symbol: "HEX", address: tokenAddresses[369].HEX, abi: hexABI },
     ],
   };
 
