@@ -36,6 +36,25 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
     return <div className="text-red-600 p-6">Error: Invalid contract configuration</div>;
   }
 
+  // Convert amount to token's native units based on decimals
+  const toTokenUnits = (amount, decimals) => {
+    try {
+      if (!amount || Number(amount) <= 0) return "0";
+      if (decimals === 18) {
+        return web3.utils.toWei(amount, "ether");
+      }
+      if (decimals === 8) {
+        const amountBN = web3.utils.toBN(web3.utils.toWei(amount, "ether"));
+        const divisor = web3.utils.toBN("10000000000"); // 10^10 to adjust from 10^18 to 10^8
+        return amountBN.div(divisor).toString();
+      }
+      return web3.utils.toWei(amount, "ether");
+    } catch (err) {
+      console.error("Error converting amount to token units:", { amount, decimals, err });
+      return "0";
+    }
+  };
+
   useEffect(() => {
     console.log("IssueShares: Setting selectedToken", { contractSymbol, isPLSTR, defaultToken });
     setSelectedToken(isPLSTR ? "" : defaultToken);
@@ -59,7 +78,9 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
     try {
       const token = tokens.find((t) => t.symbol === (isPLSTR ? selectedToken : defaultToken));
       if (!token) throw new Error("Invalid token selected");
-      const tokenAmount = web3.utils.toWei(amount, "ether"); // User input is human-readable
+      const tokenAmount = toTokenUnits(amount, token.decimals);
+      console.log("Token amount calculated:", { token: token.symbol, amount, tokenAmount, decimals: token.decimals });
+      if (tokenAmount === "0") throw new Error("Invalid token amount");
       const tokenContract = new web3.eth.Contract(token.abi, token.address);
       const allowance = await tokenContract.methods.allowance(account, contract.options.address).call();
       if (web3.utils.toBN(allowance).lt(web3.utils.toBN(tokenAmount))) {
