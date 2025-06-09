@@ -4,6 +4,7 @@ import { tokenAddresses, plsABI, incABI, plsxABI, hexABI } from "../web3";
 
 const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   const [amount, setAmount] = useState("");
+  const [displayAmount, setDisplayAmount] = useState(""); // Formatted for display
   const [selectedToken, setSelectedToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -36,7 +37,7 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
     return <div className="text-red-600 p-6">Error: Invalid contract configuration</div>;
   }
 
-  // Convert amount to token's native units based on decimals
+  // Convert amount to token's native units
   const toTokenUnits = (amount, decimals) => {
     try {
       if (!amount || Number(amount) <= 0) return "0";
@@ -44,14 +45,33 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
         return web3.utils.toWei(amount, "ether");
       }
       if (decimals === 8) {
-        const amountBN = web3.utils.toBN(web3.utils.toWei(amount, "ether"));
-        const divisor = web3.utils.toBN("10000000000"); // 10^10 to adjust from 10^18 to 10^8
-        return amountBN.div(divisor).toString();
+        const amountBN = web3.utils.toWei(amount, "ether");
+        return (BigInt(amountBN) / BigInt(10000000000)).toString(); // 10^10 to adjust to 10^8
       }
       return web3.utils.toWei(amount, "ether");
     } catch (err) {
       console.error("Error converting amount to token units:", { amount, decimals, err });
       return "0";
+    }
+  };
+
+  // Format input value with commas
+  const formatInputValue = (value) => {
+    if (!value) return "";
+    const num = Number(value.replace(/,/g, ""));
+    if (isNaN(num)) return value; // Allow partial input
+    return new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 8, // Support decimals for HEX
+      minimumFractionDigits: 0,
+    }).format(num);
+  };
+
+  // Handle input change
+  const handleAmountChange = (e) => {
+    const rawValue = e.target.value.replace(/,/g, ""); // Strip commas
+    if (rawValue === "" || /^[0-9]*\.?[0-9]*$/.test(rawValue)) {
+      setAmount(rawValue);
+      setDisplayAmount(formatInputValue(rawValue));
     }
   };
 
@@ -83,7 +103,7 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
       if (tokenAmount === "0") throw new Error("Invalid token amount");
       const tokenContract = new web3.eth.Contract(token.abi, token.address);
       const allowance = await tokenContract.methods.allowance(account, contract.options.address).call();
-      if (web3.utils.toBN(allowance).lt(web3.utils.toBN(tokenAmount))) {
+      if (BigInt(allowance) < BigInt(tokenAmount)) {
         await tokenContract.methods.approve(contract.options.address, tokenAmount).send({ from: account });
         console.log("Token approved:", { token: token.symbol, tokenAmount });
       }
@@ -98,6 +118,7 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
       }
       alert(`Successfully issued ${contractSymbol} shares with ${amount} ${token.symbol}!`);
       setAmount("");
+      setDisplayAmount("");
       if (isPLSTR) setSelectedToken("");
       console.log("Shares issued:", { contractSymbol, token: token.symbol, tokenAmount });
     } catch (err) {
@@ -145,9 +166,9 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
       <div className="mb-4">
         <label className="text-gray-600">Amount ({isPLSTR ? selectedToken || "Token" : defaultToken})</label>
         <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          type="text"
+          value={displayAmount}
+          onChange={handleAmountChange}
           placeholder={`Enter ${isPLSTR ? selectedToken || "token" : defaultToken} amount`}
           className="w-full p-2 border rounded-lg"
           disabled={loading}
