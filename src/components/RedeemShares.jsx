@@ -16,6 +16,9 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
   const fetchUserData = async () => {
     if (!web3 || !contract || !account || chainId !== 369) return;
     try {
+      if (!contract.methods.balanceOf) {
+        throw new Error(`balanceOf method not found in ${contractSymbol} contract`);
+      }
       const balance = await contract.methods.balanceOf(account).call();
       setUserBalance(web3.utils.fromWei(balance, "ether"));
       console.log("User balance fetched:", { contractSymbol, balance });
@@ -28,6 +31,9 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
   const fetchRedeemableAssets = async () => {
     if (!web3 || !contract || !amount || Number(amount) <= 0 || chainId !== 369) return;
     try {
+      if (!contract.methods.getRedeemableAssets) {
+        throw new Error(`getRedeemableAssets method not found in ${contractSymbol} contract`);
+      }
       const shareAmount = web3.utils.toWei(amount, "ether");
       const assets = await contract.methods.getRedeemableAssets(shareAmount).call();
       setRedeemableAssets({
@@ -60,7 +66,11 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
     setError("");
     try {
       const shareAmount = web3.utils.toWei(amount, "ether");
-      await contract.methods.redeemShares(shareAmount).send({ from: account });
+      const redeemMethod = contractSymbol === "PLSTR" ? "redeemShares" : "redeemShares"; // Adjust if method names differ
+      if (!contract.methods[redeemMethod]) {
+        throw new Error(`Method ${redeemMethod} not found in ${contractSymbol} contract`);
+      }
+      await contract.methods[redeemMethod](shareAmount).send({ from: account });
       alert(
         `Successfully redeemed ${amount} ${contractSymbol} for ${formatNumber(redeemableAssets.plsx)} PLSX, ${formatNumber(
           redeemableAssets.pls
@@ -78,7 +88,7 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
     }
   };
 
-  if (chainId !== 369) return null; // Removed contractSymbol !== "PLSTR"
+  if (chainId !== 369) return null;
 
   return (
     <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
