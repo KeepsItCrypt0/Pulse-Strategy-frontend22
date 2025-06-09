@@ -125,7 +125,7 @@ const App = () => {
   return (
     <div className="min-h-screen gradient-bg flex flex-col items-center p-4">
       <header className="w-full max-w-4xl bg-white bg-opacity-90 shadow-lg rounded-lg p-6 mb-6 card">
-        <h1 className="text-3xl font-bold text-center text-purple-600">PulseStar DApp</h1>
+        <h1 className="text-3xl font-bold text-center text-purple-600">PulseStrategy</h1>
         <p className="text-center text-gray-600 mt-2">
           {account
             ? `Interact with the ${contractSymbol} contract on PulseChain`
@@ -243,11 +243,11 @@ const App = () => {
           </a>
         </div>
         <p className="max-w-lg mx-auto">
-          <strong>Disclaimer:</strong> PulseStar is a decentralized finance (DeFi) platform.
+          <strong>Disclaimer:</strong> PulseStrategy is a decentralized finance (DeFi) platform.
           Investing in DeFi involves significant risks, including the potential loss of all invested funds.
           Cryptocurrencies and smart contracts are volatile and may be subject to hacks, bugs, or market fluctuations.
           Always conduct your own research and consult with a financial advisor before participating.
-          By using this platform, you acknowledge these risks and agree that PulseStar and its developers are not liable for any losses.
+          By using this platform, you acknowledge these risks and agree that PulseStrategy and its developers are not liable for any losses.
         </p>
       </footer>
     </div>
