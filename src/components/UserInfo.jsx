@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
-import { tokenAddresses, hexABI, plsxABI, incABI, plsABI } from "../web3";
+import { contractAddresses, tokenAddresses, ERC20_MINIMAL_ABI } from "../web3";
 
 const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [userData, setUserData] = useState({
@@ -29,8 +29,8 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
       setError("");
 
       // Fetch contract balance (PLSTR or bond)
-      const balance = await contract.methods.balanceOf(account).call();
-      const balanceInEther = web3.utils.fromWei(balance, "ether");
+      const balance = await contract.methods.balanceOf(account).call().catch(() => "0");
+      const balanceInEther = web3.utils.fromWei(balance || "0", "ether");
 
       // Initialize user data
       let data = {
@@ -46,42 +46,46 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
       // Fetch redeemable token for bond contracts
       const config = bondConfig[contractSymbol] || bondConfig.pBOND;
       if (contractSymbol !== "PLSTR" && balance > 0) {
-        const redeemable = await contract.methods[config.redeemFunction](balance).call();
+        const redeemable = await contract.methods[config.redeemFunction](balance).call().catch(() => "0");
         data.redeemableToken = web3.utils.fromWei(redeemable || "0", "ether");
       }
 
       // Fetch token balances
       const tokenAddrs = tokenAddresses[369] || {};
+      const contractAddrs = contractAddresses[369] || {};
 
-      // PLSTR balance
-      if (tokenAddrs.PLSTR) {
-        const plstrContract = new web3.eth.Contract(ERC20_ABI, tokenAddrs.PLSTR);
-        const plstrBalance = await plstrContract.methods.balanceOf(account).call();
+      // PLSTR balance (use contractAddresses since tokenAddresses lacks PLSTR)
+      if (contractAddrs.PLSTR) {
+        const plstrContract = new web3.eth.Contract(ERC20_MINIMAL_ABI, contractAddrs.PLSTR);
+        const plstrBalance = await plstrContract.methods.balanceOf(account).call().catch(() => "0");
         data.plstrBalance = web3.utils.fromWei(plstrBalance || "0", "ether");
       }
 
-      // PLS balance (native currency)
-      const plsBalance = await web3.eth.getBalance(account);
-      data.plsBalance = web3.utils.fromWei(plsBalance || "0", "ether");
+      // WPLS balance (use tokenAddresses.PLS for Wrapped PLS)
+      if (tokenAddrs.PLS) {
+        const plsContract = new web3.eth.Contract(ERC20_MINIMAL_ABI, tokenAddrs.PLS);
+        const plsBalance = await plsContract.methods.balanceOf(account).call().catch(() => "0");
+        data.plsBalance = web3.utils.fromWei(plsBalance || "0", "ether");
+      }
 
       // PLSX balance
       if (tokenAddrs.PLSX) {
-        const plsxContract = new web3.eth.Contract(ERC20_ABI, tokenAddrs.PLSX);
-        const plsxBalance = await plsxContract.methods.balanceOf(account).call();
+        const plsxContract = new web3.eth.Contract(ERC20_MINIMAL_ABI, tokenAddrs.PLSX);
+        const plsxBalance = await plsxContract.methods.balanceOf(account).call().catch(() => "0");
         data.plsxBalance = web3.utils.fromWei(plsxBalance || "0", "ether");
       }
 
       // INC balance
       if (tokenAddrs.INC) {
-        const incContract = new web3.eth.Contract(ERC20_ABI, tokenAddrs.INC);
-        const incBalance = await incContract.methods.balanceOf(account).call();
+        const incContract = new web3.eth.Contract(ERC20_MINIMAL_ABI, tokenAddrs.INC);
+        const incBalance = await incContract.methods.balanceOf(account).call().catch(() => "0");
         data.incBalance = web3.utils.fromWei(incBalance || "0", "ether");
       }
 
       // HEX balance
       if (tokenAddrs.HEX) {
-        const hexContract = new web3.eth.Contract(ERC20_ABI, tokenAddrs.HEX);
-        const hexBalance = await hexContract.methods.balanceOf(account).call();
+        const hexContract = new web3.eth.Contract(ERC20_MINIMAL_ABI, tokenAddrs.HEX);
+        const hexBalance = await hexContract.methods.balanceOf(account).call().catch(() => "0");
         data.hexBalance = web3.utils.fromWei(hexBalance || "0", "ether");
       }
 
@@ -122,15 +126,15 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
         <>
           <p className="text-gray-600">Balance: <span className="text-purple-600">{formatNumber(userData.balance)} {contractSymbol}</span></p>
           {contractSymbol !== "PLSTR" && (
-            <p className="text-gray-600">Redeemable {tokenSymbol}: <span className="text-purple-600">{formatNumber(userData.redeemableToken)} {tokenSymbol}</span></p>
-          )}
-          {contractSymbol !== "PLSTR" && (
-            <p className="text-gray-600">{tokenSymbol} Balance: <span className="text-purple-600">{formatNumber(tokenBalance)} {tokenSymbol}</span></p>
+            <>
+              <p className="text-gray-600">Redeemable {tokenSymbol}: <span className="text-purple-600">{formatNumber(userData.redeemableToken)} {tokenSymbol}</span></p>
+              <p className="text-gray-600">{tokenSymbol} Balance: <span className="text-purple-600">{formatNumber(tokenBalance)} {tokenSymbol}</span></p>
+            </>
           )}
           {contractSymbol === "PLSTR" && (
             <>
               <p className="text-gray-600">PLSTR Balance: <span className="text-purple-600">{formatNumber(userData.plstrBalance)} PLSTR</span></p>
-              <p className="text-gray-600">PLS Balance: <span className="text-purple-600">{formatNumber(userData.plsBalance)} PLS</span></p>
+              <p className="text-gray-600">WPLS Balance: <span className="text-purple-600">{formatNumber(userData.plsBalance)} WPLS</span></p>
               <p className="text-gray-600">PLSX Balance: <span className="text-purple-600">{formatNumber(userData.plsxBalance)} PLSX</span></p>
               <p className="text-gray-600">INC Balance: <span className="text-purple-600">{formatNumber(userData.incBalance)} INC</span></p>
               <p className="text-gray-600">HEX Balance: <span className="text-purple-600">{formatNumber(userData.hexBalance)} HEX</span></p>
