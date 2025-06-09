@@ -14,23 +14,21 @@ const SwapBurn = ({ web3, contract, account, chainId, contractSymbol }) => {
     HEX: 8,
   };
 
-  // Convert balance based on token decimals
   const fromUnits = (balance, decimals) => {
     try {
-      if (!balance) return "0";
+      if (!balance || balance === "0") return "0";
+      const balanceStr = typeof balance === "bigint" ? balance.toString() : balance.toString();
       if (decimals === 18) {
-        return web3.utils.fromWei(balance, "ether");
+        return web3.utils.fromWei(balanceStr, "ether");
       }
       if (decimals === 8) {
-        const balanceBN = web3.utils.toBN(balance);
-        const divisor = web3.utils.toBN("100000000"); // 10^8
-        const result = balanceBN.div(divisor).toString();
-        const remainder = balanceBN.mod(divisor).toString().padStart(8, "0");
-        return `${result}.${remainder.replace(/0+$/, "") || "0"}`.replace(/\.$/, "");
+        const balanceNum = Number(balanceStr) / 100000000;
+        if (isNaN(balanceNum)) throw new Error("Invalid number after division");
+        return balanceNum.toFixed(8).replace(/\.?0+$/, "");
       }
-      return web3.utils.fromWei(balance, "ether");
+      return web3.utils.fromWei(balanceStr, "ether");
     } catch (err) {
-      console.error("Error converting balance:", { balance, decimals, err });
+      console.error("Error converting balance:", { balance, decimals, error: err.message });
       return "0";
     }
   };
