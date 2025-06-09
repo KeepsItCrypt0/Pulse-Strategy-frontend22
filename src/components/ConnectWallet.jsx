@@ -19,7 +19,7 @@ const ConnectWallet = ({ account, web3, contractAddress, chainId, contractSymbol
     }
   };
 
-  const explorerUrl = "https://scan.pulsechain.com";
+  const explorerUrl = "https://kekxplorer.avecdra.pro/";
 
   return (
     <div className="mt-4 text-center">
