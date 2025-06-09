@@ -34,7 +34,7 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
         plsx: web3.utils.fromWei(assets.plsxAmount, "ether"),
         pls: web3.utils.fromWei(assets.plsAmount, "ether"),
         inc: web3.utils.fromWei(assets.incAmount, "ether"),
-        hex: web3.utils.fromWei(assets.hexAmount, "ether"), // Fixed: HEX uses 18 decimals
+        hex: web3.utils.fromWei(assets.hexAmount, "ether"),
       });
       console.log("Redeemable assets fetched:", { contractSymbol, assets });
     } catch (err) {
@@ -61,7 +61,11 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
     try {
       const shareAmount = web3.utils.toWei(amount, "ether");
       await contract.methods.redeemShares(shareAmount).send({ from: account });
-      alert(`Successfully redeemed ${amount} PLSTR for ${formatNumber(redeemableAssets.plsx)} PLSX, ${formatNumber(redeemableAssets.pls)} PLS, ${formatNumber(redeemableAssets.inc)} INC, ${formatNumber(redeemableAssets.hex)} HEX!`);
+      alert(
+        `Successfully redeemed ${amount} ${contractSymbol} for ${formatNumber(redeemableAssets.plsx)} PLSX, ${formatNumber(
+          redeemableAssets.pls
+        )} PLS, ${formatNumber(redeemableAssets.inc)} INC, ${formatNumber(redeemableAssets.hex)} HEX!`
+      );
       setAmount("");
       setRedeemableAssets({ plsx: "0", pls: "0", inc: "0", hex: "0" });
       fetchUserData();
@@ -74,21 +78,21 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
     }
   };
 
-  if (chainId !== 369 || contractSymbol !== "PLSTR") return null;
+  if (chainId !== 369) return null; // Removed contractSymbol !== "PLSTR"
 
   return (
     <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
-      <h2 className="text-xl font-semibold mb-4 text-purple-600">Redeem PLSTR Shares</h2>
+      <h2 className="text-xl font-semibold mb-4 text-purple-600">Redeem {contractSymbol} Shares</h2>
       <p className="text-gray-600 mb-2">
-        Your PLSTR Balance: <span className="text-purple-600">{formatNumber(userBalance)} PLSTR</span>
+        Your {contractSymbol} Balance: <span className="text-purple-600">{formatNumber(userBalance)} {contractSymbol}</span>
       </p>
       <div className="mb-4">
-        <label className="text-gray-600">Amount (PLSTR)</label>
+        <label className="text-gray-600">Amount ({contractSymbol})</label>
         <input
           type="number"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          placeholder="Enter PLSTR amount"
+          placeholder={`Enter ${contractSymbol} amount`}
           className="w-full p-2 border rounded-lg"
           disabled={loading}
         />
