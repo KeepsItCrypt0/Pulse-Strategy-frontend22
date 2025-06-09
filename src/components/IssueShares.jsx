@@ -139,7 +139,6 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
           />
         </div>
       )}
-      <div>
       <div className="mb-4">
         <label className="text-gray-600">Amount ({isPLSTR ? selectedToken || "Token" : defaultToken})</label>
         <input
@@ -156,7 +155,7 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
         </p>
         {!isPLSTR && (
           <p className="text-gray-600 mt-1">
-            Fee (4.045%): <span className="text-pink-600">{formatNumber(feeAmount)} {defaultToken}</span>
+            Fee (4.5%): <span className="text-pink-600">{formatNumber(feeAmount)} {defaultToken}</span>
           </p>
         )}
       </div>
