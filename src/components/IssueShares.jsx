@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
-import { tokenAddresses, ERC20_ABI } from "../web3";
+import { tokenAddresses, plsABI, incABI, plsxABI, hexABI } from "../web3";
 
 const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   const [amount, setAmount] = useState("");
@@ -10,15 +10,15 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
 
   const tokenConfig = {
     PLSTR: [
-      { symbol: "PLSX", address: tokenAddresses[369].PLSX, decimals: "ether" },
-      { symbol: "PLS", address: tokenAddresses[369].PLS, decimals: "ether" },
-      { symbol: "INC", address: tokenAddresses[369].INC, decimals: "ether" },
-      { symbol: "HEX", address: tokenAddresses[369].HEX, decimals: "ether" },
+      { symbol: "PLSX", address: tokenAddresses[369].PLSX, decimals: "ether", abi: plsxABI },
+      { symbol: "PLS", address: tokenAddresses[369].PLS, decimals: "ether", abi: plsABI },
+      { symbol: "INC", address: tokenAddresses[369].INC, decimals: "ether", abi: incABI },
+      { symbol: "HEX", address: tokenAddresses[369].HEX, decimals: "ether", abi: hexABI },
     ],
-    pBOND: [{ symbol: "PLS", address: tokenAddresses[369].PLS, decimals: "ether" }],
-    xBOND: [{ symbol: "PLSX", address: tokenAddresses[369].PLSX, decimals: "ether" }],
-    iBOND: [{ symbol: "INC", address: tokenAddresses[369].INC, decimals: "ether" }],
-    hBOND: [{ symbol: "HEX", address: tokenAddresses[369].HEX, decimals: "ether" }],
+    pBOND: [{ symbol: "PLS", address: tokenAddresses[369].PLS, decimals: "ether", abi: plsABI }],
+    xBOND: [{ symbol: "PLSX", address: tokenAddresses[369].PLSX, decimals: "ether", abi: plsxABI }],
+    iBOND: [{ symbol: "INC", address: tokenAddresses[369].INC, decimals: "ether", abi: incABI }],
+    hBOND: [{ symbol: "HEX", address: tokenAddresses[369].HEX, decimals: "ether", abi: hexABI }],
   };
 
   const isPLSTR = contractSymbol === "PLSTR";
@@ -40,7 +40,7 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
       const token = tokens.find((t) => t.symbol === (isPLSTR ? selectedToken : defaultToken));
       if (!token) throw new Error("Invalid token selected");
       const tokenAmount = web3.utils.toWei(amount, token.decimals);
-      const tokenContract = new web3.eth.Contract(ERC20_ABI, token.address);
+      const tokenContract = new web3.eth.Contract(token.abi, token.address);
       const allowance = await tokenContract.methods.allowance(account, contract.options.address).call();
       if (web3.utils.toBN(allowance).lt(web3.utils.toBN(tokenAmount))) {
         await tokenContract.methods.approve(contract.options.address, tokenAmount).send({ from: account });
