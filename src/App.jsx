@@ -37,8 +37,6 @@ const App = () => {
     try {
       const web3Instance = await getWeb3();
       if (!web3Instance) {
-        setChainId(null);
-        setLoading(false);
         setError("Failed to initialize Web3. Please connect your wallet.");
         return;
       }
@@ -49,12 +47,15 @@ const App = () => {
 
       if (chainId !== 369) {
         setError("Please connect to PulseChain (chainId 369).");
-        setLoading(false);
         return;
       }
 
-      const accounts = await getAccount(web3Instance);
-      setAccount(accounts);
+      const account = await getAccount(web3Instance);
+      if (!account) {
+        setError("No account found. Please connect your wallet.");
+        return;
+      }
+      setAccount(account);
 
       const contractAddress = contractAddresses[369]?.[contractSymbol];
       const contractABI = contractABIs[contractSymbol];
@@ -65,21 +66,20 @@ const App = () => {
       const contractInstance = new web3Instance.eth.Contract(contractABI, contractAddress);
       setContract(contractInstance);
 
-      if (accounts) {
-        // Set isController based on hardcoded creator address
-        const isOwner = accounts?.toLowerCase() === CREATOR_ADDRESS.toLowerCase();
-        setIsController(isOwner);
-        console.log("Controller check:", {
-          account: accounts,
-          isController: isOwner,
-          chainId,
-          contractAddress,
-          contractSymbol,
-        });
-      }
+      // Set isController based on hardcoded creator address
+      const isOwner = account.toLowerCase() === CREATOR_ADDRESS.toLowerCase();
+      setIsController(isOwner);
+      console.log("Controller check:", {
+        account,
+        isController: isOwner,
+        chainId,
+        contractAddress,
+        contractSymbol,
+      });
+
       console.log("App initialized:", {
         chainId,
-        account: accounts,
+        account,
         contractAddress,
         contractSymbol,
       });
@@ -95,24 +95,34 @@ const App = () => {
     initializeApp();
 
     if (window.ethereum) {
-      window.ethereum.on("chainChanged", () => {
+      const handleChainChanged = () => {
         console.log("Chain changed, reinitializing...");
         initializeApp();
-      });
-      window.ethereum.on("accountsChanged", (accounts) => {
+      };
+      const handleAccountsChanged = (accounts) => {
         console.log("Accounts changed:", accounts);
         setAccount(accounts[0] || null);
         initializeApp();
-      });
-    }
+      };
 
-    return () => {
-      if (window.ethereum) {
-        window.ethereum.removeAllListeners("chainChanged");
-        window.ethereum.removeAllListeners("accountsChanged");
-      }
-    };
+      window.ethereum.on("chainChanged", handleChainChanged);
+      window.ethereum.on("accountsChanged", handleAccountsChanged);
+
+      return () => {
+        window.ethereum.removeListener("chainChanged", handleChainChanged);
+        window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+      };
+    }
   }, [contractSymbol]);
+
+  // Don't render components until initialization is complete
+  if (loading) {
+    return (
+      <div className="min-h-screen gradient-bg flex flex-col items-center p-4">
+        <p className="text-center text-white">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen gradient-bg flex flex-col items-center p-4">
@@ -152,70 +162,11 @@ const App = () => {
         />
       </header>
       <main className="w-full max-w-4xl space-y-6">
-        {loading ? (
-          <p className="text-center text-white">Loading...</p>
-        ) : error ? (
-          <>
-            <p className="text-center text-red-700">{error}</p>
-            {account && chainId === 369 && contract && (
-              <>
-                <ContractInfo
-                  contract={contract}
-                  web3={web3}
-                  chainId={chainId}
-                  contractSymbol={contractSymbol}
-                />
-                <UserInfo
-                  contract={contract}
-                  account={account}
-                  web3={web3}
-                  chainId={chainId}
-                  contractSymbol={contractSymbol}
-                />
-                <IssueShares
-                  contract={contract}
-                  account={account}
-                  web3={web3}
-                  chainId={chainId}
-                  contractSymbol={contractSymbol}
-                />
-                <RedeemShares
-                  contract={contract}
-                  account={account}
-                  web3={web3}
-                  chainId={chainId}
-                  contractSymbol={contractSymbol}
-                />
-                {contractSymbol === "PLSTR" ? (
-                  <ClaimPLSTR
-                    contract={contract}
-                    account={account}
-                    web3={web3}
-                    chainId={chainId}
-                    contractSymbol={contractSymbol}
-                  />
-                ) : (
-                  <SwapBurn
-                    contract={contract}
-                    account={account}
-                    web3={web3}
-                    chainId={chainId}
-                    contractSymbol={contractSymbol}
-                  />
-                )}
-                {isController && (
-                  <AdminPanel
-                    contract={contract}
-                    account={account}
-                    web3={web3}
-                    chainId={chainId}
-                    contractSymbol={contractSymbol}
-                  />
-                )}
-              </>
-            )}
-          </>
-        ) : account && chainId === 369 && contract ? (
+        {error ? (
+          <p className="text-center text-red-700">{error}</p>
+        ) : !web3 || !account || !contract || chainId !== 369 ? (
+          <p className="text-center text-white">Please connect your wallet to PulseChain to interact with the contract.</p>
+        ) : (
           <>
             <ContractInfo
               contract={contract}
@@ -271,11 +222,9 @@ const App = () => {
               />
             )}
           </>
-        ) : (
-          <p className="text-center text-white">Please connect your wallet to PulseChain to interact with the contract.</p>
         )}
       </main>
-      <footer className="mt-16 w-full text-center text-gray-600 text-xs">
+      <footer className="mt-16 w-full text-center text-gray-500 text-xs">
         <div className="mb-1">
           <a
             href="https://github.com/KeepsItCrypt0/PulseStrategy"
@@ -292,7 +241,7 @@ const App = () => {
             rel="noopener noreferrer"
             className="footer-link mx-1"
           >
-            Follow @PulseStrategy on X
+            Follow @PulseStar on X
           </a>
         </div>
         <p className="max-w-lg mx-auto">
