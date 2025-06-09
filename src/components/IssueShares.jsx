@@ -8,7 +8,7 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const ADMIN_ADDRESS = "0x6aaE8556C69b795b561CB75ca83aF6187d2F0AF5"; // Admin address for PLSTR restriction
+  const ALLOWED_ADDRESS = "0x6aaE8556C69b795b561CB75ca83aF6187d2F0AF5"; // Address allowed for PLSTR issuance
 
   // Null checks for props
   if (!web3 || !contract || !account || !chainId || !contractSymbol) {
@@ -17,11 +17,10 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   }
 
   const isPLSTR = contractSymbol === "PLSTR";
-  const isAdmin = account && account.toLowerCase() === ADMIN_ADDRESS.toLowerCase();
 
-  // Return null if PLSTR and not admin
-  if (isPLSTR && !isAdmin) {
-    console.log("IssueShares: Non-admin access to PLSTR blocked", { account });
+  // Check if account is allowed for PLSTR
+  if (isPLSTR && (!account || account.toLowerCase() !== ALLOWED_ADDRESS.toLowerCase())) {
+    console.log("IssueShares: Access to PLSTR blocked for account", { account });
     return null;
   }
 
@@ -49,7 +48,7 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
 
   useEffect(() => {
     let mounted = true;
-    console.log("IssueShares useEffect: Setting selectedToken", { contractSymbol, isPLSTR, defaultToken });
+    console.log("IssueShares useEffect: Setting selectedToken", { contractSymbol, isPLSTR, defaultToken, account });
 
     if (mounted) {
       setSelectedToken(isPLSTR ? "" : defaultToken);
