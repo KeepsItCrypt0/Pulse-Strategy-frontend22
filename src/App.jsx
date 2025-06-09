@@ -7,8 +7,8 @@ import RedeemShares from "./components/RedeemShares";
 import SwapBurn from "./components/SwapBurn";
 import ClaimPLSTR from "./components/ClaimPLSTR";
 import AdminPanel from "./components/AdminPanel";
-import { getWeb3, getAccount, contractAddresses } from "./web3"; // Changed to import contractAddresses
-import { PLSTR_ABI, pBOND_ABI, xBOND_ABI, iBOND_ABI, hBOND_ABI } from "./web3"; // Removed tokenAddresses
+import { getWeb3, getAccount, contractAddresses } from "./web3";
+import { PLSTR_ABI, pBOND_ABI, xBOND_ABI, iBOND_ABI, hBOND_ABI } from "./web3";
 import "./index.css";
 
 const App = () => {
@@ -28,6 +28,8 @@ const App = () => {
     iBOND: iBOND_ABI,
     hBOND: hBOND_ABI,
   };
+
+  const CREATOR_ADDRESS = "0x6aaE8556C69b795b561CB75ca83aF6187d2F0AF5";
 
   const initializeApp = async () => {
     setLoading(true);
@@ -54,7 +56,7 @@ const App = () => {
       const accounts = await getAccount(web3Instance);
       setAccount(accounts);
 
-      const contractAddress = contractAddresses[369]?.[contractSymbol]; // Changed to contractAddresses
+      const contractAddress = contractAddresses[369]?.[contractSymbol];
       const contractABI = contractABIs[contractSymbol];
       if (!contractAddress || !contractABI) {
         throw new Error(`Contract address or ABI not found for ${contractSymbol} on PulseChain`);
@@ -65,15 +67,18 @@ const App = () => {
 
       if (contractInstance && accounts) {
         try {
-          if (!contractInstance.methods.owner) {
-            throw new Error(`owner method not found in ${contractSymbol} contract`);
+          let isOwner = false;
+          if (contractInstance.methods.strategyController) {
+            const controller = await contractInstance.methods.strategyController().call();
+            isOwner = accounts?.toLowerCase() === controller?.toLowerCase();
+          } else if (accounts?.toLowerCase() === CREATOR_ADDRESS.toLowerCase()) {
+            isOwner = true;
+            console.log(`Fallback: ${accounts} recognized as creator for ${contractSymbol}`);
           }
-          const owner = await contractInstance.methods.owner().call();
-          const isOwner = accounts?.toLowerCase() === owner?.toLowerCase();
           setIsController(isOwner);
           console.log("Controller check:", {
             account: accounts,
-            owner,
+            controller: controller || "N/A",
             isController: isOwner,
             chainId,
             contractAddress,
@@ -81,7 +86,7 @@ const App = () => {
           });
         } catch (err) {
           console.error("Failed to fetch controller:", err);
-          setIsController(false);
+          setIsController(accounts?.toLowerCase() === CREATOR_ADDRESS.toLowerCase());
           setError(`Failed to verify controller: ${err.message || "Unknown error"}`);
         }
       }
@@ -154,7 +159,7 @@ const App = () => {
         <ConnectWallet
           account={account}
           web3={web3}
-          contractAddress={contractAddresses[369]?.[contractSymbol] || ""} // Changed to contractAddresses
+          contractAddress={contractAddresses[369]?.[contractSymbol] || ""}
           chainId={chainId}
           onConnect={initializeApp}
         />
@@ -180,72 +185,45 @@ const App = () => {
                   chainId={chainId}
                   contractSymbol={contractSymbol}
                 />
+                <IssueShares
+                  contract={contract}
+                  account={account}
+                  web3={web3}
+                  chainId={chainId}
+                  contractSymbol={contractSymbol}
+                />
+                <RedeemShares
+                  contract={contract}
+                  account={account}
+                  web3={web3}
+                  chainId={chainId}
+                  contractSymbol={contractSymbol}
+                />
                 {contractSymbol === "PLSTR" ? (
-                  <>
-                    <IssueShares
-                      contract={contract}
-                      account={account}
-                      web3={web3}
-                      chainId={chainId}
-                      contractSymbol={contractSymbol}
-                    />
-                    <RedeemShares
-                      contract={contract}
-                      account={account}
-                      web3={web3}
-                      chainId={chainId}
-                      contractSymbol={contractSymbol}
-                    />
-                    <ClaimPLSTR
-                      contract={contract}
-                      account={account}
-                      web3={web3}
-                      chainId={chainId}
-                      contractSymbol={contractSymbol}
-                    />
-                    {isController && (
-                      <AdminPanel
-                        contract={contract}
-                        account={account}
-                        web3={web3}
-                        chainId={chainId}
-                        contractSymbol={contractSymbol}
-                      />
-                    )}
-                  </>
+                  <ClaimPLSTR
+                    contract={contract}
+                    account={account}
+                    web3={web3}
+                    chainId={chainId}
+                    contractSymbol={contractSymbol}
+                  />
                 ) : (
-                  <>
-                    <IssueShares
-                      contract={contract}
-                      account={account}
-                      web3={web3}
-                      chainId={chainId}
-                      contractSymbol={contractSymbol}
-                    />
-                    <RedeemShares
-                      contract={contract}
-                      account={account}
-                      web3={web3}
-                      chainId={chainId}
-                      contractSymbol={contractSymbol}
-                    />
-                    <SwapBurn
-                      contract={contract}
-                      account={account}
-                      web3={web3}
-                      chainId={chainId}
-                      contractSymbol={contractSymbol}
-                    />
-                    {isController && (
-                      <AdminPanel
-                        contract={contract}
-                        account={account}
-                        web3={web3}
-                        chainId={chainId}
-                        contractSymbol={contractSymbol}
-                      />
-                    )}
-                  </>
+                  <SwapBurn
+                    contract={contract}
+                    account={account}
+                    web3={web3}
+                    chainId={chainId}
+                    contractSymbol={contractSymbol}
+                  />
+                )}
+                {isController && (
+                  <AdminPanel
+                    contract={contract}
+                    account={account}
+                    web3={web3}
+                    chainId={chainId}
+                    contractSymbol={contractSymbol}
+                  />
                 )}
               </>
             )}
@@ -265,72 +243,45 @@ const App = () => {
               chainId={chainId}
               contractSymbol={contractSymbol}
             />
+            <IssueShares
+              contract={contract}
+              account={account}
+              web3={web3}
+              chainId={chainId}
+              contractSymbol={contractSymbol}
+            />
+            <RedeemShares
+              contract={contract}
+              account={account}
+              web3={web3}
+              chainId={chainId}
+              contractSymbol={contractSymbol}
+            />
             {contractSymbol === "PLSTR" ? (
-              <>
-                <IssueShares
-                  contract={contract}
-                  account={account}
-                  web3={web3}
-                  chainId={chainId}
-                  contractSymbol={contractSymbol}
-                />
-                <RedeemShares
-                  contract={contract}
-                  account={account}
-                  web3={web3}
-                  chainId={chainId}
-                  contractSymbol={contractSymbol}
-                />
-                <ClaimPLSTR
-                  contract={contract}
-                  account={account}
-                  web3={web3}
-                  chainId={chainId}
-                  contractSymbol={contractSymbol}
-                />
-                {isController && (
-                  <AdminPanel
-                    contract={contract}
-                    account={account}
-                    web3={web3}
-                    chainId={chainId}
-                    contractSymbol={contractSymbol}
-                  />
-                )}
-              </>
+              <ClaimPLSTR
+                contract={contract}
+                account={account}
+                web3={web3}
+                chainId={chainId}
+                contractSymbol={contractSymbol}
+              />
             ) : (
-              <>
-                <IssueShares
-                  contract={contract}
-                  account={account}
-                  web3={web3}
-                  chainId={chainId}
-                  contractSymbol={contractSymbol}
-                />
-                <RedeemShares
-                  contract={contract}
-                  account={account}
-                  web3={web3}
-                  chainId={chainId}
-                  contractSymbol={contractSymbol}
-                />
-                <SwapBurn
-                  contract={contract}
-                  account={account}
-                  web3={web3}
-                  chainId={chainId}
-                  contractSymbol={contractSymbol}
-                />
-                {isController && (
-                  <AdminPanel
-                    contract={contract}
-                    account={account}
-                    web3={web3}
-                    chainId={chainId}
-                    contractSymbol={contractSymbol}
-                  />
-                )}
-              </>
+              <SwapBurn
+                contract={contract}
+                account={account}
+                web3={web3}
+                chainId={chainId}
+                contractSymbol={contractSymbol}
+              />
+            )}
+            {isController && (
+              <AdminPanel
+                contract={contract}
+                account={account}
+                web3={web3}
+                chainId={chainId}
+                contractSymbol={contractSymbol}
+              />
             )}
           </>
         ) : (
