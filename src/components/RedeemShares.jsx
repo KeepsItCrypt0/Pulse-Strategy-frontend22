@@ -15,10 +15,10 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [error, setError] = useState("");
 
   const tokenConfig = {
-    pBOND: { symbol: "PLS", address: tokenAddresses[369].PLS },
-    xBOND: { symbol: "PLSX", address: tokenAddresses[369].PLSX },
-    iBOND: { symbol: "INC", address: tokenAddresses[369].INC },
-    hBOND: { symbol: "HEX", address: tokenAddresses[369].HEX },
+    pBOND: { symbol: "PLS", address: tokenAddresses[369].PLS, redeemMethod: "getRedeemablePLS" },
+    xBOND: { symbol: "PLSX", address: tokenAddresses[369].PLSX, redeemMethod: "getRedeemablePLSX" },
+    iBOND: { symbol: "INC", address: tokenAddresses[369].INC, redeemMethod: "getRedeemableINC" },
+    hBOND: { symbol: "HEX", address: tokenAddresses[369].HEX, redeemMethod: "getRedeemableHEX" },
     PLSTR: [
       { symbol: "PLSX", address: tokenAddresses[369].PLSX },
       { symbol: "PLS", address: tokenAddresses[369].PLS },
@@ -46,24 +46,32 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
   };
 
   const fetchRedeemableAssets = async () => {
-    if (!web3 || !contract || !amount || Number(amount) <= 0 || chainId !== 369) return;
+    if (!web3 || !contract || !amount || Number(amount) <= 0 || chainId !== 369) {
+      setRedeemableAssets({ plsx: "0", pls: "0", inc: "0", hex: "0" });
+      return;
+    }
     try {
-      if (!contract.methods.totalSupply) {
-        throw new Error(`totalSupply method not found in ${contractSymbol} contract`);
-      }
       const shareAmount = web3.utils.toWei(amount, "ether");
-      const totalSupply = await contract.methods.totalSupply().call();
-      if (Number(totalSupply) === 0) {
-        setRedeemableAssets({ plsx: "0", pls: "0", inc: "0", hex: "0" });
-        return;
-      }
-
-      const assets = { plsx: "0", pls: "0", inc: "0", hex: "0" };
-      for (const token of tokens) {
-        const tokenContract = new web3.eth.Contract(ERC20_ABI, token.address);
-        const tokenBalance = await tokenContract.methods.balanceOf(contract.options.address).call();
-        const redeemableAmount = web3.utils.toBN(tokenBalance).mul(web3.utils.toBN(shareAmount)).div(web3.utils.toBN(totalSupply));
-        assets[token.symbol.toLowerCase()] = web3.utils.fromWei(redeemableAmount, "ether");
+      let assets = { plsx: "0", pls: "0", inc: "0", hex: "0" };
+      
+      if (isPLSTR) {
+        if (!contract.methods.getRedeemableAssets) {
+          throw new Error(`getRedeemableAssets method not found in PLSTR contract`);
+        }
+        const [plsx, pls, inc, hex] = await contract.methods.getRedeemableAssets(shareAmount).call();
+        assets = {
+          plsx: web3.utils.fromWei(plsx, "ether"),
+          pls: web3.utils.fromWei(pls, "ether"),
+          inc: web3.utils.fromWei(inc, "ether"),
+          hex: web3.utils.fromWei(hex, "ether"),
+        };
+      } else {
+        const token = tokens[0];
+        if (!contract.methods[token.redeemMethod]) {
+          throw new Error(`${token.redeemMethod} method not found in ${contractSymbol} contract`);
+        }
+        const redeemable = await contract.methods[token.redeemMethod](shareAmount).call();
+        assets[token.symbol.toLowerCase()] = web3.utils.fromWei(redeemable, "ether");
       }
 
       setRedeemableAssets(assets);
@@ -80,6 +88,7 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
 
   useEffect(() => {
     if (web3 && contract && amount && chainId === 369) fetchRedeemableAssets();
+    else setRedeemableAssets({ plsx: "0", pls: "0", inc: "0", hex: "0" });
   }, [amount, web3, contract, chainId, contractSymbol]);
 
   const handleRedeemShares = async () => {
