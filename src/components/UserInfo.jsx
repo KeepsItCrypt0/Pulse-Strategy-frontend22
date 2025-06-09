@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
-import { contractAddresses, tokenAddresses, plsABI, incABI, plsxABI, hexABI, plstrABI } from "../web3";
+import { contractAddresses, tokenAddresses, plsABI, incABI, plsxABI, hexABI, PLSTR_ABI } from "../web3";
 
 const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [userData, setUserData] = useState({
