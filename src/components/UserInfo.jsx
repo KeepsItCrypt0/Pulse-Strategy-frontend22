@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
-import { contractAddresses, tokenAddresses, ERC20_MINIMAL_ABI } from "../web3";
+import { contractAddresses, tokenAddresses, plsABI, incABI, plsxABI, hexABI, plstrABI } from "../web3";
 
 const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [userData, setUserData] = useState({
@@ -54,37 +54,37 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
       const tokenAddrs = tokenAddresses[369] || {};
       const contractAddrs = contractAddresses[369] || {};
 
-      // PLSTR balance (use contractAddresses since tokenAddresses lacks PLSTR)
+      // PLSTR balance
       if (contractAddrs.PLSTR) {
-        const plstrContract = new web3.eth.Contract(ERC20_MINIMAL_ABI, contractAddrs.PLSTR);
+        const plstrContract = new web3.eth.Contract(plstrABI, contractAddrs.PLSTR);
         const plstrBalance = await plstrContract.methods.balanceOf(account).call().catch(() => "0");
         data.plstrBalance = web3.utils.fromWei(plstrBalance || "0", "ether");
       }
 
-      // WPLS balance (use tokenAddresses.PLS for Wrapped PLS)
+      // WPLS balance
       if (tokenAddrs.PLS) {
-        const plsContract = new web3.eth.Contract(ERC20_MINIMAL_ABI, tokenAddrs.PLS);
+        const plsContract = new web3.eth.Contract(plsABI, tokenAddrs.PLS);
         const plsBalance = await plsContract.methods.balanceOf(account).call().catch(() => "0");
         data.plsBalance = web3.utils.fromWei(plsBalance || "0", "ether");
       }
 
       // PLSX balance
       if (tokenAddrs.PLSX) {
-        const plsxContract = new web3.eth.Contract(ERC20_MINIMAL_ABI, tokenAddrs.PLSX);
+        const plsxContract = new web3.eth.Contract(plsxABI, tokenAddrs.PLSX);
         const plsxBalance = await plsxContract.methods.balanceOf(account).call().catch(() => "0");
         data.plsxBalance = web3.utils.fromWei(plsxBalance || "0", "ether");
       }
 
       // INC balance
       if (tokenAddrs.INC) {
-        const incContract = new web3.eth.Contract(ERC20_MINIMAL_ABI, tokenAddrs.INC);
+        const incContract = new web3.eth.Contract(incABI, tokenAddrs.INC);
         const incBalance = await incContract.methods.balanceOf(account).call().catch(() => "0");
         data.incBalance = web3.utils.fromWei(incBalance || "0", "ether");
       }
 
       // HEX balance
       if (tokenAddrs.HEX) {
-        const hexContract = new web3.eth.Contract(ERC20_MINIMAL_ABI, tokenAddrs.HEX);
+        const hexContract = new web3.eth.Contract(hexABI, tokenAddrs.HEX);
         const hexBalance = await hexContract.methods.balanceOf(account).call().catch(() => "0");
         data.hexBalance = web3.utils.fromWei(hexBalance || "0", "ether");
       }
