@@ -4,8 +4,8 @@ import { contractAddresses, tokenAddresses, plsABI, incABI, plsxABI, hexABI } fr
 
 const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [userData, setUserData] = useState({
-    balance: "0", // Bond or PLSTR balance
-    redeemableToken: "0", // Redeemable token for bonds
+    balance: "0",
+    redeemableToken: "0",
     plsBalance: "0",
     plsxBalance: "0",
     incBalance: "0",
@@ -16,7 +16,7 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
 
   // Token decimals
   const tokenDecimals = {
-    PLS: 18, // WPLS
+    PLS: 18,
     PLSX: 18,
     INC: 18,
     HEX: 8,
@@ -25,9 +25,23 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
   // Convert balance based on token decimals
   const fromUnits = (balance, decimals) => {
     try {
-      return web3.utils.fromWei(balance, decimals === 18 ? "ether" : decimals === 8 ? "gwei" : "ether");
+      if (!balance) return "0";
+      // For 18 decimals, use 'ether' (10^18)
+      if (decimals === 18) {
+        return web3.utils.fromWei(balance, "ether");
+      }
+      // For 8 decimals, divide by 10^8
+      if (decimals === 8) {
+        const balanceBN = web3.utils.toBN(balance);
+        const divisor = web3.utils.toBN("100000000"); // 10^8
+        const result = balanceBN.div(divisor).toString();
+        const remainder = balanceBN.mod(divisor).toString().padStart(8, "0");
+        return `${result}.${remainder.replace(/0+$/, "") || "0"}`.replace(/\.$/, "");
+      }
+      // Default to ether
+      return web3.utils.fromWei(balance, "ether");
     } catch (err) {
-      console.error("Error converting balance:", err);
+      console.error("Error converting balance:", { balance, decimals, err });
       return "0";
     }
   };
@@ -84,6 +98,7 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
         const plsContract = new web3.eth.Contract(plsABI, tokenAddrs.PLS);
         try {
           const plsBalance = await plsContract.methods.balanceOf(account).call();
+          console.log("Raw WPLS balance:", { address: tokenAddrs.PLS, rawBalance: plsBalance });
           data.plsBalance = fromUnits(plsBalance, tokenDecimals.PLS);
           console.log("WPLS balance fetched:", { address: tokenAddrs.PLS, balance: data.plsBalance });
         } catch (err) {
@@ -99,6 +114,7 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
         const plsxContract = new web3.eth.Contract(plsxABI, tokenAddrs.PLSX);
         try {
           const plsxBalance = await plsxContract.methods.balanceOf(account).call();
+          console.log("Raw PLSX balance:", { address: tokenAddrs.PLSX, rawBalance: plsxBalance });
           data.plsxBalance = fromUnits(plsxBalance, tokenDecimals.PLSX);
           console.log("PLSX balance fetched:", { address: tokenAddrs.PLSX, balance: data.plsxBalance });
         } catch (err) {
@@ -114,6 +130,7 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
         const incContract = new web3.eth.Contract(incABI, tokenAddrs.INC);
         try {
           const incBalance = await incContract.methods.balanceOf(account).call();
+          console.log("Raw INC balance:", { address: tokenAddrs.INC, rawBalance: incBalance });
           data.incBalance = fromUnits(incBalance, tokenDecimals.INC);
           console.log("INC balance fetched:", { address: tokenAddrs.INC, balance: data.incBalance });
         } catch (err) {
@@ -129,6 +146,7 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
         const hexContract = new web3.eth.Contract(hexABI, tokenAddrs.HEX);
         try {
           const hexBalance = await hexContract.methods.balanceOf(account).call();
+          console.log("Raw HEX balance:", { address: tokenAddrs.HEX, rawBalance: hexBalance });
           data.hexBalance = fromUnits(hexBalance, tokenDecimals.HEX);
           console.log("HEX balance fetched:", { address: tokenAddrs.HEX, balance: data.hexBalance });
         } catch (err) {
