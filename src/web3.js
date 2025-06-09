@@ -1,14 +1,13 @@
-// src/web3.js
 import Web3 from "web3";
 
 // Contract addresses
 export const contractAddresses = {
   369: {
-    pBOND: "0x8fA1B65b6a9f18243652b98b46a2F7D01cF82BfB", // pBOND 
+    pBOND: "0x8fA1B65b6a9f18243652b98b46a2F7D01cF82BfB", // pBOND
     iBOND: "0x2F6D3f8ede786f77e00B8047c2bE9C9Ce0034155", // iBOND
     xBOND: "0xFE280c2333BBC2fFb6FfCeb3A003b795C3A77810", // xBOND
     hBOND: "0x4Db135351804a3935b49eeB7DD6AeDd3ac32469E", // hBOND
-    PLSTR: "0xDF81C7f777A508C5EBDee1626D03D66576DCA2b4"  // PLSTR
+    PLSTR: "0xDF81C7f777A508C5EBDee1626D03D66576DCA2b4", // PLSTR
   },
 };
 
@@ -18,12 +17,12 @@ export const tokenAddresses = {
     PLS: "0xA1077a294dDE1B09bB078844df40758a5D0f9a27", // PLS
     INC: "0x2fa878Ab3F87CC1C9737Fc071108F904c0B0C95d", // INC
     PLSX: "0x95B303987A60C71504D99Aa1b13B4DA07b0790ab", // PLSX
-    HEX: "0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39"  // HEX
+    HEX: "0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39", // HEX
   },
 };
 
-// ABIs 
-const pBONDABI = [
+// contract ABIs
+export const pBOND_ABI = [
 	{
 		"inputs": [],
 		"stateMutability": "nonpayable",
@@ -794,7 +793,8 @@ const pBONDABI = [
 		"type": "function"
 	}
 ];
-const iBONDABI = [
+
+export const iBOND_ABI = [
 	{
 		"inputs": [],
 		"stateMutability": "nonpayable",
@@ -1565,7 +1565,8 @@ const iBONDABI = [
 		"type": "function"
 	}
 ];
-const xBONDABI = [
+
+export const xBOND_ABI = [
 	{
 		"inputs": [],
 		"stateMutability": "nonpayable",
@@ -2336,7 +2337,8 @@ const xBONDABI = [
 		"type": "function"
 	}
 ];
-const hBONDABI = [
+
+export const hBOND_ABI = [
 	{
 		"inputs": [],
 		"stateMutability": "nonpayable",
@@ -3107,7 +3109,8 @@ const hBONDABI = [
 		"type": "function"
 	}
 ];
-const plstrABI = [
+
+export const PLSTR_ABI = [
 	{
 		"inputs": [],
 		"stateMutability": "nonpayable",
@@ -3911,6 +3914,8 @@ const plstrABI = [
 		"type": "function"
 	}
 ];
+
+// Token ABIs
 const plsABI = [
     {
         "inputs": [
@@ -4186,6 +4191,7 @@ const plsABI = [
         "type": "receive"
     }
 ];
+
 const incABI = [
     {
         "inputs": [],
@@ -4861,6 +4867,7 @@ const incABI = [
         "type": "event"
     }
 ];
+
 const plsxABI = [
     {
         "inputs": [],
@@ -5536,6 +5543,7 @@ const plsxABI = [
         "type": "event"
     }
 ];
+
 const hexABI = [
     {
         "inputs": [],
@@ -6878,6 +6886,7 @@ const hexABI = [
         "type": "function"
     }
 ];
+
 // Network configurations
 export const networkConfigs = {
   369: {
@@ -6932,17 +6941,22 @@ export const getContract = async (web3, contractSymbol = "pBOND") => {
       console.error(`No address found for contract ${contractSymbol} on PulseChain`);
       return null;
     }
-    const abi = contractSymbol === "pBOND" ? pBONDABI : 
-                contractSymbol === "iBOND" ? iBONDABI : 
-                contractSymbol === "xBOND" ? xBONDABI : 
-                contractSymbol === "hBOND" ? hBONDABI :
-                plstrABI;
+    const abi =
+      contractSymbol === "pBOND"
+        ? pBOND_ABI
+        : contractSymbol === "iBOND"
+        ? iBOND_ABI
+        : contractSymbol === "xBOND"
+        ? xBOND_ABI
+        : contractSymbol === "hBOND"
+        ? hBOND_ABI
+        : PLSTR_ABI;
     const contract = new web3.eth.Contract(abi, contractAddress);
     console.log("Contract initialized:", {
       chainId,
       contractAddress,
       contractSymbol,
-      abi: abi.slice(0, 2), // Log partial ABI for brevity
+      abi: abi.slice(0, 2),
     });
     return contract;
   } catch (error) {
@@ -6967,10 +6981,14 @@ export const getTokenContract = async (web3, tokenSymbol = "PLS") => {
       console.error(`No address found for token ${tokenSymbol} on PulseChain`);
       return null;
     }
-    const abi = tokenSymbol === "PLS" ? plsABI : 
-                tokenSymbol === "INC" ? incABI : 
-                tokenSymbol === "PLSX" ? plsxABI : 
-                hexABI;
+    const abi =
+      tokenSymbol === "PLS"
+        ? plsABI
+        : tokenSymbol === "INC"
+        ? incABI
+        : tokenSymbol === "PLSX"
+        ? plsxABI
+        : hexABI;
     const tokenContract = new web3.eth.Contract(abi, tokenAddress);
     console.log("Token contract initialized:", {
       chainId,
