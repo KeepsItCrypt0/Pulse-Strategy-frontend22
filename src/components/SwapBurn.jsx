@@ -17,9 +17,15 @@ const SwapBurn = ({ web3, contract, account, chainId, contractSymbol }) => {
     if (!web3 || !contract || chainId !== 369) return;
     try {
       setError("");
+      if (!contract.methods.getContractBalances) {
+        throw new Error(`getContractBalances method not found in ${contractSymbol} contract`);
+      }
       const balances = await contract.methods.getContractBalances().call();
-      const bondBalanceField = bondConfig[contractSymbol] ? `${contractSymbol.toLowerCase()}Balance` : "pBONDBalance";
-      const tokenBalanceField = bondConfig[contractSymbol]?.balanceField || "plsBalance";
+      const bondBalanceField = bondConfig[contractSymbol] ? `${contractSymbol.toLowerCase()}Balance` : "bondBalance";
+      const tokenBalanceField = bondConfig[contractSymbol]?.balanceField || "tokenBalance";
+      if (!balances[bondBalanceField] || !balances[tokenBalanceField]) {
+        throw new Error(`Balance fields ${bondBalanceField} or ${tokenBalanceField} not found`);
+      }
       setAccumulatedBalance({
         bond: web3.utils.fromWei(balances[bondBalanceField], "ether"),
         token: web3.utils.fromWei(balances[tokenBalanceField], "ether"),
@@ -40,7 +46,9 @@ const SwapBurn = ({ web3, contract, account, chainId, contractSymbol }) => {
     setError("");
     try {
       const swapFunction = bondConfig[contractSymbol]?.swap;
-      if (!swapFunction) throw new Error("Invalid bond contract");
+      if (!swapFunction || !contract.methods[swapFunction]) {
+        throw new Error(`Swap function ${swapFunction} not found in ${contractSymbol} contract`);
+      }
       await contract.methods[swapFunction]().send({ from: account });
       alert(`Swapped accumulated ${contractSymbol} to ${bondConfig[contractSymbol].token} successfully!`);
       fetchAccumulatedBalance();
@@ -59,7 +67,9 @@ const SwapBurn = ({ web3, contract, account, chainId, contractSymbol }) => {
     setError("");
     try {
       const burnFunction = bondConfig[contractSymbol]?.burn;
-      if (!burnFunction) throw new Error("Invalid bond contract");
+      if (!burnFunction || !contract.methods[burnFunction]) {
+        throw new Error(`Burn function ${burnFunction} not found in ${contractSymbol} contract`);
+      }
       await contract.methods[burnFunction]().send({ from: account });
       alert(`Burned accumulated ${contractSymbol} successfully!`);
       fetchAccumulatedBalance();
