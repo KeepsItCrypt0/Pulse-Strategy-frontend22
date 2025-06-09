@@ -8,6 +8,15 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const ADMIN_ADDRESS = "0x6aaE8556C69b795b561CB75ca83aF6187d2F0AF5"; // Admin address for PLSTR restriction
+  const isPLSTR = contractSymbol === "PLSTR";
+  const isAdmin = account && account.toLowerCase() === ADMIN_ADDRESS.toLowerCase();
+
+  // Return null if PLSTR and not admin
+  if (isPLSTR && !isAdmin) {
+    return null;
+  }
+
   const tokenConfig = {
     PLSTR: [
       { symbol: "PLSX", address: tokenAddresses[369].PLSX, decimals: "ether", abi: plsxABI },
@@ -21,7 +30,6 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
     hBOND: [{ symbol: "HEX", address: tokenAddresses[369].HEX, decimals: "ether", abi: hexABI }],
   };
 
-  const isPLSTR = contractSymbol === "PLSTR";
   const tokens = tokenConfig[contractSymbol] || [];
   const defaultToken = tokens[0]?.symbol || "";
 
