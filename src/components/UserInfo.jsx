@@ -14,6 +14,24 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Token decimals
+  const tokenDecimals = {
+    PLS: 18, // WPLS
+    PLSX: 18,
+    INC: 18,
+    HEX: 8,
+  };
+
+  // Convert balance based on token decimals
+  const fromUnits = (balance, decimals) => {
+    try {
+      return web3.utils.fromWei(balance, decimals === 18 ? "ether" : decimals === 8 ? "gwei" : "ether");
+    } catch (err) {
+      console.error("Error converting balance:", err);
+      return "0";
+    }
+  };
+
   const bondConfig = {
     pBOND: { token: "PLS", redeemFunction: "getRedeemablePLS", tokenBalanceField: "plsBalance" },
     xBOND: { token: "PLSX", redeemFunction: "getRedeemablePLSX", tokenBalanceField: "plsxBalance" },
@@ -22,14 +40,20 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
   };
 
   const fetchUserData = async () => {
-    if (!web3 || !contract || !account || chainId !== 369) return;
+    if (!web3 || !contract || !account || chainId !== 369) {
+      console.warn("Invalid setup:", { web3: !!web3, contract: !!contract, account, chainId });
+      return;
+    }
     try {
       setLoading(true);
       setError("");
 
       // Fetch contract balance (PLSTR or bond)
-      const balance = await contract.methods.balanceOf(account).call().catch(() => "0");
-      const balanceInEther = web3.utils.fromWei(balance || "0", "ether");
+      const balance = await contract.methods.balanceOf(account).call().catch((err) => {
+        console.error("Failed to fetch contract balance:", err);
+        return "0";
+      });
+      const balanceInEther = fromUnits(balance, contractSymbol === "HEX" ? 8 : 18);
 
       // Initialize user data
       let data = {
@@ -44,24 +68,30 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
       // Fetch redeemable token for bond contracts
       const config = bondConfig[contractSymbol] || bondConfig.pBOND;
       if (contractSymbol !== "PLSTR" && balance > 0) {
-        const redeemable = await contract.methods[config.redeemFunction](balance).call().catch(() => "0");
-        data.redeemableToken = web3.utils.fromWei(redeemable || "0", "ether");
+        const redeemable = await contract.methods[config.redeemFunction](balance).call().catch((err) => {
+          console.error(`Failed to fetch redeemable ${config.token}:`, err);
+          return "0";
+        });
+        data.redeemableToken = fromUnits(redeemable, tokenDecimals[config.token]);
       }
 
       // Fetch token balances
       const tokenAddrs = tokenAddresses[369] || {};
+      console.log("Token addresses:", tokenAddrs);
 
       // WPLS balance
       if (tokenAddrs.PLS) {
         const plsContract = new web3.eth.Contract(plsABI, tokenAddrs.PLS);
         try {
           const plsBalance = await plsContract.methods.balanceOf(account).call();
-          data.plsBalance = web3.utils.fromWei(plsBalance || "0", "ether");
+          data.plsBalance = fromUnits(plsBalance, tokenDecimals.PLS);
           console.log("WPLS balance fetched:", { address: tokenAddrs.PLS, balance: data.plsBalance });
         } catch (err) {
           console.error("Failed to fetch WPLS balance:", err);
           data.plsBalance = "0";
         }
+      } else {
+        console.warn("WPLS address not found in tokenAddresses[369]");
       }
 
       // PLSX balance
@@ -69,12 +99,14 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
         const plsxContract = new web3.eth.Contract(plsxABI, tokenAddrs.PLSX);
         try {
           const plsxBalance = await plsxContract.methods.balanceOf(account).call();
-          data.plsxBalance = web3.utils.fromWei(plsxBalance || "0", "ether");
+          data.plsxBalance = fromUnits(plsxBalance, tokenDecimals.PLSX);
           console.log("PLSX balance fetched:", { address: tokenAddrs.PLSX, balance: data.plsxBalance });
         } catch (err) {
           console.error("Failed to fetch PLSX balance:", err);
           data.plsxBalance = "0";
         }
+      } else {
+        console.warn("PLSX address not found in tokenAddresses[369]");
       }
 
       // INC balance
@@ -82,12 +114,14 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
         const incContract = new web3.eth.Contract(incABI, tokenAddrs.INC);
         try {
           const incBalance = await incContract.methods.balanceOf(account).call();
-          data.incBalance = web3.utils.fromWei(incBalance || "0", "ether");
+          data.incBalance = fromUnits(incBalance, tokenDecimals.INC);
           console.log("INC balance fetched:", { address: tokenAddrs.INC, balance: data.incBalance });
         } catch (err) {
           console.error("Failed to fetch INC balance:", err);
           data.incBalance = "0";
         }
+      } else {
+        console.warn("INC address not found in tokenAddresses[369]");
       }
 
       // HEX balance
@@ -95,12 +129,14 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
         const hexContract = new web3.eth.Contract(hexABI, tokenAddrs.HEX);
         try {
           const hexBalance = await hexContract.methods.balanceOf(account).call();
-          data.hexBalance = web3.utils.fromWei(hexBalance || "0", "ether");
+          data.hexBalance = fromUnits(hexBalance, tokenDecimals.HEX);
           console.log("HEX balance fetched:", { address: tokenAddrs.HEX, balance: data.hexBalance });
         } catch (err) {
           console.error("Failed to fetch HEX balance:", err);
           data.hexBalance = "0";
         }
+      } else {
+        console.warn("HEX address not found in tokenAddresses[369]");
       }
 
       setUserData(data);
