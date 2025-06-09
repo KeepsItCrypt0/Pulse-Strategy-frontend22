@@ -8,6 +8,16 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    setSelectedToken(defaultToken);
+  }, [contractSymbol, defaultToken]);
+
+  // Null checks for props
+  if (!web3 || !contract || !account || !chainId || !contractSymbol) {
+    console.warn("IssueShares: Missing required props", { web3, contract, account, chainId, contractSymbol });
+    return <div className="text-gray-600 p-6">Loading contract data...</div>;
+  }
+
   // Only render for bond contracts
   if (!["pBOND", "xBOND", "iBOND", "hBOND"].includes(contractSymbol)) {
     console.log("IssueShares: Skipped rendering for non-bond contract", { contractSymbol });
@@ -24,9 +34,15 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   const tokens = tokenConfig[contractSymbol] || [];
   const defaultToken = tokens[0]?.symbol || "";
 
-  useEffect(() => {
-    setSelectedToken(defaultToken);
-  }, [contractSymbol, defaultToken]);
+  if (!tokens.length) {
+    console.error("IssueShares: Invalid token config", { contractSymbol });
+    return <div className="text-red-600 p-6">Error: Invalid contract configuration</div>;
+  }
+
+  if (chainId !== 369) {
+    console.log("IssueShares: Invalid chainId", { chainId });
+    return <div className="text-gray-600 p-6">Please connect to PulseChain</div>;
+  }
 
   const handleIssueShares = async () => {
     if (!amount || Number(amount) <= 0) {
@@ -60,11 +76,6 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
       setLoading(false);
     }
   };
-
-  if (chainId !== 369) {
-    console.log("IssueShares: Invalid chainId", { chainId });
-    return null;
-  }
 
   const estimatedShares = amount ? (Number(amount) * 0.955).toFixed(6) : "0";
   const feeAmount = amount ? (Number(amount) * 0.045).toFixed(6) : "0";
