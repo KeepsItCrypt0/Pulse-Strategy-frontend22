@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
+import { tokenAddresses, ERC20_ABI } from "../web3";
 
 const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [amount, setAmount] = useState("");
@@ -12,6 +13,22 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [userBalance, setUserBalance] = useState("0");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const tokenConfig = {
+    pBOND: { symbol: "PLS", address: tokenAddresses[369].PLS },
+    xBOND: { symbol: "PLSX", address: tokenAddresses[369].PLSX },
+    iBOND: { symbol: "INC", address: tokenAddresses[369].INC },
+    hBOND: { symbol: "HEX", address: tokenAddresses[369].HEX },
+    PLSTR: [
+      { symbol: "PLSX", address: tokenAddresses[369].PLSX },
+      { symbol: "PLS", address: tokenAddresses[369].PLS },
+      { symbol: "INC", address: tokenAddresses[369].INC },
+      { symbol: "HEX", address: tokenAddresses[369].HEX },
+    ],
+  };
+
+  const isPLSTR = contractSymbol === "PLSTR";
+  const tokens = isPLSTR ? tokenConfig.PLSTR : [tokenConfig[contractSymbol]];
 
   const fetchUserData = async () => {
     if (!web3 || !contract || !account || chainId !== 369) return;
@@ -31,17 +48,25 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
   const fetchRedeemableAssets = async () => {
     if (!web3 || !contract || !amount || Number(amount) <= 0 || chainId !== 369) return;
     try {
-      if (!contract.methods.getRedeemableAssets) {
-        throw new Error(`getRedeemableAssets method not found in ${contractSymbol} contract`);
+      if (!contract.methods.totalSupply) {
+        throw new Error(`totalSupply method not found in ${contractSymbol} contract`);
       }
       const shareAmount = web3.utils.toWei(amount, "ether");
-      const assets = await contract.methods.getRedeemableAssets(shareAmount).call();
-      setRedeemableAssets({
-        plsx: web3.utils.fromWei(assets.plsxAmount, "ether"),
-        pls: web3.utils.fromWei(assets.plsAmount, "ether"),
-        inc: web3.utils.fromWei(assets.incAmount, "ether"),
-        hex: web3.utils.fromWei(assets.hexAmount, "ether"),
-      });
+      const totalSupply = await contract.methods.totalSupply().call();
+      if (Number(totalSupply) === 0) {
+        setRedeemableAssets({ plsx: "0", pls: "0", inc: "0", hex: "0" });
+        return;
+      }
+
+      const assets = { plsx: "0", pls: "0", inc: "0", hex: "0" };
+      for (const token of tokens) {
+        const tokenContract = new web3.eth.Contract(ERC20_ABI, token.address);
+        const tokenBalance = await tokenContract.methods.balanceOf(contract.options.address).call();
+        const redeemableAmount = web3.utils.toBN(tokenBalance).mul(web3.utils.toBN(shareAmount)).div(web3.utils.toBN(totalSupply));
+        assets[token.symbol.toLowerCase()] = web3.utils.fromWei(redeemableAmount, "ether");
+      }
+
+      setRedeemableAssets(assets);
       console.log("Redeemable assets fetched:", { contractSymbol, assets });
     } catch (err) {
       console.error("Failed to fetch redeemable assets:", err);
@@ -66,16 +91,19 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
     setError("");
     try {
       const shareAmount = web3.utils.toWei(amount, "ether");
-      const redeemMethod = contractSymbol === "PLSTR" ? "redeemShares" : "redeemShares"; // Adjust if method names differ
+      const redeemMethod = "redeemShares";
       if (!contract.methods[redeemMethod]) {
         throw new Error(`Method ${redeemMethod} not found in ${contractSymbol} contract`);
       }
       await contract.methods[redeemMethod](shareAmount).send({ from: account });
-      alert(
-        `Successfully redeemed ${amount} ${contractSymbol} for ${formatNumber(redeemableAssets.plsx)} PLSX, ${formatNumber(
-          redeemableAssets.pls
-        )} PLS, ${formatNumber(redeemableAssets.inc)} INC, ${formatNumber(redeemableAssets.hex)} HEX!`
-      );
+      const redemptionMessage = isPLSTR
+        ? `Successfully redeemed ${amount} ${contractSymbol} for ${formatNumber(redeemableAssets.plsx)} PLSX, ${formatNumber(
+            redeemableAssets.pls
+          )} PLS, ${formatNumber(redeemableAssets.inc)} INC, ${formatNumber(redeemableAssets.hex)} HEX!`
+        : `Successfully redeemed ${amount} ${contractSymbol} for ${formatNumber(redeemableAssets[tokens[0].symbol.toLowerCase()])} ${
+            tokens[0].symbol
+          }!`;
+      alert(redemptionMessage);
       setAmount("");
       setRedeemableAssets({ plsx: "0", pls: "0", inc: "0", hex: "0" });
       fetchUserData();
@@ -106,18 +134,12 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
           className="w-full p-2 border rounded-lg"
           disabled={loading}
         />
-        <p className="text-gray-600 mt-2">
-          Redeemable PLSX: <span className="text-purple-600">{formatNumber(redeemableAssets.plsx)} PLSX</span>
-        </p>
-        <p className="text-gray-600">
-          Redeemable PLS: <span className="text-purple-600">{formatNumber(redeemableAssets.pls)} PLS</span>
-        </p>
-        <p className="text-gray-600">
-          Redeemable INC: <span className="text-purple-600">{formatNumber(redeemableAssets.inc)} INC</span>
-        </p>
-        <p className="text-gray-600">
-          Redeemable HEX: <span className="text-purple-600">{formatNumber(redeemableAssets.hex)} HEX</span>
-        </p>
+        {tokens.map((token) => (
+          <p key={token.symbol} className="text-gray-600 mt-2">
+            Redeemable {token.symbol}:{" "}
+            <span className="text-purple-600">{formatNumber(redeemableAssets[token.symbol.toLowerCase()])} {token.symbol}</span>
+          </p>
+        ))}
       </div>
       <button
         onClick={handleRedeemShares}
