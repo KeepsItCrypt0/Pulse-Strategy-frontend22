@@ -6,7 +6,6 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [userData, setUserData] = useState({
     balance: "0", // Bond or PLSTR balance
     redeemableToken: "0", // Redeemable token for bonds
- bonds
     plstrBalance: "0",
     plsBalance: "0",
     plsxBalance: "0",
