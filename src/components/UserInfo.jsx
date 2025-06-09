@@ -1,83 +1,61 @@
 import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
 
-const UserInfo = ({ contract, account, web3, chainId }) => {
-  const [shareBalance, setShareBalance] = useState("0");
-  const [redeemableToken, setRedeemableToken] = useState("0");
+const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
+  const [userData, setUserData] = useState({
+    balance: "0",
+    redeemableToken: "0",
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetchInfo = async () => {
-    if (!contract || !account || !web3 || !chainId) {
-      setError("Contract, account, or Web3 not initialized");
-      setLoading(false);
-      return;
-    }
+  const bondConfig = {
+    pBOND: { token: "PLS", redeemFunction: "getRedeemablePLS" },
+    xBOND: { token: "PLSX", redeemFunction: "getRedeemablePLSX" },
+    iBOND: { token: "INC", redeemFunction: "getRedeemableINC" },
+    hBOND: { token: "HEX", redeemFunction: "getRedeemableHEX" },
+  };
+
+  const fetchUserData = async () => {
+    if (!web3 || !contract || !account || chainId !== 369) return;
     try {
       setLoading(true);
       setError("");
-
       const balance = await contract.methods.balanceOf(account).call();
-      const balanceEther = web3.utils.fromWei(balance, "ether");
-
-      let redeemable;
-      if (chainId === 1) {
-        const normalizedAccount = web3.utils.toChecksumAddress(account);
-        redeemable = await contract.methods
-          .getRedeemableStakedPLS(normalizedAccount, balance)
-          .call({ from: normalizedAccount });
-      } else {
-        redeemable = await contract.methods
-          .getRedeemablePLSX(account, balance)
-          .call({ from: account });
-      }
-      const redeemableEther = web3.utils.fromWei(redeemable || "0", "ether");
-
-      setShareBalance(balanceEther);
-      setRedeemableToken(redeemableEther);
-      console.log("User info fetched:", {
-        shareBalance: balanceEther,
-        redeemableToken: redeemableEther,
-        chainId,
-        account,
+      const config = bondConfig[contractSymbol] || bondConfig.pBOND;
+      const redeemable = balance > 0 ? await contract.methods[config.redeemFunction](balance).call() : "0";
+      setUserData({
+        balance: web3.utils.fromWei(balance, "ether"),
+        redeemableToken: web3.utils.fromWei(redeemable, "ether"),
       });
-    } catch (error) {
-      console.error("Failed to fetch user info:", error);
-      setError(`Failed to load user data: ${error.message || "Contract execution failed"}`);
+      console.log("User data fetched:", { contractSymbol, balance, redeemable });
+    } catch (err) {
+      console.error("Failed to fetch user data:", err);
+      setError(`Failed to load user data: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (contract && account && web3 && chainId) fetchInfo();
-  }, [contract, account, web3, chainId]);
+    if (web3 && contract && account && chainId === 369) fetchUserData();
+  }, [web3, contract, account, chainId, contractSymbol]);
+
+  if (chainId !== 369 || contractSymbol === "PLSTR") return null;
+
+  const tokenSymbol = bondConfig[contractSymbol]?.token || "PLS";
 
   return (
     <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
-      <h2 className="text-xl font-semibold mb-4 text-purple-600">Your Information</h2>
+      <h2 className="text-xl font-semibold mb-4 text-purple-600">{contractSymbol} User Info</h2>
       {loading ? (
         <p className="text-gray-600">Loading...</p>
       ) : error ? (
-        <div>
-          <p className="text-red-700">{error}</p>
-          <button
-            onClick={fetchInfo}
-            className="mt-2 text-purple-300 hover:text-red-300 transition-colors"
-          >
-            Retry
-          </button>
-        </div>
+        <p className="text-red-600">{error}</p>
       ) : (
         <>
-          <p>
-            <strong>{chainId === 1 ? "PLSTR" : "xBOND"} Balance:</strong>{" "}
-            {formatNumber(shareBalance)} {chainId === 1 ? "PLSTR" : "xBOND"}
-          </p>
-          <p>
-            <strong>Redeemable {chainId === 1 ? "vPLS" : "PLSX"}:</strong>{" "}
-            {formatNumber(redeemableToken)} {chainId === 1 ? "vPLS" : "PLSX"}
-          </p>
+          <p className="text-gray-600">Balance: <span className="text-purple-600">{formatNumber(userData.balance)} {contractSymbol}</span></p>
+          <p className="text-gray-600">Redeemable {tokenSymbol}: <span className="text-purple-600">{formatNumber(userData.redeemableToken)} {tokenSymbol}</span></p>
         </>
       )}
     </div>
