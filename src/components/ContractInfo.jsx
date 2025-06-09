@@ -234,7 +234,7 @@ const ContractInfo = ({ contractSymbol = "PLSTR" }) => {
           contract.methods.getContractBalances().call(),
           contract.methods.getPairDFAaddress().call(),
           contract.methods.getContractHealth().call(),
-          contract.methods[config.reserveField]().().call(),
+          contract.methods[config.reserveField]().call(),
           contract.methods.getContractBalanceRatio().call(),
           contract.methods[config.swapsField]().call(),
         ]);
