@@ -14,6 +14,24 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Token decimals
+  const tokenDecimals = {
+    PLS: 18,
+    PLSX: 18,
+    INC: 18,
+    HEX: 8,
+  };
+
+  // Convert balance based on token decimals
+  const fromUnits = (balance, decimals) => {
+    try {
+      return web3.utils.fromWei(balance, decimals === 18 ? "ether" : decimals === 8 ? "gwei" : "ether");
+    } catch (err) {
+      console.error("Error converting balance:", err);
+      return "0";
+    }
+  };
+
   const tokenConfig = {
     pBOND: { symbol: "PLS", address: tokenAddresses[369].PLS, redeemMethod: "getRedeemablePLS", abi: plsABI },
     xBOND: { symbol: "PLSX", address: tokenAddresses[369].PLSX, redeemMethod: "getRedeemablePLSX", abi: plsxABI },
@@ -37,7 +55,7 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
         throw new Error(`balanceOf method not found in ${contractSymbol} contract`);
       }
       const balance = await contract.methods.balanceOf(account).call();
-      setUserBalance(web3.utils.fromWei(balance, "ether"));
+      setUserBalance(fromUnits(balance, 18));
       console.log("User balance fetched:", { contractSymbol, balance });
     } catch (err) {
       console.error("Failed to fetch user balance:", err);
@@ -53,17 +71,17 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
     try {
       const shareAmount = web3.utils.toWei(amount, "ether");
       let assets = { plsx: "0", pls: "0", inc: "0", hex: "0" };
-      
+
       if (isPLSTR) {
         if (!contract.methods.getRedeemableAssets) {
           throw new Error(`getRedeemableAssets method not found in PLSTR contract`);
         }
         const [plsx, pls, inc, hex] = await contract.methods.getRedeemableAssets(shareAmount).call();
         assets = {
-          plsx: web3.utils.fromWei(plsx, "ether"),
-          pls: web3.utils.fromWei(pls, "ether"),
-          inc: web3.utils.fromWei(inc, "ether"),
-          hex: web3.utils.fromWei(hex, "ether"),
+          plsx: fromUnits(plsx, tokenDecimals.PLSX),
+          pls: fromUnits(pls, tokenDecimals.PLS),
+          inc: fromUnits(inc, tokenDecimals.INC),
+          hex: fromUnits(hex, tokenDecimals.HEX),
         };
       } else {
         const token = tokens[0];
@@ -71,7 +89,7 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
           throw new Error(`${token.redeemMethod} method not found in ${contractSymbol} contract`);
         }
         const redeemable = await contract.methods[token.redeemMethod](shareAmount).call();
-        assets[token.symbol.toLowerCase()] = web3.utils.fromWei(redeemable, "ether");
+        assets[token.symbol.toLowerCase()] = fromUnits(redeemable, tokenDecimals[token.symbol]);
       }
 
       setRedeemableAssets(assets);
