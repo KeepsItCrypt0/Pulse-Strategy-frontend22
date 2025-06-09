@@ -125,10 +125,10 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
         console.log("PLSTR Data:", { bondAddrs, balances, metrics, eventCount, deposits });
 
         bondAddresses = {
-          hBOND: bondAddrs.hBOND,
-          pBOND: bondAddrs.pBOND,
-          iBOND: bondAddrs.iBOND,
-          xBOND: bondAddrs.xBOND,
+          hBOND: bondAddrs.hBOND || "",
+          pBOND: bondAddrs.pBOND || "",
+          iBOND: bondAddrs.iBOND || "",
+          xBOND: bondAddrs.xBOND || "",
         };
 
         contractBalances = {
@@ -211,7 +211,7 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
           controllerSharePercentage: web3.utils.fromWei(health.controllerSharePercentage || "0", "ether"),
         };
 
-        controllerToken = web3.utils.fromWei(controllerReserve || "ether", "0");
+        controllerToken = web3.utils.fromWei(controllerReserve || "0", "ether");
 
         balanceRatio = {
           tokenAmount: web3.utils.fromWei(balanceRatios[config.ratioField] || "0", "ether"),
@@ -225,7 +225,7 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
       }
 
       setContractData({
-        totalSupply: web3.utils.fromWei(totalSupply, "ether"),
+        totalSupply: web3.utils.fromWei(totalSupply || "0", "ether"),
         bondAddresses,
         balances: contractBalances,
         metrics: contractMetrics,
@@ -279,7 +279,7 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
             <>
               <h3 className="text-lg font-medium mt-4">Bond Addresses</h3>
               {Object.entries(contractData.bondAddresses).map(([bond, address]) => (
-                <p key={bond} className="text-gray-600">{bond}: <span className="text-purple-600">{address}</span></p>
+                <p key={bond} className="text-gray-600">{bond}: <span className="text-purple-600">{address || "Not available"}</span></p>
               ))}
               <h3 className="text-lg font-medium mt-4">Contract Balances</h3>
               {Object.entries(contractData.balances).map(([token, balance]) => (
