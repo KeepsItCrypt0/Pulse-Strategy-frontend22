@@ -7,10 +7,10 @@ const SwapBurn = ({ web3, contract, account, chainId, contractSymbol }) => {
   const [error, setError] = useState("");
 
   const bondConfig = {
-    pBOND: { swap: "swapAccumulatedpBONDToPLS", burn: "burnContractpBOND", token: "PLS", balanceField: "plsBalance" },
-    xBOND: { swap: "swapAccumulatedxBONDToPLSX", burn: "burnContractxBOND", token: "PLSX", balanceField: "plsxBalance" },
-    iBOND: { swap: "swapAccumulatediBONDToINC", burn: "burnContractiBOND", token: "INC", balanceField: "incBalance" },
-    hBOND: { swap: "swapAccumulatedhBONDToHEX", burn: "burnContracthBOND", token: "HEX", balanceField: "hexBalance" },
+    pBOND: { swap: "swapAccumulatedpBONDToPLS", burn: "burnContractpBOND", token: "PLS", balanceField: "plsBalance", bondField: "pBONDBalance" },
+    xBOND: { swap: "swapAccumulatedxBONDToPLSX", burn: "burnContractxBOND", token: "PLSX", balanceField: "plsxBalance", bondField: "xBONDBalance" },
+    iBOND: { swap: "swapAccumulatediBONDToINC", burn: "burnContractiBOND", token: "INC", balanceField: "incBalance", bondField: "iBONDBalance" },
+    hBOND: { swap: "swapAccumulatedhBONDToHEX", burn: "burnContracthBOND", token: "HEX", balanceField: "hexBalance", bondField: "hBONDBalance" },
   };
 
   const fetchAccumulatedBalance = async () => {
@@ -20,17 +20,32 @@ const SwapBurn = ({ web3, contract, account, chainId, contractSymbol }) => {
       if (!contract.methods.getContractBalances) {
         throw new Error(`getContractBalances method not found in ${contractSymbol} contract`);
       }
+      const config = bondConfig[contractSymbol];
+      let bondBalance, tokenBalance;
+
+      // Try getContractBalances
       const balances = await contract.methods.getContractBalances().call();
-      const bondBalanceField = `${contractSymbol.toLowerCase()}Balance`;
-      const tokenBalanceField = bondConfig[contractSymbol]?.balanceField;
-      if (typeof balances[bondBalanceField] === "undefined" || typeof balances[tokenBalanceField] === "undefined") {
+      const bondBalanceField = config?.bondField || `${contractSymbol.toLowerCase()}Balance`;
+      const tokenBalanceField = config?.balanceField;
+
+      // Attempt named fields
+      if (typeof balances[bondBalanceField] !== "undefined" && typeof balances[tokenBalanceField] !== "undefined") {
+        bondBalance = balances[bondBalanceField];
+        tokenBalance = balances[tokenBalanceField];
+      } else if (balances[0] && balances[1]) {
+        // Fallback to indexed access
+        bondBalance = balances[0];
+        tokenBalance = balances[1];
+        console.warn(`Using indexed access for ${contractSymbol} balances:`, balances);
+      } else {
         throw new Error(`Balance fields ${bondBalanceField} or ${tokenBalanceField} not found in getContractBalances output`);
       }
+
       setAccumulatedBalance({
-        bond: web3.utils.fromWei(balances[bondBalanceField], "ether"),
-        token: web3.utils.fromWei(balances[tokenBalanceField], "ether"),
+        bond: web3.utils.fromWei(bondBalance, "ether"),
+        token: web3.utils.fromWei(tokenBalance, "ether"),
       });
-      console.log("Accumulated balances fetched:", { contractSymbol, balances });
+      console.log("Accumulated balances fetched:", { contractSymbol, bondBalance, tokenBalance });
     } catch (err) {
       console.error("Failed to fetch accumulated balances:", err);
       setError(`Failed to load balances: ${err.message}`);
