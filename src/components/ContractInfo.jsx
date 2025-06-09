@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
-import { contractAddresses, getContract, getWeb3 } from "./web3"; // Import from your web3.js
 
-const ContractInfo = ({ contractSymbol = "PLSTR" }) => {
+const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
   const [contractData, setContractData] = useState({
     name: "",
     symbol: "",
@@ -39,11 +38,7 @@ const ContractInfo = ({ contractSymbol = "PLSTR" }) => {
     totalTokenFromSwaps: "0",
   });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [web3, setWeb3] = useState(null);
-  const [contract, setContract] = useState(null);
-  const [plstrContract, setPlstrContract] = useState(null);
-  const [chainId, setChainId] = useState(null);
+  const [error, setError] = useState(null);
 
   const bondConfig = {
     pBOND: {
@@ -88,60 +83,11 @@ const ContractInfo = ({ contractSymbol = "PLSTR" }) => {
     },
   };
 
-  // Initialize Web3 and contracts
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const web3Instance = await getWeb3();
-        if (!web3Instance) {
-          setError("Failed to initialize Web3 provider");
-          setLoading(false);
-          return;
-        }
-        const chainIdNum = Number(await web3Instance.eth.getChainId());
-        if (chainIdNum !== 369) {
-          setError("Please connect to PulseChain (chain ID 369)");
-          setLoading(false);
-          return;
-        }
-
-        const contractInstance = await getContract(web3Instance, contractSymbol);
-        if (!contractInstance) {
-          setError(`Failed to initialize ${contractSymbol} contract`);
-          setLoading(false);
-          return;
-        }
-
-        let plstrContractInstance = null;
-        if (contractSymbol !== "PLSTR") {
-          plstrContractInstance = await getContract(web3Instance, "PLSTR");
-          if (!plstrContractInstance) {
-            setError("Failed to initialize PLSTR contract");
-            setLoading(false);
-            return;
-          }
-        }
-
-        setWeb3(web3Instance);
-        setChainId(chainIdNum);
-        setContract(contractInstance);
-        setPlstrContract(plstrContractInstance);
-      } catch (err) {
-        console.error("Initialization error:", err);
-        setError(`Initialization failed: ${err.message}`);
-        setLoading(false);
-      }
-    };
-
-    init();
-  }, [contractSymbol]);
-
-  // Fetch contract data
   const fetchContractData = async () => {
     if (!contract || !web3 || chainId !== 369) return;
     try {
       setLoading(true);
-      setError("");
+      setError(null);
 
       const config = bondConfig[contractSymbol] || bondConfig.pBOND;
       const isPLSTR = contractSymbol === "PLSTR";
@@ -232,7 +178,7 @@ const ContractInfo = ({ contractSymbol = "PLSTR" }) => {
         ] = await Promise.all([
           contract.methods.getContractMetrics().call(),
           contract.methods.getContractBalances().call(),
-          contract.methods.getPairDFAaddress().call(),
+          contract.methods.getPairAddress().call(),
           contract.methods.getContractHealth().call(),
           contract.methods[config.reserveField]().call(),
           contract.methods.getContractBalanceRatio().call(),
@@ -341,7 +287,7 @@ const ContractInfo = ({ contractSymbol = "PLSTR" }) => {
               ))}
               <h3 className="text-lg font-medium mt-4">Contract Metrics</h3>
               <p className="text-gray-600">Total Minted Shares: <span className="text-purple-600">{formatNumber(contractData.metrics.totalMintedShares)} PLSTR</span></p>
-              <p className="text-gray-600">Total Burned: <span className="text-purple-600">{  formatNumber(contractData.metrics.totalBurned)} PLSTR</span></p>
+              <p className="text-gray-600">Total Burned: <span className="text-purple-600">{formatNumber(contractData.metrics.totalBurned)} PLSTR</span></p>
               {Object.entries(contractData.metrics)
                 .filter(([key]) => key.startsWith("pendingPLSTR"))
                 .map(([key, value]) => (
