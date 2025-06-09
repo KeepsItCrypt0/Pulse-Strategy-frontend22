@@ -12,7 +12,7 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
     { symbol: "PLSX", address: tokenAddresses[369].PLSX, decimals: "ether" },
     { symbol: "PLS", address: tokenAddresses[369].PLS, decimals: "ether" },
     { symbol: "INC", address: tokenAddresses[369].INC, decimals: "ether" },
-    { symbol: "HEX", address: tokenAddresses[369].HEX, decimals: "ether" }, // Fixed: HEX uses 18 decimals
+    { symbol: "HEX", address: tokenAddresses[369].HEX, decimals: "ether" },
   ];
 
   const handleIssueShares = async () => {
@@ -26,16 +26,16 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
       const token = tokenOptions.find((t) => t.symbol === selectedToken);
       if (!token) throw new Error("Invalid token selected");
       const tokenAmount = web3.utils.toWei(amount, token.decimals);
-      const tokenContract = new web3.eth.Contract(ERC20_ABI, token.address);
+      const tokenContract = new web3.eth.Contract(ERC20_ABI, token.address); // Define ERC20_ABI
       const allowance = await tokenContract.methods.allowance(account, contract.options.address).call();
       if (web3.utils.toBN(allowance).lt(web3.utils.toBN(tokenAmount))) {
         await tokenContract.methods.approve(contract.options.address, tokenAmount).send({ from: account });
         console.log("Token approved:", { token: selectedToken, tokenAmount });
       }
       await contract.methods.issueShares(token.address, tokenAmount).send({ from: account });
-      alert(`Successfully issued PLSTR shares with ${amount} ${selectedToken}!`);
+      alert(`Successfully issued ${contractSymbol} shares with ${amount} ${selectedToken}!`);
       setAmount("");
-      console.log("Shares issued:", { token: selectedToken, tokenAmount });
+      console.log("Shares issued:", { contractSymbol, token: selectedToken, tokenAmount });
     } catch (err) {
       setError(`Error issuing shares: ${err.message}`);
       console.error("Issue shares error:", err);
@@ -44,13 +44,13 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
     }
   };
 
-  if (chainId !== 369 || contractSymbol !== "PLSTR") return null;
+  if (chainId !== 369) return null; // Removed contractSymbol !== "PLSTR"
 
   const estimatedShares = amount ? (Number(amount) * 0.955).toFixed(6) : "0"; // 4.5% fee
 
   return (
     <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
-      <h2 className="text-xl font-semibold mb-4 text-purple-600">Issue PLSTR Shares</h2>
+      <h2 className="text-xl font-semibold mb-4 text-purple-600">Issue {contractSymbol} Shares</h2>
       <div className="mb-4">
         <label className="text-gray-600">Select Token</label>
         <select
@@ -78,7 +78,8 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
           disabled={loading}
         />
         <p className="text-gray-600 mt-2">
-          Estimated PLSTR Shares (after 4.5% fee): <span className="text-purple-600">{formatNumber(estimatedShares)}</span>
+          Estimated {contractSymbol} Shares (after 4.5% fee):{" "}
+          <span className="text-purple-600">{formatNumber(estimatedShares)}</span>
         </p>
       </div>
       <button
@@ -92,5 +93,33 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
     </div>
   );
 };
+
+// Minimal ERC-20 ABI for approve and allowance
+const ERC20_ABI = [
+  {
+    constant: true,
+    inputs: [
+      { name: "_owner", type: "address" },
+      { name: "_spender", type: "address" },
+    ],
+    name: "allowance",
+    outputs: [{ name: "", type: "uint256" }],
+    payable: false,
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    constant: false,
+    inputs: [
+      { name: "_spender", type: "address" },
+      { name: "_value", type: "uint256" },
+    ],
+    name: "approve",
+    outputs: [{ name: "", type: "bool" }],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+];
 
 export default IssueShares;
