@@ -16,15 +16,15 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
 
   const tokenConfig = {
     PLSTR: [
-      { symbol: "PLSX", address: tokenAddresses[369].PLSX, decimals: "ether", abi: plsxABI },
-      { symbol: "PLS", address: tokenAddresses[369].PLS, decimals: "ether", abi: plsABI },
-      { symbol: "INC", address: tokenAddresses[369].INC, decimals: "ether", abi: incABI },
-      { symbol: "HEX", address: tokenAddresses[369].HEX, decimals: "ether", abi: hexABI },
+      { symbol: "PLSX", address: tokenAddresses[369].PLSX, decimals: 18, abi: plsxABI },
+      { symbol: "PLS", address: tokenAddresses[369].PLS, decimals: 18, abi: plsABI },
+      { symbol: "INC", address: tokenAddresses[369].INC, decimals: 18, abi: incABI },
+      { symbol: "HEX", address: tokenAddresses[369].HEX, decimals: 8, abi: hexABI },
     ],
-    pBOND: [{ symbol: "PLS", address: tokenAddresses[369].PLS, decimals: "ether", abi: plsABI }],
-    xBOND: [{ symbol: "PLSX", address: tokenAddresses[369].PLSX, decimals: "ether", abi: plsxABI }],
-    iBOND: [{ symbol: "INC", address: tokenAddresses[369].INC, decimals: "ether", abi: incABI }],
-    hBOND: [{ symbol: "HEX", address: tokenAddresses[369].HEX, decimals: "ether", abi: hexABI }],
+    pBOND: [{ symbol: "PLS", address: tokenAddresses[369].PLS, decimals: 18, abi: plsABI }],
+    xBOND: [{ symbol: "PLSX", address: tokenAddresses[369].PLSX, decimals: 18, abi: plsxABI }],
+    iBOND: [{ symbol: "INC", address: tokenAddresses[369].INC, decimals: 18, abi: incABI }],
+    hBOND: [{ symbol: "HEX", address: tokenAddresses[369].HEX, decimals: 8, abi: hexABI }],
   };
 
   const isPLSTR = contractSymbol === "PLSTR";
@@ -59,7 +59,7 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
     try {
       const token = tokens.find((t) => t.symbol === (isPLSTR ? selectedToken : defaultToken));
       if (!token) throw new Error("Invalid token selected");
-      const tokenAmount = web3.utils.toWei(amount, token.decimals);
+      const tokenAmount = web3.utils.toWei(amount, "ether"); // User input is human-readable
       const tokenContract = new web3.eth.Contract(token.abi, token.address);
       const allowance = await tokenContract.methods.allowance(account, contract.options.address).call();
       if (web3.utils.toBN(allowance).lt(web3.utils.toBN(tokenAmount))) {
