@@ -4,6 +4,7 @@ import { tokenAddresses, plsABI, incABI, plsxABI, hexABI } from "../web3";
 
 const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [amount, setAmount] = useState("");
+  const [displayAmount, setDisplayAmount] = useState(""); // Formatted for display
   const [redeemableAssets, setRedeemableAssets] = useState({
     plsx: "0",
     pls: "0",
@@ -57,6 +58,26 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
   const isPLSTR = contractSymbol === "PLSTR";
   const tokens = isPLSTR ? tokenConfig.PLSTR : [tokenConfig[contractSymbol]];
 
+  // Format input value with commas
+  const formatInputValue = (value) => {
+    if (!value) return "";
+    const num = Number(value.replace(/,/g, ""));
+    if (isNaN(num)) return value; // Allow partial input
+    return new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 8, // Support decimals for shares
+      minimumFractionDigits: 0,
+    }).format(num);
+  };
+
+  // Handle input change
+  const handleAmountChange = (e) => {
+    const rawValue = e.target.value.replace(/,/g, ""); // Strip commas
+    if (rawValue === "" || /^[0-9]*\.?[0-9]*$/.test(rawValue)) {
+      setAmount(rawValue);
+      setDisplayAmount(formatInputValue(rawValue));
+    }
+  };
+
   const fetchUserData = async () => {
     if (!web3 || !contract || !account || chainId !== 369) return;
     try {
@@ -65,7 +86,7 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
       }
       const balance = await contract.methods.balanceOf(account).call();
       setUserBalance(fromUnits(balance, 18));
-      console.log("User balance fetched:", { contractSymbol, balance });
+      console.log("User balance fetched:", { contractSymbol, balance, formatted: fromUnits(balance, 18) });
     } catch (err) {
       console.error("Failed to fetch user balance:", err);
       setError(`Failed to load balance: ${err.message}`);
@@ -102,7 +123,7 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
       }
 
       setRedeemableAssets(assets);
-      console.log("Redeemable assets fetched:", { contractSymbol, assets });
+      console.log("Redeemable assets fetched:", { contractSymbol, assets, shareAmount });
     } catch (err) {
       console.error("Failed to fetch redeemable assets:", err);
       setError(`Failed to load redeemable assets: ${err.message}`);
@@ -141,6 +162,7 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
           }!`;
       alert(redemptionMessage);
       setAmount("");
+      setDisplayAmount(""); // Reset formatted input
       setRedeemableAssets({ plsx: "0", pls: "0", inc: "0", hex: "0" });
       fetchUserData();
       console.log("Shares redeemed:", { contractSymbol, shareAmount });
@@ -163,9 +185,9 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
       <div className="mb-4">
         <label className="text-gray-600">Amount ({contractSymbol})</label>
         <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          type="text"
+          value={displayAmount}
+          onChange={handleAmountChange}
           placeholder={`Enter ${contractSymbol} amount`}
           className="w-full p-2 border rounded-lg"
           disabled={loading}
