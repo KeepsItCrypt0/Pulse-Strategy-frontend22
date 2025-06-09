@@ -66,7 +66,6 @@ const App = () => {
       const contractInstance = new web3Instance.eth.Contract(contractABI, contractAddress);
       setContract(contractInstance);
 
-      // Set isController based on hardcoded creator address
       const isOwner = account.toLowerCase() === CREATOR_ADDRESS.toLowerCase();
       setIsController(isOwner);
       console.log("Controller check:", {
@@ -115,7 +114,6 @@ const App = () => {
     }
   }, [contractSymbol]);
 
-  // Don't render components until initialization is complete
   if (loading) {
     return (
       <div className="min-h-screen gradient-bg flex flex-col items-center p-4">
@@ -241,7 +239,7 @@ const App = () => {
             rel="noopener noreferrer"
             className="footer-link mx-1"
           >
-            Follow @PulseStar on X
+            Follow @PulseStrategy on X
           </a>
         </div>
         <p className="max-w-lg mx-auto">
