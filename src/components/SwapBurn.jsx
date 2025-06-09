@@ -21,10 +21,10 @@ const SwapBurn = ({ web3, contract, account, chainId, contractSymbol }) => {
         throw new Error(`getContractBalances method not found in ${contractSymbol} contract`);
       }
       const balances = await contract.methods.getContractBalances().call();
-      const bondBalanceField = bondConfig[contractSymbol] ? `${contractSymbol.toLowerCase()}Balance` : "bondBalance";
-      const tokenBalanceField = bondConfig[contractSymbol]?.balanceField || "tokenBalance";
-      if (!balances[bondBalanceField] || !balances[tokenBalanceField]) {
-        throw new Error(`Balance fields ${bondBalanceField} or ${tokenBalanceField} not found`);
+      const bondBalanceField = `${contractSymbol.toLowerCase()}Balance`;
+      const tokenBalanceField = bondConfig[contractSymbol]?.balanceField;
+      if (typeof balances[bondBalanceField] === "undefined" || typeof balances[tokenBalanceField] === "undefined") {
+        throw new Error(`Balance fields ${bondBalanceField} or ${tokenBalanceField} not found in getContractBalances output`);
       }
       setAccumulatedBalance({
         bond: web3.utils.fromWei(balances[bondBalanceField], "ether"),
