@@ -1,328 +1,257 @@
 import { useState, useEffect } from "react";
-import { formatNumber } from "../utils/format";
+import ConnectWallet from "./components/ConnectWallet";
+import ContractInfo from "./components/ContractInfo";
+import UserInfo from "./components/UserInfo";
+import IssueShares from "./components/IssueShares";
+import RedeemShares from "./components/RedeemShares";
+import SwapBurn from "./components/SwapBurn";
+import ClaimPLSTR from "./components/ClaimPLSTR";
+import AdminPanel from "./components/AdminPanel";
+import { getWeb3, getAccount, contractAddresses } from "./web3";
+import { PLSTR_ABI, pBOND_ABI, xBOND_ABI, iBOND_ABI, hBOND_ABI } from "./web3";
+import "./index.css";
 
-const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
-  const [contractData, setContractData] = useState({
-    name: "",
-    symbol: "",
-    decimals: 18,
-    totalSupply: "0",
-    bondAddresses: { hBOND: "", pBOND: "", iBOND: "", xBOND: "" },
-    balances: { plstr: "0", plsx: "0", pls: "0", inc: "0", hex: "0" },
-    metrics: {
-      plsxBalance: "0",
-      plsBalance: "0",
-      incBalance: "0",
-      hexBalance: "0",
-      totalMintedShares: "0",
-      totalBurned: "0",
-      pendingPLSTRhBOND: "0",
-      pendingPLSTRpBOND: "0",
-      pendingPLSTRiBOND: "0",
-      pendingPLSTRxBOND: "0",
-    },
-    issuanceEventCount: "0",
-    totalDeposits: { plsx: "0", pls: "0", inc: "0", hex: "0" },
-    bondMetrics: {
-      totalSupply: "0",
-      tokenBalance: "0",
-      totalMintedShares: "0",
-      totalBurned: "0",
-      remainingIssuancePeriod: "0",
-    },
-    bondBalances: { bond: "0", token: "0" },
-    pairAddress: "",
-    contractHealth: { tokenBackingRatio: "0", controllerSharePercentage: "0" },
-    controllerToken: "0",
-    balanceRatio: { tokenAmount: "0", bondAmount: "0" },
-    totalTokenFromSwaps: "0",
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const App = () => {
+  const [web3, setWeb3] = useState(null);
+  const [account, setAccount] = useState(null);
+  const [chainId, setChainId] = useState(null);
+  const [contract, setContract] = useState(null);
+  const [contractSymbol, setContractSymbol] = useState("PLSTR");
+  const [isController, setIsController] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const bondConfig = {
-    pBOND: {
-      token: "PLS",
-      balanceField: "plsBalance",
-      bondField: "pBONDBalance",
-      metricsField: "contractPLSBalance",
-      ratioField: "plsAmount",
-      healthField: "plsBackingRatio",
-      reserveField: "getPLSReserveContributions",
-      swapsField: "getTotalPlsFromSwaps",
-    },
-    xBOND: {
-      token: "PLSX",
-      balanceField: "plsxBalance",
-      bondField: "xBONDBalance",
-      metricsField: "contractPLSXBalance",
-      ratioField: "plsxAmount",
-      healthField: "plsxBackingRatio",
-      reserveField: "getPLSXReserveContributions",
-      swapsField: "getTotalPlsxFromSwaps",
-    },
-    iBOND: {
-      token: "INC",
-      balanceField: "incBalance",
-      bondField: "iBONDBalance",
-      metricsField: "contractINCBalance",
-      ratioField: "incAmount",
-      healthField: "incBackingRatio",
-      reserveField: "getINCReserveContributions",
-      swapsField: "getTotalIncFromSwaps",
-    },
-    hBOND: {
-      token: "HEX",
-      balanceField: "hexBalance",
-      bondField: "hBONDBalance",
-      metricsField: "contractHEXBalance",
-      ratioField: "hexAmount",
-      healthField: "hexBackingRatio",
-      reserveField: "getHEXReserveContributions",
-      swapsField: "getTotalHexFromSwaps",
-    },
+  const contractABIs = {
+    PLSTR: PLSTR_ABI,
+    pBOND: pBOND_ABI,
+    xBOND: xBOND_ABI,
+    iBOND: iBOND_ABI,
+    hBOND: hBOND_ABI,
   };
 
-  const fetchContractData = async () => {
-    if (!contract || !web3 || chainId !== 369) return;
+  const CREATOR_ADDRESS = "0x6aaE8556C69b795b561CB75ca83aF6187d2F0AF5";
+
+  const initializeApp = async () => {
+    setLoading(true);
+    setError("");
     try {
-      setLoading(true);
-      setError(null);
+      const web3Instance = await getWeb3();
+      if (!web3Instance) {
+        setError("Failed to initialize Web3. Please connect your wallet.");
+        return;
+      }
+      setWeb3(web3Instance);
 
-      const config = bondConfig[contractSymbol] || bondConfig.pBOND;
-      const isPLSTR = contractSymbol === "PLSTR";
+      const chainId = Number(await web3Instance.eth.getChainId());
+      setChainId(chainId);
 
-      // Basic contract data
-      const [name, symbol, decimals, totalSupply] = await Promise.all([
-        contract.methods.name().call(),
-        contract.methods.symbol().call(),
-        contract.methods.decimals().call(),
-        contract.methods.totalSupply().call(),
-      ]);
-
-      let bondAddresses = contractData.bondAddresses;
-      let contractBalances = contractData.balances;
-      let contractMetrics = contractData.metrics;
-      let issuanceEventCount = "0";
-      let totalDeposits = contractData.totalDeposits;
-      let bondMetrics = contractData.bondMetrics;
-      let bondBalances = contractData.bondBalances;
-      let pairAddress = "";
-      let contractHealth = contractData.contractHealth;
-      let controllerToken = "0";
-      let balanceRatio = contractData.balanceRatio;
-      let totalTokenFromSwaps = "0";
-
-      if (isPLSTR) {
-        // PLSTR-specific data
-        const [
-          bondAddrs,
-          balances,
-          metrics,
-          eventCount,
-          deposits,
-        ] = await Promise.all([
-          contract.methods.getBondAddresses().call(),
-          contract.methods.getContractBalances().call(),
-          contract.methods.getContractMetrics().call(),
-          contract.methods.getIssuanceEventCount().call(),
-          contract.methods.getTotalDeposits().call(),
-        ]);
-
-        bondAddresses = {
-          hBOND: bondAddrs.hBOND,
-          pBOND: bondAddrs.pBOND,
-          iBOND: bondAddrs.iBOND,
-          xBOND: bondAddrs.xBOND,
-        };
-
-        contractBalances = {
-          plstr: web3.utils.fromWei(balances.plstrBalance, "ether"),
-          plsx: web3.utils.fromWei(balances.plsxBalance, "ether"),
-          pls: web3.utils.fromWei(balances.plsBalance, "ether"),
-          inc: web3.utils.fromWei(balances.incBalance, "ether"),
-          hex: web3.utils.fromWei(balances.hexBalance, "ether"),
-        };
-
-        contractMetrics = {
-          plsxBalance: web3.utils.fromWei(metrics.contractPLSXBalance, "ether"),
-          plsBalance: web3.utils.fromWei(metrics.contractPLSBalance, "ether"),
-          incBalance: web3.utils.fromWei(metrics.contractINCBalance, "ether"),
-          hexBalance: web3.utils.fromWei(metrics.contractHEXBalance, "ether"),
-          totalMintedShares: web3.utils.fromWei(metrics.totalMintedShares, "ether"),
-          totalBurned: web3.utils.fromWei(metrics.totalBurned, "ether"),
-          pendingPLSTRhBOND: web3.utils.fromWei(metrics.pendingPLSTRhBOND, "ether"),
-          pendingPLSTRpBOND: web3.utils.fromWei(metrics.pendingPLSTRpBOND, "ether"),
-          pendingPLSTRiBOND: web3.utils.fromWei(metrics.pendingPLSTRiBOND, "ether"),
-          pendingPLSTRxBOND: web3.utils.fromWei(metrics.pendingPLSTRxBOND, "ether"),
-        };
-
-        issuanceEventCount = eventCount;
-
-        totalDeposits = {
-          plsx: web3.utils.fromWei(deposits.totalPlsx, "ether"),
-          pls: web3.utils.fromWei(deposits.totalPls, "ether"),
-          inc: web3.utils.fromWei(deposits.totalInc, "ether"),
-          hex: web3.utils.fromWei(deposits.totalHex, "ether"),
-        };
-      } else {
-        // Bond contract data (hBOND, pBOND, iBOND, xBOND)
-        const [
-          metrics,
-          balances,
-          pairAddr,
-          health,
-          controllerReserve,
-          balanceRatios,
-          swaps,
-        ] = await Promise.all([
-          contract.methods.getContractMetrics().call(),
-          contract.methods.getContractBalances().call(),
-          contract.methods.getPairAddress().call(),
-          contract.methods.getContractHealth().call(),
-          contract.methods[config.reserveField]().call(),
-          contract.methods.getContractBalanceRatio().call(),
-          contract.methods[config.swapsField]().call(),
-        ]);
-
-        bondMetrics = {
-          totalSupply: web3.utils.fromWei(metrics.currentTotalSupply, "ether"),
-          tokenBalance: web3.utils.fromWei(metrics[config.metricsField], "ether"),
-          totalMintedShares: web3.utils.fromWei(metrics.totalMintedShares, "ether"),
-          totalBurned: web3.utils.fromWei(metrics.totalBurned, "ether"),
-          remainingIssuancePeriod: metrics.remainingIssuancePeriod.toString(),
-        };
-
-        bondBalances = {
-          bond: web3.utils.fromWei(balances[`${config.bondField}`], "ether"),
-          token: web3.utils.fromWei(balances[`${config.balanceField}`], "ether"),
-        };
-
-        pairAddress = pairAddr;
-
-        contractHealth = {
-          tokenBackingRatio: web3.utils.fromWei(health[config.healthField], "ether"),
-          controllerSharePercentage: web3.utils.fromWei(health.controllerSharePercentage, "ether"),
-        };
-
-        controllerToken = web3.utils.fromWei(controllerReserve, "ether");
-
-        balanceRatio = {
-          tokenAmount: web3.utils.fromWei(balanceRatios[config.ratioField], "ether"),
-          bondAmount: web3.utils.fromWei(
-            balanceRatios[`${contractSymbol.toLowerCase()}Amount`],
-            "ether"
-          ),
-        };
-
-        totalTokenFromSwaps = web3.utils.fromWei(swaps, "ether");
+      if (chainId !== 369) {
+        setError("Please connect to PulseChain (chainId 369).");
+        return;
       }
 
-      setContractData({
-        name,
-        symbol,
-        decimals,
-        totalSupply: web3.utils.fromWei(totalSupply, "ether"),
-        bondAddresses,
-        balances: contractBalances,
-        metrics: contractMetrics,
-        issuanceEventCount,
-        totalDeposits,
-        bondMetrics,
-        bondBalances,
-        pairAddress,
-        contractHealth,
-        controllerToken,
-        balanceRatio,
-        totalTokenFromSwaps,
+      const account = await getAccount(web3Instance);
+      if (!account) {
+        setError("No account found. Please connect your wallet.");
+        return;
+      }
+      setAccount(account);
+
+      const contractAddress = contractAddresses[369]?.[contractSymbol];
+      const contractABI = contractABIs[contractSymbol];
+      if (!contractAddress || !contractABI) {
+        throw new Error(`Contract address or ABI not found for ${contractSymbol} on PulseChain`);
+      }
+
+      const contractInstance = new web3Instance.eth.Contract(contractABI, contractAddress);
+      setContract(contractInstance);
+
+      const isOwner = account.toLowerCase() === CREATOR_ADDRESS.toLowerCase();
+      setIsController(isOwner);
+      console.log("Controller check:", {
+        account,
+        isController: isOwner,
+        chainId,
+        contractAddress,
+        contractSymbol,
       });
 
-      console.log("Contract data fetched:", { contractSymbol, name, symbol, totalSupply });
-    } catch (err) {
-      console.error("Failed to fetch contract data:", err);
-      setError(`Failed to load contract data: ${err.message}`);
+      console.log("App initialized:", {
+        chainId,
+        account,
+        contractAddress,
+        contractSymbol,
+      });
+    } catch (error) {
+      console.error("App initialization failed:", error);
+      setError(`Initialization failed: ${error.message || "Unknown error"}`);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (contract && web3 && chainId === 369) {
-      fetchContractData();
-    }
-  }, [contract, web3, chainId, contractSymbol]);
+    initializeApp();
 
-  if (chainId !== 369) {
+    if (window.ethereum) {
+      const handleChainChanged = () => {
+        console.log("Chain changed, reinitializing...");
+        initializeApp();
+      };
+      const handleAccountsChanged = (accounts) => {
+        console.log("Accounts changed:", accounts);
+        setAccount(accounts[0] || null);
+        initializeApp();
+      };
+
+      window.ethereum.on("chainChanged", handleChainChanged);
+      window.ethereum.on("accountsChanged", handleAccountsChanged);
+
+      return () => {
+        window.ethereum.removeListener("chainChanged", handleChainChanged);
+        window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+      };
+    }
+  }, [contractSymbol]);
+
+  if (loading) {
     return (
-      <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
-        <p className="text-red-600">Please connect to PulseChain (chain ID 369)</p>
+      <div className="min-h-screen gradient-bg flex flex-col items-center p-4">
+        <p className="text-center text-white">Loading...</p>
       </div>
     );
   }
 
-  const tokenSymbol = bondConfig[contractSymbol]?.token || "PLS";
-
   return (
-    <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
-      <h2 className="text-xl font-semibold mb-4 text-purple-600">{contractSymbol} Contract Info</h2>
-      {loading ? (
-        <p className="text-gray-600">Loading...</p>
-      ) : error ? (
-        <p className="text-red-600">{error}</p>
-      ) : (
-        <>
-          <p className="text-gray-600">Name: <span className="text-purple-600">{contractData.name}</span></p>
-          <p className="text-gray-600">Symbol: <span className="text-purple-600">{contractData.symbol}</span></p>
-          <p className="text-gray-600">Decimals: <span className="text-purple-600">{contractData.decimals}</span></p>
-          <p className="text-gray-600">Total Supply: <span className="text-purple-600">{formatNumber(contractData.totalSupply)} {contractSymbol}</span></p>
-          {contractSymbol === "PLSTR" ? (
-            <>
-              <h3 className="text-lg font-medium mt-4">Bond Addresses</h3>
-              {Object.entries(contractData.bondAddresses).map(([bond, address]) => (
-                <p key={bond} className="text-gray-600">{bond}: <span className="text-purple-600">{address}</span></p>
-              ))}
-              <h3 className="text-lg font-medium mt-4">Contract Balances</h3>
-              {Object.entries(contractData.balances).map(([token, balance]) => (
-                <p key={token} className="text-gray-600">{token.toUpperCase()}: <span className="text-purple-600">{formatNumber(balance)} {token.toUpperCase()}</span></p>
-              ))}
-              <h3 className="text-lg font-medium mt-4">Contract Metrics</h3>
-              <p className="text-gray-600">Total Minted Shares: <span className="text-purple-600">{formatNumber(contractData.metrics.totalMintedShares)} PLSTR</span></p>
-              <p className="text-gray-600">Total Burned: <span className="text-purple-600">{formatNumber(contractData.metrics.totalBurned)} PLSTR</span></p>
-              {Object.entries(contractData.metrics)
-                .filter(([key]) => key.startsWith("pendingPLSTR"))
-                .map(([key, value]) => (
-                  <p key={key} className="text-gray-600">Pending PLSTR ({key.replace("pendingPLSTR", "")}): <span className="text-purple-600">{formatNumber(value)} PLSTR</span></p>
-                ))}
-              <h3 className="text-lg font-medium mt-4">Total Deposits</h3>
-              {Object.entries(contractData.totalDeposits).map(([token, amount]) => (
-                <p key={token} className="text-gray-600">{token.toUpperCase()}: <span className="text-purple-600">{formatNumber(amount)} {token.toUpperCase()}</span></p>
-              ))}
-              <p className="text-gray-600">Issuance Event Count: <span className="text-purple-600">{contractData.issuanceEventCount}</span></p>
-            </>
-          ) : (
-            <>
-              <h3 className="text-lg font-medium mt-4">Contract Balances</h3>
-              <p className="text-gray-600">{contractSymbol}: <span className="text-purple-600">{formatNumber(contractData.bondBalances.bond)} {contractSymbol}</span></p>
-              <p className="text-gray-600">{tokenSymbol}: <span className="text-purple-600">{formatNumber(contractData.bondBalances.token)} {tokenSymbol}</span></p>
-              <h3 className="text-lg font-medium mt-4">Contract Metrics</h3>
-              <p className="text-gray-600">Total Minted Shares: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalMintedShares)} {contractSymbol}</span></p>
-              <p className="text-gray-600">Total Burned: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalBurned)} {contractSymbol}</span></p>
-              <p className="text-gray-600">Remaining Issuance Period: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.remainingIssuancePeriod)} seconds</span></p>
-              <p className="text-gray-600">Pair Address: <span className="text-purple-600">{contractData.pairAddress}</span></p>
-              <h3 className="text-lg font-medium mt-4">Contract Health</h3>
-              <p className="text-gray-600">{tokenSymbol} Backing Ratio: <span className="text-purple-600">{formatNumber(contractData.contractHealth.tokenBackingRatio)}</span></p>
-              <p className="text-gray-600">Controller Share Percentage: <span className="text-purple-600">{formatNumber(contractData.contractHealth.controllerSharePercentage)}</span></p>
-              <p className="text-gray-600">Estimated Controller {tokenSymbol}: <span className="text-purple-600">{formatNumber(contractData.controllerToken)} {tokenSymbol}</span></p>
-              <h3 className="text-lg font-medium mt-4">Balance Ratio</h3>
-              <p className="text-gray-600">{tokenSymbol} Amount: <span className="text-purple-600">{formatNumber(contractData.balanceRatio.tokenAmount)} {tokenSymbol}</span></p>
-              <p className="text-gray-600">{contractSymbol} Amount: <span className="text-purple-600">{formatNumber(contractData.balanceRatio.bondAmount)} {contractSymbol}</span></p>
-              <p className="text-gray-600">Total {tokenSymbol} from Swaps: <span className="text-purple-600">{formatNumber(contractData.totalTokenFromSwaps)} {tokenSymbol}</span></p>
-            </>
-          )}
-        </>
-      )}
+    <div className="min-h-screen gradient-bg flex flex-col items-center p-4">
+      <header className="w-full max-w-4xl bg-white bg-opacity-90 shadow-lg rounded-lg p-6 mb-6 card">
+        <h1 className="text-3xl font-bold text-center text-purple-600">PulseStar DApp</h1>
+        <p className="text-center text-gray-600 mt-2">
+          {account
+            ? `Interact with the ${contractSymbol} contract on PulseChain`
+            : `Connect your wallet to interact with the contract`}
+        </p>
+        <div className="mt-4">
+          <label className="text-gray-600 mr-2">Select Contract:</label>
+          <select
+            value={contractSymbol}
+            onChange={(e) => setContractSymbol(e.target.value)}
+            className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600"
+            disabled={!web3 || chainId !== 369}
+          >
+            {["PLSTR", "pBOND", "xBOND", "iBOND", "hBOND"].map((symbol) => (
+              <option key={symbol} value={symbol}>
+                {symbol}
+              </option>
+            ))}
+          </select>
+        </div>
+        {account && (
+          <p className="text-center text-gray-600 mt-2">
+            Wallet: {account.slice(0, 6)}...{account.slice(-4)}
+          </p>
+        )}
+        <ConnectWallet
+          account={account}
+          web3={web3}
+          contractAddress={contractAddresses[369]?.[contractSymbol] || ""}
+          chainId={chainId}
+          onConnect={initializeApp}
+        />
+      </header>
+      <main className="w-full max-w-4xl space-y-6">
+        {error ? (
+          <p className="text-center text-red-700">{error}</p>
+        ) : !web3 || !account || !contract || chainId !== 369 ? (
+          <p className="text-center text-white">Please connect your wallet to PulseChain to interact with the contract.</p>
+        ) : (
+          <>
+            <ContractInfo
+              contract={contract}
+              web3={web3}
+              chainId={chainId}
+              contractSymbol={contractSymbol}
+            />
+            <UserInfo
+              contract={contract}
+              account={account}
+              web3={web3}
+              chainId={chainId}
+              contractSymbol={contractSymbol}
+            />
+            <IssueShares
+              contract={contract}
+              account={account}
+              web3={web3}
+              chainId={chainId}
+              contractSymbol={contractSymbol}
+            />
+            <RedeemShares
+              contract={contract}
+              account={account}
+              web3={web3}
+              chainId={chainId}
+              contractSymbol={contractSymbol}
+            />
+            {contractSymbol === "PLSTR" ? (
+              <ClaimPLSTR
+                contract={contract}
+                account={account}
+                web3={web3}
+                chainId={chainId}
+                contractSymbol={contractSymbol}
+              />
+            ) : (
+              <SwapBurn
+                contract={contract}
+                account={account}
+                web3={web3}
+                chainId={chainId}
+                contractSymbol={contractSymbol}
+              />
+            )}
+            {isController && (
+              <AdminPanel
+                contract={contract}
+                account={account}
+                web3={web3}
+                chainId={chainId}
+                contractSymbol={contractSymbol}
+              />
+            )}
+          </>
+        )}
+      </main>
+      <footer className="mt-16 w-full text-center text-gray-500 text-xs">
+        <div className="mb-1">
+          <a
+            href="https://github.com/KeepsItCrypt0/PulseStrategy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="footer-link mx-1"
+          >
+            View Contracts on GitHub
+          </a>
+          <span>|</span>
+          <a
+            href="https://x.com/PulseStrategy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="footer-link mx-1"
+          >
+            Follow @PulseStrategy on X
+          </a>
+        </div>
+        <p className="max-w-lg mx-auto">
+          <strong>Disclaimer:</strong> PulseStar is a decentralized finance (DeFi) platform.
+          Investing in DeFi involves significant risks, including the potential loss of all invested funds.
+          Cryptocurrencies and smart contracts are volatile and may be subject to hacks, bugs, or market fluctuations.
+          Always conduct your own research and consult with a financial advisor before participating.
+          By using this platform, you acknowledge these risks and agree that PulseStar and its developers are not liable for any losses.
+        </p>
+      </footer>
     </div>
   );
 };
 
-export default ContractInfo;
+export default App;
