@@ -1,11 +1,8 @@
 import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
+import { contractAddresses, getContract, getWeb3 } from "./web3"; // Import from your web3.js
 
-// ABI definitions for the contracts (assumed to be imported or defined elsewhere)
-import PLSTR_ABI from "./abis/PLSTR.json";
-import BOND_ABI from "./abis/PulseStrategy.json"; // Shared ABI for hBOND, pBOND, iBOND, xBOND
-
-const ContractInfo = ({ contract, web3, chainId, contractSymbol, plstrContract }) => {
+const ContractInfo = ({ contractSymbol = "PLSTR" }) => {
   const [contractData, setContractData] = useState({
     name: "",
     symbol: "",
@@ -43,6 +40,10 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol, plstrContract }
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [web3, setWeb3] = useState(null);
+  const [contract, setContract] = useState(null);
+  const [plstrContract, setPlstrContract] = useState(null);
+  const [chainId, setChainId] = useState(null);
 
   const bondConfig = {
     pBOND: {
@@ -87,6 +88,55 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol, plstrContract }
     },
   };
 
+  // Initialize Web3 and contracts
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const web3Instance = await getWeb3();
+        if (!web3Instance) {
+          setError("Failed to initialize Web3 provider");
+          setLoading(false);
+          return;
+        }
+        const chainIdNum = Number(await web3Instance.eth.getChainId());
+        if (chainIdNum !== 369) {
+          setError("Please connect to PulseChain (chain ID 369)");
+          setLoading(false);
+          return;
+        }
+
+        const contractInstance = await getContract(web3Instance, contractSymbol);
+        if (!contractInstance) {
+          setError(`Failed to initialize ${contractSymbol} contract`);
+          setLoading(false);
+          return;
+        }
+
+        let plstrContractInstance = null;
+        if (contractSymbol !== "PLSTR") {
+          plstrContractInstance = await getContract(web3Instance, "PLSTR");
+          if (!plstrContractInstance) {
+            setError("Failed to initialize PLSTR contract");
+            setLoading(false);
+            return;
+          }
+        }
+
+        setWeb3(web3Instance);
+        setChainId(chainIdNum);
+        setContract(contractInstance);
+        setPlstrContract(plstrContractInstance);
+      } catch (err) {
+        console.error("Initialization error:", err);
+        setError(`Initialization failed: ${err.message}`);
+        setLoading(false);
+      }
+    };
+
+    init();
+  }, [contractSymbol]);
+
+  // Fetch contract data
   const fetchContractData = async () => {
     if (!contract || !web3 || chainId !== 369) return;
     try {
@@ -145,17 +195,17 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol, plstrContract }
           plsx: web3.utils.fromWei(balances.plsxBalance, "ether"),
           pls: web3.utils.fromWei(balances.plsBalance, "ether"),
           inc: web3.utils.fromWei(balances.incBalance, "ether"),
-          hex: web3.utils.fromWei(balances.hexBalance, "ether"), // HEX uses 18 decimals
+          hex: web3.utils.fromWei(balances.hexBalance, "ether"),
         };
 
         contractMetrics = {
           plsxBalance: web3.utils.fromWei(metrics.contractPLSXBalance, "ether"),
           plsBalance: web3.utils.fromWei(metrics.contractPLSBalance, "ether"),
           incBalance: web3.utils.fromWei(metrics.contractINCBalance, "ether"),
-          hexBalance: web3.utils.fromWei(metrics.contractHEXBalance, "ether"), // HEX uses 18 decimals
+          hexBalance: web3.utils.fromWei(metrics.contractHEXBalance, "ether"),
           totalMintedShares: web3.utils.fromWei(metrics.totalMintedShares, "ether"),
           totalBurned: web3.utils.fromWei(metrics.totalBurned, "ether"),
-          pendingPLSTRhBOND: web3.utils.fromWei(metrics.pendingPLSTRhBOND, "ether"),
+          pendingPLSTRhBOND: web3.utils.fromWei(metricsupdating metrics.pendingPLSTRhBOND, "ether"),
           pendingPLSTRpBOND: web3.utils.fromWei(metrics.pendingPLSTRpBOND, "ether"),
           pendingPLSTRiBOND: web3.utils.fromWei(metrics.pendingPLSTRiBOND, "ether"),
           pendingPLSTRxBOND: web3.utils.fromWei(metrics.pendingPLSTRxBOND, "ether"),
@@ -167,7 +217,7 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol, plstrContract }
           plsx: web3.utils.fromWei(deposits.totalPlsx, "ether"),
           pls: web3.utils.fromWei(deposits.totalPls, "ether"),
           inc: web3.utils.fromWei(deposits.totalInc, "ether"),
-          hex: web3.utils.fromWei(deposits.totalHex, "ether"), // HEX uses 18 decimals
+          hex: web3.utils.fromWei(deposits.totalHex, "ether"),
         };
       } else {
         // Bond contract data (hBOND, pBOND, iBOND, xBOND)
@@ -182,16 +232,16 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol, plstrContract }
         ] = await Promise.all([
           contract.methods.getContractMetrics().call(),
           contract.methods.getContractBalances().call(),
-          contract.methods.getPairAddress().call(),
+          contract.methods.getPairDFAaddress().call(),
           contract.methods.getContractHealth().call(),
-          contract.methods[config.reserveField]().call(),
+          contract.methods[config.reserveField]().().call(),
           contract.methods.getContractBalanceRatio().call(),
           contract.methods[config.swapsField]().call(),
         ]);
 
         bondMetrics = {
           totalSupply: web3.utils.fromWei(metrics.currentTotalSupply, "ether"),
-          tokenBalance: web3.utils.fromWei(metrics[config.metricsField], "ether"), // All tokens use 18 decimals
+          tokenBalance: web3.utils.fromWei(metrics[config.metricsField], "ether"),
           totalMintedShares: web3.utils.fromWei(metrics.totalMintedShares, "ether"),
           totalBurned: web3.utils.fromWei(metrics.totalBurned, "ether"),
           remainingIssuancePeriod: metrics.remainingIssuancePeriod.toString(),
@@ -199,7 +249,7 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol, plstrContract }
 
         bondBalances = {
           bond: web3.utils.fromWei(balances[`${config.bondField}`], "ether"),
-          token: web3.utils.fromWei(balances[`${config.balanceField}`], "ether"), // All tokens use 18 decimals
+          token: web3.utils.fromWei(balances[`${config.balanceField}`], "ether"),
         };
 
         pairAddress = pairAddr;
@@ -209,17 +259,17 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol, plstrContract }
           controllerSharePercentage: web3.utils.fromWei(health.controllerSharePercentage, "ether"),
         };
 
-        controllerToken = web3.utils.fromWei(controllerReserve, "ether"); // All tokens use 18 decimals
+        controllerToken = web3.utils.fromWei(controllerReserve, "ether");
 
         balanceRatio = {
-          tokenAmount: web3.utils.fromWei(balanceRatios[config.ratioField], "ether"), // All tokens use 18 decimals
+          tokenAmount: web3.utils.fromWei(balanceRatios[config.ratioField], "ether"),
           bondAmount: web3.utils.fromWei(
             balanceRatios[`${contractSymbol.toLowerCase()}Amount`],
             "ether"
           ),
         };
 
-        totalTokenFromSwaps = web3.utils.fromWei(swaps, "ether"); // All tokens use 18 decimals
+        totalTokenFromSwaps = web3.utils.fromWei(swaps, "ether");
       }
 
       setContractData({
@@ -251,10 +301,18 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol, plstrContract }
   };
 
   useEffect(() => {
-    if (contract && web3 && chainId === 369) fetchContractData();
-  }, [contract, web3, chainId, contractSymbol, plstrContract]);
+    if (contract && web3 && chainId === 369) {
+      fetchContractData();
+    }
+  }, [contract, web3, chainId, contractSymbol]);
 
-  if (chainId !== 369) return null;
+  if (chainId !== 369) {
+    return (
+      <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
+        <p className="text-red-600">Please connect to PulseChain (chain ID 369)</p>
+      </div>
+    );
+  }
 
   const tokenSymbol = bondConfig[contractSymbol]?.token || "PLS";
 
@@ -283,7 +341,7 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol, plstrContract }
               ))}
               <h3 className="text-lg font-medium mt-4">Contract Metrics</h3>
               <p className="text-gray-600">Total Minted Shares: <span className="text-purple-600">{formatNumber(contractData.metrics.totalMintedShares)} PLSTR</span></p>
-              <p className="text-gray-600">Total Burned: <span className="text-purple-600">{formatNumber(contractData.metrics.totalBurned)} PLSTR</span></p>
+              <p className="text-gray-600">Total Burned: <span className="text-purple-600">{  formatNumber(contractData.metrics.totalBurned)} PLSTR</span></p>
               {Object.entries(contractData.metrics)
                 .filter(([key]) => key.startsWith("pendingPLSTR"))
                 .map(([key, value]) => (
