@@ -17,9 +17,20 @@ const SwapBurn = ({ web3, contract, account, chainId, contractSymbol }) => {
   // Convert balance based on token decimals
   const fromUnits = (balance, decimals) => {
     try {
-      return web3.utils.fromWei(balance, decimals === 18 ? "ether" : decimals === 8 ? "gwei" : "ether");
+      if (!balance) return "0";
+      if (decimals === 18) {
+        return web3.utils.fromWei(balance, "ether");
+      }
+      if (decimals === 8) {
+        const balanceBN = web3.utils.toBN(balance);
+        const divisor = web3.utils.toBN("100000000"); // 10^8
+        const result = balanceBN.div(divisor).toString();
+        const remainder = balanceBN.mod(divisor).toString().padStart(8, "0");
+        return `${result}.${remainder.replace(/0+$/, "") || "0"}`.replace(/\.$/, "");
+      }
+      return web3.utils.fromWei(balance, "ether");
     } catch (err) {
-      console.error("Error converting balance:", err);
+      console.error("Error converting balance:", { balance, decimals, err });
       return "0";
     }
   };
