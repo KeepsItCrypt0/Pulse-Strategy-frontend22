@@ -5,7 +5,6 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
   const [contractData, setContractData] = useState({
     totalSupply: "0",
     bondAddresses: { hBOND: "", pBOND: "", iBOND: "", xBOND: "" },
-    balances: { plstr: "0", plsx: "0", pls: "0", inc: "0", hex: "0" },
     metrics: {
       plsxBalance: "0",
       plsBalance: "0",
@@ -27,11 +26,11 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
       totalBurned: "0",
       remainingIssuancePeriod: "0",
     },
-    bondBalances: { bond: "0", token: "0" },
+    hBONDBalance: "0", // For hBOND-specific balance in Contract Health
+    hexBalance: "0", // For hBOND-specific balance in Contract Health
     pairAddress: "",
     contractHealth: { tokenBackingRatio: "0", controllerSharePercentage: "0" },
     controllerToken: "0",
-    balanceRatio: { tokenAmount: "0", bondAmount: "0" },
     totalTokenFromSwaps: "0",
   });
   const [loading, setLoading] = useState(true);
@@ -43,7 +42,6 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
       balanceField: "plsBalance",
       bondField: "pBONDBalance",
       metricsField: "contractPLSBalance",
-      ratioField: "plsAmount",
       healthField: "plsBackingRatio",
       reserveField: "getPLSReserveContributions",
       swapsField: "getTotalPlsFromSwaps",
@@ -53,7 +51,6 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
       balanceField: "plsxBalance",
       bondField: "xBONDBalance",
       metricsField: "contractPLSXBalance",
-      ratioField: "plsxAmount",
       healthField: "plsxBackingRatio",
       reserveField: "getPLSXReserveContributions",
       swapsField: "getTotalPlsxFromSwaps",
@@ -63,7 +60,6 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
       balanceField: "incBalance",
       bondField: "iBONDBalance",
       metricsField: "contractINCBalance",
-      ratioField: "incAmount",
       healthField: "incBackingRatio",
       reserveField: "getINCReserveContributions",
       swapsField: "getTotalIncFromSwaps",
@@ -73,11 +69,23 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
       balanceField: "hexBalance",
       bondField: "hBONDBalance",
       metricsField: "contractHEXBalance",
-      ratioField: "hexAmount",
       healthField: "hexBackingRatio",
       reserveField: "getHEXReserveContributions",
       swapsField: "getTotalHexFromSwaps",
     },
+  };
+
+  const formatIssuancePeriod = (seconds) => {
+    const numSeconds = Number(seconds) || 0;
+    if (numSeconds === 0) return "0 minutes";
+    const days = Math.floor(numSeconds / 86400);
+    const hours = Math.floor((numSeconds % 86400) / 3600);
+    const minutes = Math.floor((numSeconds % 3600) / 60);
+    const parts = [];
+    if (days > 0) parts.push(`${days} day${days > 1 ? "s" : ""}`);
+    if (hours > 0) parts.push(`${hours} hour${hours > 1 ? "s" : ""}`);
+    if (minutes > 0 || parts.length === 0) parts.push(`${minutes} minute${minutes !== 1 ? "s" : ""}`);
+    return parts.join(", ");
   };
 
   const fetchContractData = async () => {
@@ -94,16 +102,15 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
       console.log("Total Supply:", totalSupply);
 
       let bondAddresses = contractData.bondAddresses;
-      let contractBalances = contractData.balances;
       let contractMetrics = contractData.metrics;
       let issuanceEventCount = "0";
       let totalDeposits = contractData.totalDeposits;
       let bondMetrics = contractData.bondMetrics;
-      let bondBalances = contractData.bondBalances;
+      let hBONDBalance = contractData.hBONDBalance;
+      let hexBalance = contractData.hexBalance;
       let pairAddress = "";
       let contractHealth = contractData.contractHealth;
       let controllerToken = "0";
-      let balanceRatio = contractData.balanceRatio;
       let totalTokenFromSwaps = "0";
 
       if (isPLSTR) {
@@ -129,14 +136,6 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
           pBOND: bondAddrs.pBOND || "",
           iBOND: bondAddrs.iBOND || "",
           xBOND: bondAddrs.xBOND || "",
-        };
-
-        contractBalances = {
-          plstr: web3.utils.fromWei(balances.plstrBalance || "0", "ether"),
-          plsx: web3.utils.fromWei(balances.plsxBalance || "0", "ether"),
-          pls: web3.utils.fromWei(balances.plsBalance || "0", "ether"),
-          inc: web3.utils.fromWei(balances.incBalance || "0", "ether"),
-          hex: web3.utils.fromWei(balances.hexBalance || "0", "ether"),
         };
 
         contractMetrics = {
@@ -173,9 +172,6 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
         const controllerReserve = contract.methods[config.reserveField]
           ? await contract.methods[config.reserveField]().call().catch(() => "0")
           : "0";
-        const balanceRatios = contract.methods.getContractBalanceRatio
-          ? await contract.methods.getContractBalanceRatio().call().catch(() => ({}))
-          : {};
         const swaps = contract.methods[config.swapsField]
           ? await contract.methods[config.swapsField]().call().catch(() => "0")
           : "0";
@@ -187,7 +183,6 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
           pairAddr,
           health,
           controllerReserve,
-          balanceRatios,
           swaps,
         });
 
@@ -199,10 +194,10 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
           remainingIssuancePeriod: (metrics.remainingIssuancePeriod || "0").toString(),
         };
 
-        bondBalances = {
-          bond: web3.utils.fromWei(balances[config.bondField] || "0", "ether"),
-          token: web3.utils.fromWei(balances[config.balanceField] || "0", "ether"),
-        };
+        if (contractSymbol === "hBOND") {
+          hBONDBalance = web3.utils.fromWei(balances[config.bondField] || "0", "ether");
+          hexBalance = web3.utils.fromWei(balances[config.balanceField] || "0", "ether");
+        }
 
         pairAddress = pairAddr;
 
@@ -213,30 +208,21 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
 
         controllerToken = web3.utils.fromWei(controllerReserve || "0", "ether");
 
-        balanceRatio = {
-          tokenAmount: web3.utils.fromWei(balanceRatios[config.ratioField] || "0", "ether"),
-          bondAmount: web3.utils.fromWei(
-            balanceRatios[`${contractSymbol.toLowerCase()}Amount`] || "0",
-            "ether"
-          ),
-        };
-
         totalTokenFromSwaps = web3.utils.fromWei(swaps || "0", "ether");
       }
 
       setContractData({
         totalSupply: web3.utils.fromWei(totalSupply || "0", "ether"),
         bondAddresses,
-        balances: contractBalances,
         metrics: contractMetrics,
         issuanceEventCount,
         totalDeposits,
         bondMetrics,
-        bondBalances,
+        hBONDBalance,
+        hexBalance,
         pairAddress,
         contractHealth,
         controllerToken,
-        balanceRatio,
         totalTokenFromSwaps,
       });
 
@@ -274,18 +260,14 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
         <p className="text-red-600">{error}</p>
       ) : (
         <>
-          <p className="text-gray-600">Total Supply: <span className="text-purple-600">{formatNumber(contractData.totalSupply)} {contractSymbol}</span></p>
           {contractSymbol === "PLSTR" ? (
             <>
               <h3 className="text-lg font-medium mt-4">Bond Addresses</h3>
               {Object.entries(contractData.bondAddresses).map(([bond, address]) => (
                 <p key={bond} className="text-gray-600">{bond}: <span className="text-purple-600">{address || "Not available"}</span></p>
               ))}
-              <h3 className="text-lg font-medium mt-4">Contract Balances</h3>
-              {Object.entries(contractData.balances).map(([token, balance]) => (
-                <p key={token} className="text-gray-600">{token.toUpperCase()}: <span className="text-purple-600">{formatNumber(balance)} {token.toUpperCase()}</span></p>
-              ))}
               <h3 className="text-lg font-medium mt-4">Contract Metrics</h3>
+              <p className="text-gray-600">Total Supply: <span className="text-purple-600">{formatNumber(contractData.totalSupply)} PLSTR</span></p>
               <p className="text-gray-600">Total Minted Shares: <span className="text-purple-600">{formatNumber(contractData.metrics.totalMintedShares)} PLSTR</span></p>
               <p className="text-gray-600">Total Burned: <span className="text-purple-600">{formatNumber(contractData.metrics.totalBurned)} PLSTR</span></p>
               {Object.entries(contractData.metrics)
@@ -301,24 +283,25 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
             </>
           ) : (
             <>
-              <h3 className="text-lg font-medium mt-4">Contract Balances</h3>
-              <p className="text-gray-600">{contractSymbol}: <span className="text-purple-600">{formatNumber(contractData.bondBalances.bond)} {contractSymbol}</span></p>
-              <p className="text-gray-600">{tokenSymbol}: <span className="text-purple-600">{formatNumber(contractData.bondBalances.token)} {tokenSymbol}</span></p>
               <h3 className="text-lg font-medium mt-4">Contract Metrics</h3>
+              <p className="text-gray-600">Total Supply: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalSupply)} {contractSymbol}</span></p>
               <p className="text-gray-600">Total Minted Shares: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalMintedShares)} {contractSymbol}</span></p>
               <p className="text-gray-600">Total Burned: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalBurned)} {contractSymbol}</span></p>
-              <p className="text-gray-600">Remaining Issuance Period: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.remainingIssuancePeriod)} seconds</span></p>
+              <p className="text-gray-600">Remaining Issuance Period: <span className="text-purple-600">{formatIssuancePeriod(contractData.bondMetrics.remainingIssuancePeriod)}</span></p>
               {contractData.pairAddress && (
                 <p className="text-gray-600">Pair Address: <span className="text-purple-600">{contractData.pairAddress}</span></p>
               )}
               <h3 className="text-lg font-medium mt-4">Contract Health</h3>
-              <p className="text-gray-600">{tokenSymbol} Backing Ratio: <span className="text-purple-600">{formatNumber(contractData.contractHealth.tokenBackingRatio)}</span></p>
+              <p className="text-gray-600">{tokenSymbol} Backing Ratio: <span className="text-purple-600">{formatNumber(contractData.contractHealth.tokenBackingRatio, true)}</span></p>
               <p className="text-gray-600">Controller Share Percentage: <span className="text-purple-600">{formatNumber(contractData.contractHealth.controllerSharePercentage)}</span></p>
               <p className="text-gray-600">Estimated Controller {tokenSymbol}: <span className="text-purple-600">{formatNumber(contractData.controllerToken)} {tokenSymbol}</span></p>
-              <h3 className="text-lg font-medium mt-4">Balance Ratio</h3>
-              <p className="text-gray-600">{tokenSymbol} Amount: <span className="text-purple-600">{formatNumber(contractData.balanceRatio.tokenAmount)} {tokenSymbol}</span></p>
-              <p className="text-gray-600">{contractSymbol} Amount: <span className="text-purple-600">{formatNumber(contractData.balanceRatio.bondAmount)} {contractSymbol}</span></p>
               <p className="text-gray-600">Total {tokenSymbol} from Swaps: <span className="text-purple-600">{formatNumber(contractData.totalTokenFromSwaps)} {tokenSymbol}</span></p>
+              {contractSymbol === "hBOND" && (
+                <>
+                  <p className="text-gray-600">hBOND Balance: <span className="text-purple-600">{formatNumber(contractData.hBONDBalance)} hBOND</span></p>
+                  <p className="text-gray-600">HEX Balance: <span className="text-purple-600">{formatNumber(contractData.hexBalance)} HEX</span></p>
+                </>
+              )}
             </>
           )}
         </>
