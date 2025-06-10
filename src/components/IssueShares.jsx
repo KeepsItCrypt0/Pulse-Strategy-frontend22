@@ -37,7 +37,7 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   const isPLSTR = contractSymbol === "PLSTR";
   const tokens = tokenConfig[contractSymbol] || [];
   const defaultToken = tokens[0]?.symbol || "";
-  const tokenDecimals = tokens[0]?.decimals || 18; // Use token-specific decimals
+  const tokenDecimals = tokens[0]?.decimals || 18;
 
   // Token decimals for deposits
   const depositTokenDecimals = {
@@ -69,13 +69,13 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
 
   // Fetch deposits, issuance count, and pending PLSTR for PLSTR
   const fetchDepositsData = async () => {
-    if (!contract || !web3 || chainId !== 369 || !isPLSTR) return;
+    if (!contract?.methods || !web3 || chainId !== 369 || !isPLSTR) return;
     try {
       setDepositsLoading(true);
       const [deposits, eventCount, contractMetrics] = await Promise.all([
         contract.methods.getTotalDeposits().call(),
         contract.methods.getIssuanceEventCount().call(),
-        contract.methods.getContractMetrics().call(),
+        contractDetails.methods.getContractMetrics().call(),
       ]);
 
       console.log("PLSTR Deposits Data:", { deposits, eventCount, contractMetrics });
@@ -88,10 +88,10 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
       };
 
       const pendingPLSTR = {
-        hBOND: fromUnits(contractMetrics.pendingPLSTRhBOND || "0", 18),
-        pBOND: fromUnits(contractMetrics.pendingPLSTRpBOND || "0", 18),
-        iBOND: fromUnits(contractMetrics.pendingPLSTRiBOND || "0", 18),
-        xBOND: fromUnits(contractMetrics.pendingPLSTRxBOND || "0", 18),
+        hBOND: fromUnits(contractDetails.metrics.pendingPLSTRhBOND || "0", 18),
+        pBOND: fromUnits(contractDetails.metrics.pendingPLSTRpBOND || "0", 18),
+        iBOND: fromUnits(contractDetails.metrics.pendingPLSTRiBOND || "0", 18),
+        xBOND: fromUnits(contractDetails.metrics.pendingPLSTRxBOND || "0", 18),
       };
 
       setDepositsData({
@@ -114,35 +114,37 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
     console.log("IssueShares: Setting selectedToken", { contractSymbol, isPLSTR, defaultToken });
     setSelectedToken(isPLSTR ? "" : defaultToken);
     return () => {
-      console.log("IssueShares: Cleanup useEffect", { contractSymbol });
+      console.log("IssueShares: Cleanup useEffect:", { contractSymbol });
     };
-  }, [contractSymbol, isPLSTR, defaultToken, contract, web3, chainId]);
+  }, [contractSymbol, isPLSTR, defaultToken, contract, web3, chainId, tokens]);
 
   if (chainId !== 369) {
-    console.log("IssueShares: Invalid chainId", { chainId });
+    console.log("IssueShares: Invalid chainId:", { chainId });
     return <div className="text-gray-600 p-6">Please connect to PulseChain</div>;
   }
 
   if (!tokens.length && !isPLSTR) {
-    console.error("IssueShares: Invalid token config", { contractSymbol });
-    return <div className="text-red-600 p-6">Error: Invalid contract configuration</div>;
+    console.error("IssueShares: Invalid token config:", { contractSymbol });
+    return <div className="text-red-600 p-6">Error: Invalid token configuration</div>;
   }
 
   // Convert amount to token's native units
-  const toTokenUnits = (amount, decimals) => {
+  const toTokenAmount = (amount, decimals) => {
+    if (!amount) throw new Error("Amount is required");
+    const num = parseFloat(amount);
+    if (isNaN(num) || num <= 0) throw new Error("Amount must be a positive number");
     try {
-      if (!amount || Number(amount) <= 0) return "0";
       if (decimals === 18) {
         return web3.utils.toWei(amount, "ether");
       }
       if (decimals === 8) {
         const amountBN = web3.utils.toWei(amount, "ether");
-        return (BigInt(amountBN) / BigInt(10000000000)).toString(); // 10^10 to adjust to 10^8
+        return (BigInt(amountBN) / BigInt(10000000000)).toString(); // Adjust to 10^8
       }
-      return web3.utils.toWei(amount, "ether");
+      throw new Error(`Unsupported decimals: ${amount}`);
     } catch (err) {
-      console.error("Error converting amount to token units:", { amount, decimals, err });
-      return "0";
+      console.error("Error converting amount to token units:", { amount, decimals, err: err.message });
+      throw err;
     }
   };
 
@@ -150,17 +152,16 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   const formatInputValue = (value) => {
     if (!value) return "";
     const num = Number(value.replace(/,/g, ""));
-    if (isNaN(num)) return value; // Allow partial input (e.g., "123.")
+    if (isNaN(num)) return value; // Allow partial input
     return new Intl.NumberFormat("en-US", {
-      maximumFractionDigits: tokenDecimals, // 8 for HEX, 18 for others
+      maximumFractionDigits: tokenDecimals,
       minimumFractionDigits: 0,
     }).format(num);
   };
 
   // Handle input change
   const handleAmountChange = (e) => {
-    const rawValue = e.target.value.replace(/,/g, ""); // Remove commas
-    // Allow numbers, decimal point, and up to tokenDecimals decimal places
+    const rawValue = e.target.value.replace(/,/g, '');
     const regex = new RegExp(`^\\d*\\.?\\d{0,${tokenDecimals}}$`);
     if (rawValue === "" || regex.test(rawValue)) {
       setAmount(rawValue);
@@ -179,26 +180,30 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
     try {
       const token = tokens.find((t) => t.symbol === defaultToken);
       if (!token) throw new Error("Invalid token selected");
+      if (!web3.utils.isAddress(token.address)) throw new Error("Invalid token address");
       const tokenAmount = toTokenUnits(amount, token.decimals);
-      console.log("Token amount calculated:", { token: token.symbol, amount, tokenAmount, decimals: token.decimals });
-      if (tokenAmount === "0") throw new Error("Invalid token amount");
+      console.log("Issuing shares:", { contractSymbol, token: token.symbol, tokenAddress: token.address, tokenAmount, account });
+
       const tokenContract = new web3.eth.Contract(token.abi, token.address);
-      const allowance = await tokenContract.methods.allowance(account[0], contract.options.address).call();
+      const allowance = await tokenContract.methods.allowance(account, contract.options.address).call();
       if (BigInt(allowance) < BigInt(tokenAmount)) {
         await tokenContract.methods
           .approve(contract.options.address, tokenAmount)
-          .send({ from: account[0] });
+          .send({ from: account });
         console.log("Token approved:", { token: token.symbol, tokenAmount });
       }
+
       const issueMethod = "issueShares";
       if (!contract.methods[issueMethod]) {
         throw new Error(`Method ${issueMethod} not found in ${contractSymbol} contract`);
       }
-      await contract.methods[issueMethod](tokenAmount).send({ from: account[0] });
+
+      // Call issueShares with token address and amount for all contracts
+      await contract.methods[issueMethod](token.address, tokenAmount).send({ from: account });
       alert(`Successfully issued ${contractSymbol} shares with ${amount} ${token.symbol}!`);
       setAmount("");
       setDisplayAmount("");
-      console.log("Shares issued:", { contractSymbol, token: token.symbol, tokenAmount });
+      console.log("Shares issued:", { contractSymbol, token: token.symbol, tokenAddress: token.address, tokenAmount });
     } catch (err) {
       setError(`Error issuing shares: ${err.message}`);
       console.error("Issue shares error:", err);
