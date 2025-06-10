@@ -160,6 +160,9 @@ const SwapBurn = ({ web3, contract, account, chainId, contractSymbol }) => {
         <p className="text-gray-600 mb-2">
           Accumulated {contractSymbol}: <span className="text-purple-600">{formatNumber(accumulatedBalance.bond)} {contractSymbol}</span>
         </p>
+        <p className="text-gray-600 mb-2">
+          Accumulated {tokenSymbol}: <span className="text-purple-600">{formatNumber(accumulatedBalance.token)} {tokenSymbol}</span>
+        </p>
         <h3 className="text-lg font-medium mb-2">Swap Accumulated Tokens</h3>
         <button
           onClick={handleSwap}
