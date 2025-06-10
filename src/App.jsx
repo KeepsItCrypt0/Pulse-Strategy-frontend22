@@ -16,7 +16,7 @@ const App = () => {
   const [account, setAccount] = useState(null);
   const [chainId, setChainId] = useState(null);
   const [contract, setContract] = useState(null);
-  const [contractSymbol, setContractSymbol] = useState("PLSTR");
+  const [contractSymbol, setContractSymbol] = useState("xBOND");
   const [isController, setIsController] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -139,7 +139,7 @@ const App = () => {
             className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600"
             disabled={!web3 || chainId !== 369}
           >
-            {["PLSTR", "pBOND", "xBOND", "iBOND", "hBOND"].map((symbol) => (
+            {["xBOND", "pBOND", "iBOND", "hBOND", "PLSTR"].map((symbol) => (
               <option key={symbol} value={symbol}>
                 {symbol}
               </option>
