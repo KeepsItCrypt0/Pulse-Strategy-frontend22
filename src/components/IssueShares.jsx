@@ -135,12 +135,13 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   return (
     <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
       <h2 className="text-xl font-semibold mb-4 text-purple-600">
-        {isPLSTR ? "Issue PLSTR to BondHolders" : `Issue ${contractSymbol}`}
+        {isPLSTR ? "Strategy Controller Deposit (ONLY)" : `Issue ${contractSymbol}`}
       </h2>
       {isPLSTR ? (
         <>
           <p className="text-gray-600 mb-4">
-            <span className="text-red-600">WARNING</span> deposits are Restricted to Strategy controller. PLSTR issued is distributed to Bondholders.<br />
+            <span className="text-red-600">WARNING</span> Deposits are restricted to strategy controller. PLSTR issued by strategy controller is available to bondholders in the claim PLSTR section.
+        </p>.<br />
             PLSTR is acquired by holding BONDS.<br />
             Go to claims section to claim your PLSTR.
           </p>
