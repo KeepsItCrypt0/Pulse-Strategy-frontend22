@@ -295,7 +295,6 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
               <div className="mt-6"></div>
               <h3 className="text-lg font-medium mt-4">Contract Metrics</h3>
               <p className="text-gray-600">Total Supply: <span className="text-purple-600">{formatNumber(contractData.totalSupply)} PLSTR</span></p>
-              <p className="text-gray-600">Total Minted: <span className="text-purple-600">{formatNumber(contractData.metrics.totalMintedShares)} PLSTR</span></p>
               <p className="text-gray-600">Total Burned: <span className="text-purple-600">{formatNumber(contractData.metrics.totalBurned)} PLSTR</span></p>
               <h3 className="text-lg font-medium mt-4">Bond Addresses</h3>
               {Object.entries(contractData.bondAddresses).map(([bond, address]) => (
@@ -317,21 +316,21 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
                   </span>
                 </p>
               ))}
-              {console.log("PLSTR UI rendered: Bond Addresses with links", {
-                bondAddresses: contractData.bondAddresses,
-                plsxBalance: contractData.metrics.plsxBalance,
-                plsBalance: contractData.metrics.plsBalance,
-                incBalance: contractData.metrics.incBalance,
-                hexBalance: contractData.metrics.hexBalance,
-                totalSupply: contractData.totalSupply,
+              {console.log("PLSTR UI rendered:", {
+                contractBalances: {
+                  plsxBalance: contractData.metrics.plsxBalance,
+                  plsBalance: contractData.metrics.plsBalance,
+                  incBalance: contractData.metrics.incBalance,
+                  hexBalance: contractData.metrics.hexBalance,
+                  totalSupply: contractData.totalSupply,
+                },
               })}
             </>
           ) : (
             <>
-              <h3 className="text-lg font-medium mt-4">Contract Metrics</h3>
-              <p className="text-gray-600">Total Supply: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalSupply)} {contractSymbol}</span></p>
+              <h3 className="text-lg font-medium mt-4">Contract Details</h3>
+              <p className="text-gray-600">Total Deposits: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalSupply)} {contractSymbol}</span></p>
               <p className="text-gray-600">{tokenSymbol} Balance: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.tokenBalance)} {tokenSymbol}</span></p>
-              <p className="text-gray-600">Total Minted: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalMintedShares)} {contractSymbol}</span></p>
               <p className="text-gray-600">Total Burned: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalBurned)} {contractSymbol}</span></p>
               <p className="text-gray-600">Remaining Issuance: <span className="text-purple-600">{formatIssuancePeriod(contractData.bondMetrics.remainingIssuancePeriod)}</span></p>
               {contractData.pairAddress && !isZeroAddress(contractData.pairAddress) && (
@@ -357,15 +356,8 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
               <h3 className="text-lg font-medium mt-4">Contract Health</h3>
               <p className="text-gray-600">{tokenSymbol} Backing Ratio: <span className="text-purple-600">{formatNumber(contractData.contractHealth.tokenBackingRatio)}</span></p>
               <p className="text-gray-600">Controller Share Percentage: <span className="text-purple-600">{formatNumber(contractData.contractHealth.controllerSharePercentage)}</span></p>
-              <p className="text-gray-600">Estimated Controller {tokenSymbol}: <span className="text-purple-600">{formatNumber(contractData.controllerToken)} {tokenSymbol}</span></p>
               <p className="text-gray-600">Total {tokenSymbol} from Swaps: <span className="text-purple-600">{formatNumber(contractData.totalTokenFromSwaps)} {tokenSymbol}</span></p>
-              {contractSymbol === "hBOND" && (
-                <>
-                  <p className="text-gray-600">hBOND Balance: <span className="text-purple-600">{formatNumber(contractData.hBONDBalance)} hBOND</span></p>
-                  <p className="text-gray-600">HEX Balance: <span className="text-purple-600">{formatNumber(contractData.hexBalance)} HEX</span></p>
-                </>
-              )}
-              {console.log("Bond UI rendered: Pair Address with link", {
+              {console.log("Bond UI rendered:", {
                 contractSymbol,
                 pairAddress: contractData.pairAddress,
                 tokenBalance: contractData.bondMetrics.tokenBalance,
