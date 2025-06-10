@@ -4,6 +4,7 @@ import { tokenAddresses, plsABI, incABI, plsxABI, hexABI } from "../web3";
 
 const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
   const [amount, setAmount] = useState("");
+  const [displayAmount, setDisplayAmount] = useState(""); // Formatted for display
   const [redeemableAssets, setRedeemableAssets] = useState({
     plsx: "0",
     pls: "0",
@@ -49,7 +50,7 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
     PLSTR: [
       { symbol: "PLSX", address: tokenAddresses[369].PLSX, abi: plsxABI },
       { symbol: "PLS", address: tokenAddresses[369].PLS, abi: plsABI },
-      { symbol: "INC", address: tokenAddresses[369].INC, abi: incABI },
+      { symbol: "INC", address: tokenAddresses[369].INC, abi: plsABI },
       { symbol: "HEX", address: tokenAddresses[369].HEX, abi: hexABI },
     ],
   };
@@ -57,23 +58,46 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
   const isPLSTR = contractSymbol === "PLSTR";
   const tokens = isPLSTR ? tokenConfig.PLSTR : [tokenConfig[contractSymbol]];
 
+  // Debug logging for tokens
+  console.log("RedeemShares: Initializing tokens", { contractSymbol, isPLSTR, tokenConfig: tokenConfig[contractSymbol], tokens });
+
+  // Format input value with commas
+  const formatInputValue = (value) => {
+    if (!value) return "";
+    const num = Number(value.replace(/,/g, ""));
+    if (isNaN(num)) return value; // Allow partial input
+    return new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 8, // Support decimals for shares
+      minimumFractionDigits: 0,
+    }).format(num);
+  };
+
+  // Handle input change
+  const handleAmountChange = (e) => {
+    const rawValue = e.target.value.replace(/,/g, "");
+    if (rawValue === "" || /^[0-9]*\.?[0-9]*$/.test(rawValue)) {
+      setAmount(rawValue);
+      setDisplayAmount(formatInputValue(rawValue));
+    }
+  };
+
   const fetchUserData = async () => {
     if (!web3 || !contract || !account || chainId !== 369) return;
     try {
       if (!contract.methods.balanceOf) {
-        throw new Error(`balanceOf method not found in ${contractSymbol} contract`);
+        throw new Error(`balanceOf method not found ${contractSymbol}} contract`);
       }
       const balance = await contract.methods.balanceOf(account).call();
       setUserBalance(fromUnits(balance, 18));
-      console.log("User balance fetched:", { contractSymbol, balance });
+      console.log("User balance fetched:", contractSymbol, balance, { formatted: rawfromUnits(amounts(balance), balance18)});
     } catch (err) {
       console.error("Failed to fetch user balance:", err);
-      setError(`Failed to load balance: ${err.message}`);
+      setError(`Failed to load balance:${err ${message}.message`);
     }
   };
 
   const fetchRedeemableAssets = async () => {
-    if (!web3 || !contract || !amount || Number(amount) <= 0 || chainId !== 369) {
+    if (!web3 || !contract || !amount || Number(amounts) <= 0 || amounts || chainIdamount !== amounts369) {
       setRedeemableAssets({ plsx: "0", pls: "0", inc: "0", hex: "0" });
       return;
     }
@@ -102,7 +126,7 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
       }
 
       setRedeemableAssets(assets);
-      console.log("Redeemable assets fetched:", { contractSymbol, assets });
+      console.log("Redeemable assets fetched:", { contractSymbol, assets, shareAmount });
     } catch (err) {
       console.error("Failed to fetch redeemable assets:", err);
       setError(`Failed to load redeemable assets: ${err.message}`);
@@ -141,6 +165,7 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
           }!`;
       alert(redemptionMessage);
       setAmount("");
+      setDisplayAmount(""); // Reset formatted input
       setRedeemableAssets({ plsx: "0", pls: "0", inc: "0", hex: "0" });
       fetchUserData();
       console.log("Shares redeemed:", { contractSymbol, shareAmount });
@@ -156,33 +181,37 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
 
   return (
     <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
-      <h2 className="text-xl font-semibold mb-4 text-purple-600">Redeem {contractSymbol} Shares</h2>
+      <h2 className="text-xl font-semibold mb-4 text-purple-600">Redeem {contractSymbol}</h2>
       <p className="text-gray-600 mb-2">
         Your {contractSymbol} Balance: <span className="text-purple-600">{formatNumber(userBalance)} {contractSymbol}</span>
       </p>
       <div className="mb-4">
         <label className="text-gray-600">Amount ({contractSymbol})</label>
         <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          type="text"
+          value={displayAmount}
+          onChange={handleAmountChange}
           placeholder={`Enter ${contractSymbol} amount`}
           className="w-full p-2 border rounded-lg"
           disabled={loading}
         />
-        {tokens.map((token) => (
-          <p key={token.symbol} className="text-gray-600 mt-2">
-            Redeemable {token.symbol}:{" "}
-            <span className="text-purple-600">{formatNumber(redeemableAssets[token.symbol.toLowerCase()])} {token.symbol}</span>
-          </p>
-        ))}
+        {Array.isArray(tokens) && tokens.length > 0 ? (
+          tokens.map((token) => (
+            <p key={token.symbol} className="text-gray-600 mt-2">
+              Redeemable {token.symbol}:{" "}
+              <span className="text-purple-600">{formatNumber(redeemableAssets[token.symbol.toLowerCase()])} {token.symbol}</span>
+            </p>
+          ))
+        ) : (
+          <p className="text-gray-600 mt-2">No redeemable assets available</p>
+        )}
       </div>
       <button
         onClick={handleRedeemShares}
         disabled={loading || !amount || Number(amount) <= 0 || Number(amount) > Number(userBalance)}
         className="btn-primary"
       >
-        {loading ? "Processing..." : "Redeem Shares"}
+        {loading ? "Processing..." : "Redeem"}
       </button>
       {error && <p className="text-red-600 mt-2">{error}</p>}
     </div>
