@@ -44,6 +44,17 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
     HEX: 8,
   };
 
+  // Truncate address to 0x1234...ABCD format
+  const truncateAddress = (address) => {
+    if (!address || typeof address !== "string" || address.length < 10) return "Not available";
+    return `0x${address.slice(2, 6)}...${address.slice(-4)}`;
+  };
+
+  // Check if address is zero address
+  const isZeroAddress = (address) => {
+    return address === "0x0000000000000000000000000000000000000000";
+  };
+
   const fromUnits = (balance, decimals) => {
     try {
       if (!balance || balance === "0") return "0";
@@ -288,9 +299,26 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
               <p className="text-gray-600">Total Burned: <span className="text-purple-600">{formatNumber(contractData.metrics.totalBurned)} PLSTR</span></p>
               <h3 className="text-lg font-medium mt-4">Bond Addresses</h3>
               {Object.entries(contractData.bondAddresses).map(([bond, address]) => (
-                <p key={bond} className="text-gray-600">{bond}: <span className="text-purple-600">{address || "Not available"}</span></p>
+                <p key={bond} className="text-gray-600">
+                  {bond}:{" "}
+                  <span className="text-purple-600">
+                    {address && !isZeroAddress(address) ? (
+                      <a
+                        href={`https://kekxplorer.avecdra.pro/address/${address}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline cursor-pointer"
+                      >
+                        {truncateAddress(address)}
+                      </a>
+                    ) : (
+                      "Not available"
+                    )}
+                  </span>
+                </p>
               ))}
-              {console.log("PLSTR UI rendered: Removed Total Deposits, Issuance Event Count, and Pending PLSTR", {
+              {console.log("PLSTR UI rendered: Bond Addresses with links", {
+                bondAddresses: contractData.bondAddresses,
                 plsxBalance: contractData.metrics.plsxBalance,
                 plsBalance: contractData.metrics.plsBalance,
                 incBalance: contractData.metrics.incBalance,
@@ -306,8 +334,25 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
               <p className="text-gray-600">Total Minted Shares: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalMintedShares)} {contractSymbol}</span></p>
               <p className="text-gray-600">Total Burned: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalBurned)} {contractSymbol}</span></p>
               <p className="text-gray-600">Remaining Issuance Period: <span className="text-purple-600">{formatIssuancePeriod(contractData.bondMetrics.remainingIssuancePeriod)}</span></p>
-              {contractData.pairAddress && (
-                <p className="text-gray-600">Pair Address: <span className="text-purple-600">{contractData.pairAddress}</span></p>
+              {contractData.pairAddress && !isZeroAddress(contractData.pairAddress) && (
+                <p className="text-gray-600">
+                  Pair Address:{" "}
+                  <span className="text-purple-600">
+                    <a
+                      href={`https://kekxplorer.avecdra.pro/address/${contractData.pairAddress}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline cursor-pointer"
+                    >
+                      {truncateAddress(contractData.pairAddress)}
+                    </a>
+                  </span>
+                </p>
+              )}
+              {contractData.pairAddress && isZeroAddress(contractData.pairAddress) && (
+                <p className="text-gray-600">
+                  Pair Address: <span className="text-purple-600">Not available</span>
+                </p>
               )}
               <h3 className="text-lg font-medium mt-4">Contract Health</h3>
               <p className="text-gray-600">{tokenSymbol} Backing Ratio: <span className="text-purple-600">{formatNumber(contractData.contractHealth.tokenBackingRatio)}</span></p>
@@ -320,6 +365,11 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
                   <p className="text-gray-600">HEX Balance: <span className="text-purple-600">{formatNumber(contractData.hexBalance)} HEX</span></p>
                 </>
               )}
+              {console.log("Bond UI rendered: Pair Address with link", {
+                contractSymbol,
+                pairAddress: contractData.pairAddress,
+                tokenBalance: contractData.bondMetrics.tokenBalance,
+              })}
             </>
           )}
         </>
