@@ -135,7 +135,7 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   return (
     <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
       <h2 className="text-xl font-semibold mb-4 text-purple-600">
-        {isPLSTR ? "Issue PLSTR to BondHolders" : `Issue ${contractSymbol} Shares`}
+        {isPLSTR ? "Issue PLSTR to BondHolders" : `Issue ${contractSymbol}`}
       </h2>
       {isPLSTR ? (
         <>
@@ -183,7 +183,7 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
           disabled={loading}
         />
         <p className="text-gray-600 mt-2">
-          Estimated {contractSymbol} Shares{!isPLSTR ? " (after 4.5% fee)" : ""}:{" "}
+          Estimated {contractSymbol}{!isPLSTR ? " (after 4.5% fee)" : ""}:{" "}
           <span className="text-purple-600">{formatNumber(estimatedShares)}</span>
         </p>
         {!isPLSTR && (
@@ -197,7 +197,7 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
         disabled={loading || !amount || Number(amount) <= 0 || (isPLSTR && !selectedToken)}
         className="btn-primary"
       >
-        {loading ? "Processing..." : `Issue Shares with ${isPLSTR ? selectedToken || "Token" : defaultToken}`}
+        {loading ? "Processing..." : "Issue"}
       </button>
       {error && <p className="text-red-600 mt-2">{error}</p>}
     </div>
