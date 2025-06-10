@@ -50,7 +50,7 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
     PLSTR: [
       { symbol: "PLSX", address: tokenAddresses[369].PLSX, abi: plsxABI },
       { symbol: "PLS", address: tokenAddresses[369].PLS, abi: plsABI },
-      { symbol: "INC", address: tokenAddresses[369].INC, abi: plsABI },
+      { symbol: "INC", address: tokenAddresses[369].INC, abi: incABI },
       { symbol: "HEX", address: tokenAddresses[369].HEX, abi: hexABI },
     ],
   };
@@ -74,7 +74,7 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
 
   // Handle input change
   const handleAmountChange = (e) => {
-    const rawValue = e.target.value.replace(/,/g, "");
+    const rawValue = e.target.value.replace(/,/g, ""); // Strip commas
     if (rawValue === "" || /^[0-9]*\.?[0-9]*$/.test(rawValue)) {
       setAmount(rawValue);
       setDisplayAmount(formatInputValue(rawValue));
@@ -85,19 +85,19 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
     if (!web3 || !contract || !account || chainId !== 369) return;
     try {
       if (!contract.methods.balanceOf) {
-        throw new Error(`balanceOf method not found ${contractSymbol}} contract`);
+        throw new Error(`balanceOf method not found in ${contractSymbol} contract`);
       }
       const balance = await contract.methods.balanceOf(account).call();
       setUserBalance(fromUnits(balance, 18));
-      console.log("User balance fetched:", contractSymbol, balance, { formatted: rawfromUnits(amounts(balance), balance18)});
+      console.log("User balance fetched:", { contractSymbol, balance, formatted: fromUnits(balance, 18) });
     } catch (err) {
       console.error("Failed to fetch user balance:", err);
-      setError(`Failed to load balance:${err ${message}.message`);
+      setError(`Failed to load balance: ${err.message}`);
     }
   };
 
   const fetchRedeemableAssets = async () => {
-    if (!web3 || !contract || !amount || Number(amounts) <= 0 || amounts || chainIdamount !== amounts369) {
+    if (!web3 || !contract || !amount || Number(amount) <= 0 || chainId !== 369) {
       setRedeemableAssets({ plsx: "0", pls: "0", inc: "0", hex: "0" });
       return;
     }
