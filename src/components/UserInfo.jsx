@@ -10,6 +10,10 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
     plsxBalance: "0",
     incBalance: "0",
     hexBalance: "0",
+    pBondClaimable: "0", // Added for PLSTR claimable amounts
+    xBondClaimable: "0",
+    iBondClaimable: "0",
+    hBondClaimable: "0",
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -19,6 +23,7 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
     PLSX: 18,
     INC: 18,
     HEX: 8,
+    PLSTR: 18, // Added for PLSTR decimals
   };
 
   const fromUnits = (balance, decimals) => {
@@ -71,6 +76,10 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
         plsxBalance: "0",
         incBalance: "0",
         hexBalance: "0",
+        pBondClaimable: "0",
+        xBondClaimable: "0",
+        iBondClaimable: "0",
+        hBondClaimable: "0",
       };
 
       const config = bondConfig[contractSymbol] || bondConfig.pBOND;
@@ -86,55 +95,80 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
       const tokenAddrs = tokenAddresses[369] || {};
       console.log("Token addresses:", tokenAddrs);
 
-      if (tokenAddrs.PLS) {
-        const plsContract = new web3.eth.Contract(plsABI, tokenAddrs.PLS);
-        try {
-          const plsBalance = await plsContract.methods.balanceOf(account).call();
-          console.log("Raw WPLS balance:", { address: tokenAddrs.PLS, rawBalance: plsBalance, type: typeof plsBalance });
-          data.plsBalance = fromUnits(plsBalance, tokenDecimals.PLS);
-          console.log("WPLS balance fetched:", { address: tokenAddrs.PLS, balance: data.plsBalance });
-        } catch (err) {
-          console.error("Failed to fetch WPLS balance:", err);
-          data.plsBalance = "0";
+      if (contractSymbol !== "PLSTR") {
+        // Fetch token balances only for non-PLSTR contracts
+        if (tokenAddrs.PLS) {
+          const plsContract = new web3.eth.Contract(plsABI, tokenAddrs.PLS);
+          try {
+            const plsBalance = await plsContract.methods.balanceOf(account).call();
+            console.log("Raw WPLS balance:", { address: tokenAddrs.PLS, rawBalance: plsBalance, type: typeof plsBalance });
+            data.plsBalance = fromUnits(plsBalance, tokenDecimals.PLS);
+            console.log("WPLS balance fetched:", { address: tokenAddrs.PLS, balance: data.plsBalance });
+          } catch (err) {
+            console.error("Failed to fetch WPLS balance:", err);
+            data.plsBalance = "0";
+          }
         }
-      }
 
-      if (tokenAddrs.PLSX) {
-        const plsxContract = new web3.eth.Contract(plsxABI, tokenAddrs.PLSX);
-        try {
-          const plsxBalance = await plsxContract.methods.balanceOf(account).call();
-          console.log("Raw PLSX balance:", { address: tokenAddrs.PLSX, rawBalance: plsxBalance, type: typeof plsBalance });
-          data.plsxBalance = fromUnits(plsxBalance, tokenDecimals.PLSX);
-          console.log("PLSX balance fetched:", { address: tokenAddrs.PLSX, balance: data.plsxBalance });
-        } catch (err) {
-          console.error("Failed to fetch PLSX balance:", err);
-          data.plsxBalance = "0";
+        if (tokenAddrs.PLSX) {
+          const plsxContract = new web3.eth.Contract(plsxABI, tokenAddrs.PLSX);
+          try {
+            const plsxBalance = await plsxContract.methods.balanceOf(account).call();
+            console.log("Raw PLSX balance:", { address: tokenAddrs.PLSX, rawBalance: plsxBalance, type: typeof plsBalance });
+            data.plsxBalance = fromUnits(plsxBalance, tokenDecimals.PLSX);
+            console.log("PLSX balance fetched:", { address: tokenAddrs.PLSX, balance: data.plsxBalance });
+          } catch (err) {
+            console.error("Failed to fetch PLSX balance:", err);
+            data.plsxBalance = "0";
+          }
         }
-      }
 
-      if (tokenAddrs.INC) {
-        const incContract = new web3.eth.Contract(incABI, tokenAddrs.INC);
-        try {
-          const incBalance = await incContract.methods.balanceOf(account).call();
-          console.log("Raw INC balance:", { address: tokenAddrs.INC, rawBalance: incBalance, type: typeof incBalance });
-          data.incBalance = fromUnits(incBalance, tokenDecimals.INC);
-          console.log("INC balance fetched:", { address: tokenAddrs.INC, balance: data.incBalance });
-        } catch (err) {
-          console.error("Failed to fetch INC balance:", err);
-          data.incBalance = "0";
+        if (tokenAddrs.INC) {
+          const incContract = new web3.eth.Contract(incABI, tokenAddrs.INC);
+          try {
+            const incBalance = await incContract.methods.balanceOf(account).call();
+            console.log("Raw INC balance:", { address: tokenAddrs.INC, rawBalance: incBalance, type: typeof incBalance });
+            data.incBalance = fromUnits(incBalance, tokenDecimals.INC);
+            console.log("INC balance fetched:", { address: tokenAddrs.INC, balance: data.incBalance });
+          } catch (err) {
+            console.error("Failed to fetch INC balance:", err);
+            data.incBalance = "0";
+          }
         }
-      }
 
-      if (tokenAddrs.HEX) {
-        const hexContract = new web3.eth.Contract(hexABI, tokenAddrs.HEX);
-        try {
-          const hexBalance = await hexContract.methods.balanceOf(account).call();
-          console.log("Raw HEX balance:", { address: tokenAddrs.HEX, rawBalance: hexBalance, type: typeof hexBalance });
-          data.hexBalance = fromUnits(hexBalance, tokenDecimals.HEX);
-          console.log("HEX balance fetched:", { address: tokenAddrs.HEX, balance: data.hexBalance });
-        } catch (err) {
-          console.error("Failed to fetch HEX balance:", err);
-          data.hexBalance = "0";
+        if (tokenAddrs.HEX) {
+          const hexContract = new web3.eth.Contract(hexABI, tokenAddrs.HEX);
+          try {
+            const hexBalance = await hexContract.methods.balanceOf(account).call();
+            console.log("Raw HEX balance:", { address: tokenAddrs.HEX, rawBalance: hexBalance, type: typeof hexBalance });
+            data.hexBalance = fromUnits(hexBalance, tokenDecimals.HEX);
+            console.log("HEX balance fetched:", { address: tokenAddrs.HEX, balance: data.hexBalance });
+          } catch (err) {
+            console.error("Failed to fetch HEX balance:", err);
+            data.hexBalance = "0";
+          }
+        }
+      } else {
+        // Fetch claimable PLSTR for each bond
+        const bondAddresses = {
+          pBOND: tokenAddrs.pBOND,
+          xBOND: tokenAddrs.xBOND,
+          iBOND: tokenAddrs.iBOND,
+          hBOND: tokenAddrs.hBOND,
+        };
+
+        for (const [bondSymbol, bondAddress] of Object.entries(bondAddresses)) {
+          if (bondAddress) {
+            try {
+              const claimablePLSTR = await contract.methods.getPendingPLSTR(bondAddress, account).call();
+              console.log(`Raw claimable PLSTR for ${bondSymbol}:`, { bondAddress, rawBalance: claimablePLSTR, type: typeof claimablePLSTR });
+              data[`${bondSymbol.toLowerCase()}Claimable`] = fromUnits(claimablePLSTR, tokenDecimals.PLSTR);
+              console.log(`Claimable PLSTR fetched for ${bondSymbol}:`, { bondAddress, balance: data[`${bondSymbol.toLowerCase()}Claimable`] });
+            } catch (err) {
+              console.error(`Failed to fetch claimable PLSTR for ${bondSymbol}:`, err);
+              data[`${bondSymbol.toLowerCase()}Claimable`] = "0";
+            }
+          }
         }
       }
 
@@ -182,10 +216,10 @@ const UserInfo = ({ contract, account, web3, chainId, contractSymbol }) => {
           )}
           {contractSymbol === "PLSTR" && (
             <>
-              <p className="text-gray-600">WPLS Balance: <span className="text-purple-600">{formatNumber(userData.plsBalance)} WPLS</span></p>
-              <p className="text-gray-600">PLSX Balance: <span className="text-purple-600">{formatNumber(userData.plsxBalance)} PLSX</span></p>
-              <p className="text-gray-600">INC Balance: <span className="text-purple-600">{formatNumber(userData.incBalance)} INC</span></p>
-              <p className="text-gray-600">HEX Balance: <span className="text-purple-600">{formatNumber(userData.hexBalance)} HEX</span></p>
+              <p className="text-gray-600">Claimable PLSTR from pBOND: <span className="text-purple-600">{formatNumber(userData.pBondClaimable)} PLSTR</span></p>
+              <p className="text-gray-600">Claimable PLSTR from xBOND: <span className="text-purple-600">{formatNumber(userData.xBondClaimable)} PLSTR</span></p>
+              <p className="text-gray-600">Claimable PLSTR from iBOND: <span className="text-purple-600">{formatNumber(userData.iBondClaimable)} PLSTR</span></p>
+              <p className="text-gray-600">Claimable PLSTR from hBOND: <span className="text-purple-600">{formatNumber(userData.hBondClaimable)} PLSTR</span></p>
             </>
           )}
         </>
