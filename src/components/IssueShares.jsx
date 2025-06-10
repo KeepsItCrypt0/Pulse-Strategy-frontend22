@@ -136,22 +136,27 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
     <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
       <h2 className="text-xl font-semibold mb-4 text-purple-600">Issue {contractSymbol} Shares</h2>
       {isPLSTR ? (
-        <div className="mb-4">
-          <label className="text-gray-600">Select Token</label>
-          <select
-            value={selectedToken}
-            onChange={(e) => setSelectedToken(e.target.value)}
-            className="w-full p-2 border rounded-lg"
-            disabled={loading}
-          >
-            <option value="">Select a token</option>
-            {tokens.map((token) => (
-              <option key={token.symbol} value={token.symbol}>
-                {token.symbol}
-              </option>
-            ))}
-          </select>
-        </div>
+        <>
+          <p className="text-red-600 mb-4">
+            WARNING PLSTR ISSUANCE is Restricted to Strategy controller. PLSTR is distributed to Bond holders. Claim below.
+          </p>
+          <div className="mb-4">
+            <label className="text-gray-600">Select Token</label>
+            <select
+              value={selectedToken}
+              onChange={(e) => setSelectedToken(e.target.value)}
+              className="w-full p-2 border rounded-lg"
+              disabled={loading}
+            >
+              <option value="">Select a token</option>
+              {tokens.map((token) => (
+                <option key={token.symbol} value={token.symbol}>
+                  {token.symbol}
+                </option>
+              ))}
+            </select>
+          </div>
+        </>
       ) : (
         <div className="mb-4">
           <label className="text-gray-600">Token</label>
