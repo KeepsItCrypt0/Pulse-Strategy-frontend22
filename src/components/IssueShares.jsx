@@ -141,9 +141,6 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
         <>
           <p className="text-gray-600 mb-4">
             <span className="text-red-600">WARNING</span> Deposits are restricted to strategy controller. PLSTR issued by strategy controller is available to bondholders in the claim PLSTR section.
-        </p>.<br />
-            PLSTR is acquired by holding BONDS.<br />
-            Go to claims section to claim your PLSTR.
           </p>
           <div className="mb-4">
             <label className="text-gray-600">Select Token</label>
