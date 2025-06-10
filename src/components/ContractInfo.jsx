@@ -295,7 +295,7 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
               <div className="mt-6"></div>
               <h3 className="text-lg font-medium mt-4">Contract Metrics</h3>
               <p className="text-gray-600">Total Supply: <span className="text-purple-600">{formatNumber(contractData.totalSupply)} PLSTR</span></p>
-              <p className="text-gray-600">Total Minted Shares: <span className="text-purple-600">{formatNumber(contractData.metrics.totalMintedShares)} PLSTR</span></p>
+              <p className="text-gray-600">Total Minted: <span className="text-purple-600">{formatNumber(contractData.metrics.totalMintedShares)} PLSTR</span></p>
               <p className="text-gray-600">Total Burned: <span className="text-purple-600">{formatNumber(contractData.metrics.totalBurned)} PLSTR</span></p>
               <h3 className="text-lg font-medium mt-4">Bond Addresses</h3>
               {Object.entries(contractData.bondAddresses).map(([bond, address]) => (
@@ -331,9 +331,9 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
               <h3 className="text-lg font-medium mt-4">Contract Metrics</h3>
               <p className="text-gray-600">Total Supply: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalSupply)} {contractSymbol}</span></p>
               <p className="text-gray-600">{tokenSymbol} Balance: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.tokenBalance)} {tokenSymbol}</span></p>
-              <p className="text-gray-600">Total Minted Shares: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalMintedShares)} {contractSymbol}</span></p>
+              <p className="text-gray-600">Total Minted: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalMintedShares)} {contractSymbol}</span></p>
               <p className="text-gray-600">Total Burned: <span className="text-purple-600">{formatNumber(contractData.bondMetrics.totalBurned)} {contractSymbol}</span></p>
-              <p className="text-gray-600">Remaining Issuance Period: <span className="text-purple-600">{formatIssuancePeriod(contractData.bondMetrics.remainingIssuancePeriod)}</span></p>
+              <p className="text-gray-600">Remaining Issuance: <span className="text-purple-600">{formatIssuancePeriod(contractData.bondMetrics.remainingIssuancePeriod)}</span></p>
               {contractData.pairAddress && !isZeroAddress(contractData.pairAddress) && (
                 <p className="text-gray-600">
                   Pair Address:{" "}
