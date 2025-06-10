@@ -185,7 +185,6 @@ const App = () => {
               web3={web3}
               chainId={chainId}
               contractSymbol={contractSymbol}
-              isController={isController}
             />
             <RedeemShares
               contract={contract}
