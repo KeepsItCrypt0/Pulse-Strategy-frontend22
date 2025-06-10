@@ -8,7 +8,6 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   const [selectedToken, setSelectedToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  // Updated state for PLSTR deposits, issuance count, and pending PLSTR
   const [depositsData, setDepositsData] = useState({
     totalDeposits: { plsx: "0", pls: "0", inc: "0", hex: "0" },
     issuanceEventCount: "0",
@@ -38,16 +37,17 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   const isPLSTR = contractSymbol === "PLSTR";
   const tokens = tokenConfig[contractSymbol] || [];
   const defaultToken = tokens[0]?.symbol || "";
+  const tokenDecimals = tokens[0]?.decimals || 18; // Use token-specific decimals
 
   // Token decimals for deposits
-  const tokenDecimals = {
+  const depositTokenDecimals = {
     PLS: 18,
     PLSX: 18,
     INC: 18,
     HEX: 8,
   };
 
-  // Convert balance to human-readable units (from ContractInfo.jsx)
+  // Convert balance to human-readable units
   const fromUnits = (balance, decimals) => {
     try {
       if (!balance || balance === "0") return "0";
@@ -81,10 +81,10 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
       console.log("PLSTR Deposits Data:", { deposits, eventCount, contractMetrics });
 
       const totalDeposits = {
-        plsx: fromUnits(deposits.totalPlsx || "0", tokenDecimals.PLSX),
-        pls: fromUnits(deposits.totalPls || "0", tokenDecimals.PLS),
-        inc: fromUnits(deposits.totalInc || "0", tokenDecimals.INC),
-        hex: fromUnits(deposits.totalHex || "0", tokenDecimals.HEX),
+        plsx: fromUnits(deposits.totalPlsx || "0", depositTokenDecimals.PLSX),
+        pls: fromUnits(deposits.totalPls || "0", depositTokenDecimals.PLS),
+        inc: fromUnits(deposits.totalInc || "0", depositTokenDecimals.INC),
+        hex: fromUnits(deposits.totalHex || "0", depositTokenDecimals.HEX),
       };
 
       const pendingPLSTR = {
@@ -141,7 +141,7 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
       }
       return web3.utils.toWei(amount, "ether");
     } catch (err) {
-      console.error("Error converting amount to token units:", { amount, decimals, error: err.message });
+      console.error("Error converting amount to token units:", { amount, decimals, err });
       return "0";
     }
   };
@@ -149,58 +149,55 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   // Format input value with commas
   const formatInputValue = (value) => {
     if (!value) return "";
-    const num = Number(amount.replace(/,/g, ""));
-    if (isNaN(num)) return value;
-
+    const num = Number(value.replace(/,/g, ""));
+    if (isNaN(num)) return value; // Allow partial input (e.g., "123.")
     return new Intl.NumberFormat("en-US", {
-      num,
-      maximumFractionDigits: 8, // Support decimals for HEX
-      amount: value,
+      maximumFractionDigits: tokenDecimals, // 8 for HEX, 18 for others
       minimumFractionDigits: 0,
-    });
+    }).format(num);
   };
 
   // Handle input change
   const handleAmountChange = (e) => {
     const rawValue = e.target.value.replace(/,/g, ""); // Remove commas
-    if (rawValue === "" || /^[0-9]*\.?[0-9]*$/.test(rawValue)) {
+    // Allow numbers, decimal point, and up to tokenDecimals decimal places
+    const regex = new RegExp(`^\\d*\\.?\\d{0,${tokenDecimals}}$`);
+    if (rawValue === "" || regex.test(rawValue)) {
       setAmount(rawValue);
       setDisplayAmount(formatInputValue(rawValue));
+      console.log("Input changed:", { rawValue, formatted: formatInputValue(rawValue), token: defaultToken });
     }
   };
 
   const handleIssueShares = async () => {
-    if (!amount || Number(amount) <= 0 || (isPLSTR && !selectedToken)) {
-      setError(isPLSTR ? "Please enter a valid amount and select a token" : "Please enter a valid amount");
+    if (!amount || Number(amount) <= 0) {
+      setError("Please enter a valid amount");
       return;
     }
     setLoading(true);
     setError("");
     try {
-      const token = tokens.find((t) => t.symbol === (isPLSTR ? selectedToken : defaultToken));
+      const token = tokens.find((t) => t.symbol === defaultToken);
       if (!token) throw new Error("Invalid token selected");
       const tokenAmount = toTokenUnits(amount, token.decimals);
       console.log("Token amount calculated:", { token: token.symbol, amount, tokenAmount, decimals: token.decimals });
       if (tokenAmount === "0") throw new Error("Invalid token amount");
       const tokenContract = new web3.eth.Contract(token.abi, token.address);
-      const allowance = await tokenContract.methods.allowance(account, contract.options.address).call();
+      const allowance = await tokenContract.methods.allowance(account[0], contract.options.address).call();
       if (BigInt(allowance) < BigInt(tokenAmount)) {
-        await tokenContract.methods.approve(contract.options.address, tokenAmount).send({ from: account });
+        await tokenContract.methods
+          .approve(contract.options.address, tokenAmount)
+          .send({ from: account[0] });
         console.log("Token approved:", { token: token.symbol, tokenAmount });
       }
       const issueMethod = "issueShares";
       if (!contract.methods[issueMethod]) {
         throw new Error(`Method ${issueMethod} not found in ${contractSymbol} contract`);
       }
-      if (isPLSTR) {
-        await contract.methods[issueMethod](token.address, tokenAmount).send({ from: account });
-      } else {
-        await contract.methods[issueMethod](tokenAmount).send({ from: account });
-      }
+      await contract.methods[issueMethod](tokenAmount).send({ from: account[0] });
       alert(`Successfully issued ${contractSymbol} shares with ${amount} ${token.symbol}!`);
       setAmount("");
       setDisplayAmount("");
-      if (isPLSTR) setSelectedToken("");
       console.log("Shares issued:", { contractSymbol, token: token.symbol, tokenAmount });
     } catch (err) {
       setError(`Error issuing shares: ${err.message}`);
@@ -210,8 +207,8 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
     }
   };
 
-  const estimatedShares = amount ? (isPLSTR ? Number(amount) : Number(amount) * 0.955).toFixed(6) : "0";
-  const feeAmount = amount && !isPLSTR ? (Number(amount) * 0.045).toFixed(6) : "0";
+  const estimatedShares = amount ? Number(amount) * 0.955 : "0";
+  const feeAmount = amount ? Number(amount) * 0.045 : "0";
 
   return (
     <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
