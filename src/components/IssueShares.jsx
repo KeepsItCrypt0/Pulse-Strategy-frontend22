@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { formatNumber } from "../utils/format";
 import { tokenAddresses, plsABI, incABI, plsxABI, hexABI } from "../web3";
 
-const IssueShares = ({ web3, contract, account, chainId, contractSymbol, isController }) => {
+const IssueShares = ({ web3, contract, account, chainId, contractSymbol }) => {
   const [amount, setAmount] = useState("");
   const [displayAmount, setDisplayAmount] = useState(""); // Formatted for display
   const [selectedToken, setSelectedToken] = useState("");
@@ -32,17 +32,6 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol, isContr
   const tokens = tokenConfig[contractSymbol] || [];
   const defaultToken = tokens[0]?.symbol || "";
 
-  // Restrict PLSTR issue shares to creator
-  if (isPLSTR && !isController) {
-    console.log("IssueShares: PLSTR restricted to creator", { account, contractSymbol });
-    return (
-      <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
-        <h2 className="text-xl font-semibold mb-4 text-purple-600">Issue PLSTR Shares</h2>
-        <p className="text-gray-600">Issuing PLSTR shares is restricted to the contract creator.</p>
-      </div>
-    );
-  }
-
   if (!tokens.length) {
     console.error("IssueShares: Invalid token config", { contractSymbol });
     return <div className="text-red-600 p-6">Error: Invalid contract configuration</div>;
@@ -61,7 +50,7 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol, isContr
       }
       return web3.utils.toWei(amount, "ether");
     } catch (err) {
-      console.error("Error converting amount to token units:", { amount, decimals, error: err.message });
+      console.error("Error converting amount to token units:", { amount, decimals, err });
       return "0";
     }
   };
@@ -69,17 +58,12 @@ const IssueShares = ({ web3, contract, account, chainId, contractSymbol, isContr
   // Format input value with commas
   const formatInputValue = (value) => {
     if (!value) return "";
-    try {
-      const num = Number(value.replace(/,/g, ""));
-      if (isNaN(num)) return value; // Allow partial input
-      return new Intl.NumberFormat("en-US", {
-        maximumFractionDigits: 8, // Support decimals for HEX
-        minimumFractionDigits: 0,
-      }).format(num);
-    } catch (err) {
-      console.error("Error formatting input value:", { value, error: err.message });
-      return value;
-    }
+    const num = Number(value.replace(/,/g, ""));
+    if (isNaN(num)) return value; // Allow partial input
+    return new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 8, // Support decimals for HEX
+      minimumFractionDigits: 0,
+    }).format(num);
   };
 
   // Handle input change
