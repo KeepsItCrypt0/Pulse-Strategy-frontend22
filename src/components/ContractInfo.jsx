@@ -145,17 +145,13 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
           bondAddrs,
           balances,
           contractMetrics,
-          eventCount,
-          deposits,
         ] = await Promise.all([
           contract.methods.getBondAddresses().call(),
           contract.methods.getContractBalances().call(),
           contract.methods.getContractMetrics().call(),
-          contract.methods.getIssuanceEventCount().call(),
-          contract.methods.getTotalDeposits().call(),
         ]);
 
-        console.log("PLSTR Data:", { bondAddrs, balances, metrics: contractMetrics, eventCount, deposits });
+        console.log("PLSTR Data:", { bondAddrs, balances, metrics: contractMetrics });
 
         bondAddresses = {
           hBOND: bondAddrs.hBOND || "",
@@ -177,14 +173,7 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
           pendingPLSTRxBOND: fromUnits(contractMetrics.pendingPLSTRxBOND || "0", 18),
         };
 
-        issuanceEventCount = eventCount.toString();
-
-        totalDeposits = {
-          plsx: fromUnits(deposits.totalPlsx || "0", tokenDecimals.PLSX),
-          pls: fromUnits(deposits.totalPls || "0", tokenDecimals.PLS),
-          inc: fromUnits(deposits.totalInc || "0", tokenDecimals.INC),
-          hex: fromUnits(deposits.totalHex || "0", tokenDecimals.HEX),
-        };
+        // Total Deposits and Issuance Event Count removed previously
       } else {
         const metrics = await contract.methods.getContractMetrics().call().catch(() => ({}));
         const balances = await contract.methods.getContractBalances().call().catch(() => ({}));
@@ -297,21 +286,11 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
               <p className="text-gray-600">Total Supply: <span className="text-purple-600">{formatNumber(contractData.totalSupply)} PLSTR</span></p>
               <p className="text-gray-600">Total Minted Shares: <span className="text-purple-600">{formatNumber(contractData.metrics.totalMintedShares)} PLSTR</span></p>
               <p className="text-gray-600">Total Burned: <span className="text-purple-600">{formatNumber(contractData.metrics.totalBurned)} PLSTR</span></p>
-              {Object.entries(contractData.metrics)
-                .filter(([key]) => key.startsWith("pendingPLSTR"))
-                .map(([key, value]) => (
-                  <p key={key} className="text-gray-600">Pending PLSTR ({key.replace("pendingPLSTR", "")}): <span className="text-purple-600">{formatNumber(value)} PLSTR</span></p>
-                ))}
               <h3 className="text-lg font-medium mt-4">Bond Addresses</h3>
               {Object.entries(contractData.bondAddresses).map(([bond, address]) => (
                 <p key={bond} className="text-gray-600">{bond}: <span className="text-purple-600">{address || "Not available"}</span></p>
               ))}
-              <h3 className="text-lg font-medium mt-4">Total Deposits</h3>
-              {Object.entries(contractData.totalDeposits).map(([token, amount]) => (
-                <p key={token} className="text-gray-600">{token.toUpperCase()}: <span className="text-purple-600">{formatNumber(amount)} {token.toUpperCase()}</span></p>
-              ))}
-              <p className="text-gray-600">Issuance Event Count: <span className="text-purple-600">{contractData.issuanceEventCount}</span></p>
-              {console.log("PLSTR UI rendered: Contract Balances above Contract Metrics", {
+              {console.log("PLSTR UI rendered: Removed Total Deposits, Issuance Event Count, and Pending PLSTR", {
                 plsxBalance: contractData.metrics.plsxBalance,
                 plsBalance: contractData.metrics.plsBalance,
                 incBalance: contractData.metrics.incBalance,
@@ -331,7 +310,7 @@ const ContractInfo = ({ contract, web3, chainId, contractSymbol }) => {
                 <p className="text-gray-600">Pair Address: <span className="text-purple-600">{contractData.pairAddress}</span></p>
               )}
               <h3 className="text-lg font-medium mt-4">Contract Health</h3>
-              <p className="text-gray-600">{tokenSymbol} Backing Ratio: <span className="text-purple-600">{formatNumber(contractData.contractHealth.tokenBackingRatio, true)}</span></p>
+              <p className="text-gray-600">{tokenSymbol} Backing Ratio: <span className="text-purple-600">{formatNumber(contractData.contractHealth.tokenBackingRatio)}</span></p>
               <p className="text-gray-600">Controller Share Percentage: <span className="text-purple-600">{formatNumber(contractData.contractHealth.controllerSharePercentage)}</span></p>
               <p className="text-gray-600">Estimated Controller {tokenSymbol}: <span className="text-purple-600">{formatNumber(contractData.controllerToken)} {tokenSymbol}</span></p>
               <p className="text-gray-600">Total {tokenSymbol} from Swaps: <span className="text-purple-600">{formatNumber(contractData.totalTokenFromSwaps)} {tokenSymbol}</span></p>
