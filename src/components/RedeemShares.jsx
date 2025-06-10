@@ -178,7 +178,7 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
 
   return (
     <div className="bg-white bg-opacity-90 shadow-lg rounded-lg p-6 card">
-      <h2 className="text-xl font-semibold mb-4 text-purple-600">Redeem {contractSymbol} Shares</h2>
+      <h2 className="text-xl font-semibold mb-4 text-purple-600">Redeem {contractSymbol}</h2>
       <p className="text-gray-600 mb-2">
         Your {contractSymbol} Balance: <span className="text-purple-600">{formatNumber(userBalance)} {contractSymbol}</span>
       </p>
@@ -204,7 +204,7 @@ const RedeemShares = ({ contract, account, web3, chainId, contractSymbol }) => {
         disabled={loading || !amount || Number(amount) <= 0 || Number(amount) > Number(userBalance)}
         className="btn-primary"
       >
-        {loading ? "Processing..." : "Redeem Shares"}
+        {loading ? "Processing..." : "Redeem"}
       </button>
       {error && <p className="text-red-600 mt-2">{error}</p>}
     </div>
